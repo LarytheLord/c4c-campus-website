@@ -1,11 +1,12 @@
 /**
  * Security Utilities
- * 
+ *
  * Common security functions for input validation, sanitization,
  * and protection against common web vulnerabilities.
  */
 
-import DOMPurify from 'isomorphic-dompurify';
+// Use a simple regex-based sanitizer for server-side to avoid jsdom ESM issues
+// DOMPurify is only used client-side where the DOM is available
 
 // --- Input Validation ---
 
@@ -145,18 +146,47 @@ export function isStrongPassword(password: string): {
 
 // --- XSS Protection ---
 
+// Default allowed tags for rich text
+const DEFAULT_ALLOWED_TAGS = ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'a', 'code', 'pre'];
+const DEFAULT_ALLOWED_ATTRS = ['href', 'title', 'target'];
+
+// Server-safe HTML sanitizer that doesn't require jsdom
 export function sanitizeHTML(html: string, allowedTags?: string[]): string {
-  const config = allowedTags
-    ? { ALLOWED_TAGS: allowedTags }
-    : {
-        ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'a', 'code', 'pre'],
-        ALLOWED_ATTR: ['href', 'title', 'target']
-      };
-  return DOMPurify.sanitize(html, config);
+  if (!html) return '';
+
+  const tags = allowedTags || DEFAULT_ALLOWED_TAGS;
+
+  // Remove script tags and their contents
+  let sanitized = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+
+  // Remove on* event handlers
+  sanitized = sanitized.replace(/\s*on\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]*)/gi, '');
+
+  // Remove javascript: and data: URLs from href/src attributes
+  sanitized = sanitized.replace(/(href|src)\s*=\s*["']?\s*(javascript|data|vbscript):[^"'\s>]*/gi, '$1=""');
+
+  // Remove style tags
+  sanitized = sanitized.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
+
+  // Remove any tags not in allowed list
+  const tagPattern = /<\/?([a-z][a-z0-9]*)\b[^>]*>/gi;
+  sanitized = sanitized.replace(tagPattern, (match, tagName) => {
+    if (tags.includes(tagName.toLowerCase())) {
+      // Keep allowed tags but strip dangerous attributes
+      return match
+        .replace(/\s+style\s*=\s*("[^"]*"|'[^']*'|[^\s>]*)/gi, '')
+        .replace(/\s+class\s*=\s*("[^"]*"|'[^']*'|[^\s>]*)/gi, '');
+    }
+    return '';
+  });
+
+  return sanitized;
 }
 
 export function stripHTML(html: string): string {
-  return DOMPurify.sanitize(html, { ALLOWED_TAGS: [] });
+  if (!html) return '';
+  // Remove all HTML tags
+  return html.replace(/<[^>]*>/g, '');
 }
 
 export function escapeHTML(str: string): string {

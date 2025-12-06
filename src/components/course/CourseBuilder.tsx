@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import DOMPurify from 'isomorphic-dompurify';
+import DOMPurify from 'dompurify';
 import type { Course } from '@/types';
 
 interface CourseBuilderProps {

@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
-import DOMPurify from 'isomorphic-dompurify';
+import { stripHTML } from '../../../../lib/security';
 import type { ForumReply } from '@/types';
 
 export const prerender = false;
@@ -145,7 +145,7 @@ export const POST: APIRoute = async ({ request, params }) => {
     const isTeacher = course?.created_by === user.id;
 
     // Sanitize content
-    const sanitizedContent = DOMPurify.sanitize(content.trim(), { ALLOWED_TAGS: [] });
+    const sanitizedContent = stripHTML(content.trim());
 
     // Create forum reply
     const replyData: Partial<ForumReply> = {

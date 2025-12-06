@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
-import DOMPurify from 'isomorphic-dompurify';
+import { stripHTML } from '../../lib/security';
 import type { LessonDiscussion, CourseForumPost } from '@/types';
 
 export const prerender = false;
@@ -386,7 +386,7 @@ export const POST: APIRoute = async ({ request }) => {
       }
 
       // Sanitize content
-      const sanitizedContent = DOMPurify.sanitize(content.trim(), { ALLOWED_TAGS: [] });
+      const sanitizedContent = stripHTML(content.trim());
 
       // Check if user is a teacher (course creator)
       const { data: cohort } = await supabase
@@ -518,8 +518,8 @@ export const POST: APIRoute = async ({ request }) => {
       }
 
       // Sanitize content and title
-      const sanitizedTitle = DOMPurify.sanitize(title.trim(), { ALLOWED_TAGS: [] });
-      const sanitizedContent = DOMPurify.sanitize(content.trim(), { ALLOWED_TAGS: [] });
+      const sanitizedTitle = stripHTML(title.trim());
+      const sanitizedContent = stripHTML(content.trim());
 
       // Create forum post
       const forumData: Partial<CourseForumPost> = {
