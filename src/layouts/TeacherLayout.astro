@@ -100,7 +100,7 @@ const navItems = [
         .single();
 
       if (!application || (application.role !== 'teacher' && application.role !== 'admin')) {
-        window.location.href = '/dashboard?error=unauthorized';
+        window.location.href = '/teacher/courses?error=unauthorized';
         return false;
       }
 

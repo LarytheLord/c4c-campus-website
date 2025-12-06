@@ -13,8 +13,8 @@ const navItems = [
   { href: '/admin/applications-review', label: 'Applications', key: 'applications-review' },
   { href: '/admin/users', label: 'Users', key: 'users' },
   { href: '/admin/cohorts', label: 'Cohorts', key: 'cohorts' },
-  { href: '/admin/courses', label: 'Courses', key: 'courses' },
   { href: '/admin/analytics', label: 'Analytics', key: 'analytics' },
+  { href: '/admin/settings', label: 'Settings', key: 'settings' },
 ];
 ---
 
@@ -103,7 +103,7 @@ const navItems = [
         .single();
 
       if (!application || application.role !== 'admin') {
-        window.location.href = '/dashboard?error=unauthorized';
+        window.location.href = '/admin/dashboard?error=unauthorized';
         return false;
       }
 

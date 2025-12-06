@@ -1,0 +1,150 @@
+---
+/**
+ * Teacher Cohorts List Page
+ * Lists all cohorts the teacher has access to
+ */
+import TeacherLayout from '../../../layouts/TeacherLayout.astro';
+---
+
+<TeacherLayout title="My Cohorts - Teacher - C4C Campus" currentPage="cohorts">
+    <!-- Loading State -->
+    <div id="loading-state" class="container mx-auto px-4 py-12">
+      <div class="text-center">
+        <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+        <p class="mt-4 text-text-muted">Loading cohorts...</p>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="main-content" class="hidden container mx-auto px-4 py-8">
+      <div class="mb-8">
+        <h1 class="text-3xl font-bold mb-2">My Cohorts</h1>
+        <p class="text-text-muted">Manage your teaching cohorts and track student progress</p>
+      </div>
+
+      <!-- Cohorts Grid -->
+      <div id="cohorts-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Cohorts will be inserted here -->
+      </div>
+
+      <!-- Empty State -->
+      <div id="empty-state" class="hidden text-center py-16">
+        <div class="text-6xl mb-4">📚</div>
+        <h2 class="text-2xl font-bold mb-2">No Cohorts Yet</h2>
+        <p class="text-text-muted mb-6">You don't have any cohorts assigned to you yet.</p>
+        <a href="/teacher/courses" class="btn btn-primary">View My Courses</a>
+      </div>
+    </div>
+
+  <script>
+    import { createClient } from '@supabase/supabase-js';
+
+    const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+    const supabase = createClient(supabaseUrl!, supabaseAnonKey!);
+
+    async function init() {
+      // Check authentication
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        window.location.href = '/login';
+        return;
+      }
+
+      // Load cohorts
+      await loadCohorts(user.id);
+
+      // Show content
+      document.getElementById('loading-state')?.classList.add('hidden');
+      document.getElementById('main-content')?.classList.remove('hidden');
+    }
+
+    async function loadCohorts(userId: string) {
+      const grid = document.getElementById('cohorts-grid');
+      const emptyState = document.getElementById('empty-state');
+
+      // Fetch cohorts created by this teacher or where they're assigned
+      const { data: cohorts, error } = await supabase
+        .from('cohorts')
+        .select(`
+          *,
+          courses(name, slug),
+          cohort_enrollments(count)
+        `)
+        .eq('created_by', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading cohorts:', error);
+        if (grid) grid.innerHTML = '<p class="text-red-500 col-span-full text-center py-8">Error loading cohorts. Please try again.</p>';
+        return;
+      }
+
+      if (!cohorts || cohorts.length === 0) {
+        grid?.classList.add('hidden');
+        emptyState?.classList.remove('hidden');
+        return;
+      }
+
+      // Render cohorts
+      if (grid) {
+        grid.innerHTML = cohorts.map(cohort => {
+          const studentCount = cohort.cohort_enrollments?.[0]?.count || 0;
+          const statusColor = getStatusColor(cohort.status);
+
+          return `
+            <a href="/teacher/cohorts/${cohort.id}" class="card hover:shadow-lg transition-shadow cursor-pointer block">
+              <div class="flex items-start justify-between mb-4">
+                <div>
+                  <h3 class="text-xl font-bold">${cohort.name}</h3>
+                  <p class="text-text-muted text-sm">${cohort.courses?.name || 'Unknown Course'}</p>
+                </div>
+                <span class="px-2 py-1 rounded text-xs font-medium ${statusColor}">
+                  ${cohort.status.charAt(0).toUpperCase() + cohort.status.slice(1)}
+                </span>
+              </div>
+
+              <div class="grid grid-cols-2 gap-4 mb-4">
+                <div class="text-center p-3 bg-blue-50 rounded-lg">
+                  <p class="text-2xl font-bold text-blue-600">${studentCount}</p>
+                  <p class="text-xs text-text-muted">Students</p>
+                </div>
+                <div class="text-center p-3 bg-green-50 rounded-lg">
+                  <p class="text-2xl font-bold text-green-600">${cohort.max_students}</p>
+                  <p class="text-xs text-text-muted">Max Capacity</p>
+                </div>
+              </div>
+
+              <div class="text-sm text-text-muted">
+                <p>Start: ${formatDate(cohort.start_date)}</p>
+                ${cohort.end_date ? `<p>End: ${formatDate(cohort.end_date)}</p>` : ''}
+              </div>
+            </a>
+          `;
+        }).join('');
+      }
+    }
+
+    function getStatusColor(status: string): string {
+      const colors: Record<string, string> = {
+        'upcoming': 'bg-blue-500/10 text-blue-500',
+        'active': 'bg-green-500/10 text-green-500',
+        'completed': 'bg-gray-500/10 text-gray-500',
+        'archived': 'bg-orange-500/10 text-orange-500'
+      };
+      return colors[status] || 'bg-gray-500/10 text-gray-500';
+    }
+
+    function formatDate(dateStr: string): string {
+      return new Date(dateStr).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    }
+
+    // Initialize
+    init();
+  </script>
+</TeacherLayout>

@@ -7,7 +7,7 @@
  * dropout predictions, lesson effectiveness, and custom reporting
  */
 
-import BaseLayout from '../../layouts/BaseLayout.astro';
+import TeacherLayout from '../../layouts/TeacherLayout.astro';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -43,7 +43,7 @@ const cohortsWithCounts = cohorts?.map(c => ({
 const defaultCohort = cohortsWithCounts?.[0];
 ---
 
-<BaseLayout title="Teacher Analytics Dashboard">
+<TeacherLayout title="Teacher Analytics Dashboard - C4C Campus" currentPage="analytics">
   <div class="container mx-auto px-4 py-8">
     <div class="mb-8">
       <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-2">
@@ -502,4 +502,4 @@ const defaultCohort = cohortsWithCounts?.[0];
       box-shadow: 0 0 0 2px rgb(37, 99, 235);
     }
   </style>
-</BaseLayout>
+</TeacherLayout>
