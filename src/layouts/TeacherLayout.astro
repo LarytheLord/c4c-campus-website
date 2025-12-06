@@ -35,10 +35,8 @@ const navItems = [
               <a
                 href={item.href}
                 class:list={[
-                  'px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                  currentPage === item.key
-                    ? 'bg-primary text-white'
-                    : 'text-text-muted hover:text-text hover:bg-gray-100'
+                  'teacher-nav-link px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                  currentPage === item.key ? 'teacher-nav-active' : ''
                 ]}
               >
                 {item.label}
@@ -63,10 +61,8 @@ const navItems = [
             <a
               href={item.href}
               class:list={[
-                'px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors',
-                currentPage === item.key
-                  ? 'bg-primary text-white'
-                  : 'text-text-muted hover:text-text bg-gray-100'
+                'teacher-nav-link-mobile px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors',
+                currentPage === item.key ? 'teacher-nav-active' : ''
               ]}
             >
               {item.label}
@@ -81,6 +77,31 @@ const navItems = [
       <slot />
     </main>
   </div>
+
+  <style>
+    .teacher-nav-link {
+      color: hsl(0 0% 45%);
+    }
+    .teacher-nav-link:hover {
+      color: hsl(0 0% 10%);
+      background: hsl(0 0% 95%);
+    }
+    .teacher-nav-link.teacher-nav-active {
+      background: hsl(300 100% 35%);
+      color: white !important;
+    }
+    .teacher-nav-link-mobile {
+      color: hsl(0 0% 45%);
+      background: hsl(0 0% 95%);
+    }
+    .teacher-nav-link-mobile:hover {
+      color: hsl(0 0% 10%);
+    }
+    .teacher-nav-link-mobile.teacher-nav-active {
+      background: hsl(300 100% 35%);
+      color: white !important;
+    }
+  </style>
 
   <script>
     import { supabase } from '../lib/supabase';
