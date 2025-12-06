@@ -60,22 +60,17 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
                 class="border border-border rounded-lg px-4 py-2 bg-background flex-1 min-w-[200px]"
               />
               <select id="status-filter" class="border border-border rounded-lg px-4 py-2 bg-background">
-                <option value="">All Statuses</option>
-                <option value="pending">Pending</option>
+                <option value="pending" selected>Pending Review</option>
+                <option value="waitlisted">Waitlisted</option>
                 <option value="approved">Approved</option>
                 <option value="rejected">Rejected</option>
-                <option value="waitlisted">Waitlisted</option>
+                <option value="">All Statuses</option>
               </select>
               <select id="program-filter" class="border border-border rounded-lg px-4 py-2 bg-background">
                 <option value="">All Programs</option>
                 <option value="bootcamp">Bootcamp</option>
                 <option value="accelerator">Accelerator</option>
                 <option value="hackathon">Hackathon</option>
-              </select>
-              <select id="reviewer-filter" class="border border-border rounded-lg px-4 py-2 bg-background">
-                <option value="">All Reviewers</option>
-                <option value="unassigned">Unassigned</option>
-                <option value="me">Assigned to Me</option>
               </select>
             </div>
           </div>
@@ -93,12 +88,6 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
                 </button>
                 <button id="bulk-waitlist-btn" class="btn btn-secondary btn-sm" disabled>
                   Waitlist & Email
-                </button>
-                <select id="bulk-assign-select" class="border border-border rounded-lg px-3 py-1.5 text-sm bg-background" disabled>
-                  <option value="">Assign to...</option>
-                </select>
-                <button id="bulk-assign-btn" class="btn btn-ghost btn-sm" disabled>
-                  Assign
                 </button>
               </div>
             </div>
@@ -174,7 +163,6 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     let filteredApplications: any[] = [];
     let selectedAppIds = new Set<string>();
     let currentApplication: any = null;
-    let reviewers: any[] = [];
 
     async function checkAdminAccess() {
       const { data: { session } } = await supabase.auth.getSession();
@@ -198,39 +186,6 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       }
 
       return true;
-    }
-
-    async function loadReviewers() {
-      try {
-        const response = await fetch('/api/admin/reviewers', {
-          credentials: 'include'
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          reviewers = data.reviewers || [];
-
-          // Populate reviewer dropdowns
-          const assignSelect = document.getElementById('bulk-assign-select') as HTMLSelectElement;
-          reviewers.forEach(reviewer => {
-            const option = document.createElement('option');
-            option.value = reviewer.user_id;
-            option.textContent = `${reviewer.name} (${reviewer.stats.pending} pending)`;
-            assignSelect.appendChild(option);
-          });
-
-          // Add to filter
-          const filterSelect = document.getElementById('reviewer-filter') as HTMLSelectElement;
-          reviewers.forEach(reviewer => {
-            const option = document.createElement('option');
-            option.value = reviewer.user_id;
-            option.textContent = reviewer.name;
-            filterSelect.appendChild(option);
-          });
-        }
-      } catch (error) {
-        console.error('Error loading reviewers:', error);
-      }
     }
 
     async function loadApplications() {
@@ -272,7 +227,6 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       const searchTerm = (document.getElementById('search-input') as HTMLInputElement).value.toLowerCase();
       const statusFilter = (document.getElementById('status-filter') as HTMLSelectElement).value;
       const programFilter = (document.getElementById('program-filter') as HTMLSelectElement).value;
-      const reviewerFilter = (document.getElementById('reviewer-filter') as HTMLSelectElement).value;
 
       filteredApplications = allApplications.filter(app => {
         const matchesSearch = app.name.toLowerCase().includes(searchTerm) ||
@@ -280,16 +234,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
         const matchesStatus = !statusFilter || app.status === statusFilter;
         const matchesProgram = !programFilter || app.program === programFilter;
 
-        let matchesReviewer = true;
-        if (reviewerFilter === 'unassigned') {
-          matchesReviewer = !app.assigned_reviewer_id;
-        } else if (reviewerFilter === 'me') {
-          matchesReviewer = app.assigned_reviewer_id === currentUser.id;
-        } else if (reviewerFilter) {
-          matchesReviewer = app.assigned_reviewer_id === reviewerFilter;
-        }
-
-        return matchesSearch && matchesStatus && matchesProgram && matchesReviewer;
+        return matchesSearch && matchesStatus && matchesProgram;
       });
 
       renderApplications();
@@ -318,13 +263,12 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 
         const isChecked = selectedAppIds.has(app.id);
 
-        const reviewer = reviewers.find(r => r.user_id === app.assigned_reviewer_id);
-        const reviewerBadge = reviewer
-          ? `<span class="text-xs px-2 py-1 bg-purple-500/10 text-purple-500 rounded">Assigned to: ${reviewer.name}</span>`
-          : '<span class="text-xs px-2 py-1 bg-gray-500/10 text-gray-500 rounded">Unassigned</span>';
+        // Grey out completed applications (approved/rejected)
+        const isCompleted = app.status === 'approved' || app.status === 'rejected';
+        const cardClass = isCompleted ? 'card opacity-60' : 'card';
 
         return `
-          <div class="card">
+          <div class="${cardClass}">
             <div class="flex items-start gap-4">
               <input type="checkbox" class="app-checkbox mt-1 rounded" data-app-id="${app.id}" ${isChecked ? 'checked' : ''} />
 
@@ -345,10 +289,6 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
                   </div>
                 </div>
 
-                <div class="mb-3">
-                  ${reviewerBadge}
-                </div>
-
                 ${app.motivation ? `
                   <div class="mb-3">
                     <p class="text-sm text-text-muted line-clamp-2">${app.motivation}</p>
@@ -358,12 +298,11 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
                 <div class="flex items-center gap-4 text-xs text-text-muted">
                   <span>Applied: ${new Date(app.created_at).toLocaleDateString()}</span>
                   ${app.reviewed_at ? `<span>Reviewed: ${new Date(app.reviewed_at).toLocaleDateString()}</span>` : ''}
-                  ${app.assignment_date ? `<span>Assigned: ${new Date(app.assignment_date).toLocaleDateString()}</span>` : ''}
                 </div>
 
                 <div class="flex gap-2 mt-4">
                   <button class="view-btn btn btn-primary btn-sm" data-app-id="${app.id}">
-                    View & Review
+                    View Details
                   </button>
                   ${app.status === 'pending' ? `
                     <button class="quick-approve-btn btn btn-success btn-sm" data-app-id="${app.id}">
@@ -417,10 +356,10 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       document.getElementById('selection-count')!.textContent =
         `${count} selected`;
 
-      const bulkButtons = ['bulk-approve-btn', 'bulk-reject-btn', 'bulk-waitlist-btn', 'bulk-assign-select', 'bulk-assign-btn'];
+      const bulkButtons = ['bulk-approve-btn', 'bulk-reject-btn', 'bulk-waitlist-btn'];
       bulkButtons.forEach(id => {
         const el = document.getElementById(id);
-        if (el instanceof HTMLButtonElement || el instanceof HTMLSelectElement) {
+        if (el instanceof HTMLButtonElement) {
           el.disabled = count === 0;
         }
       });
@@ -466,43 +405,6 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       } catch (error) {
         console.error('Error updating status:', error);
         alert('Failed to update application status. Please try again.');
-      }
-    }
-
-    async function assignReviewer(appIds: string[], reviewerId: string | null) {
-      try {
-        const response = await fetch('/api/admin/assign-reviewer', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            application_ids: appIds,
-            reviewer_id: reviewerId
-          })
-        });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-          throw new Error(result.error || 'Failed to assign reviewer');
-        }
-
-        // Update local data
-        appIds.forEach(appId => {
-          const app = allApplications.find(a => a.id === appId);
-          if (app) {
-            app.assigned_reviewer_id = reviewerId;
-            app.assignment_date = reviewerId ? new Date().toISOString() : null;
-          }
-        });
-
-        selectedAppIds.clear();
-        filterApplications();
-        alert(result.message);
-
-      } catch (error) {
-        console.error('Error assigning reviewer:', error);
-        alert('Failed to assign reviewer. Please try again.');
       }
     }
 
@@ -651,15 +553,15 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       document.getElementById('loading-state')?.classList.add('hidden');
       document.getElementById('applications-content')?.classList.remove('hidden');
 
-      await loadReviewers();
       await loadApplications();
+      // Apply default filter (pending) after loading
+      filterApplications();
     }
 
     // Event Listeners
     document.getElementById('search-input')?.addEventListener('input', filterApplications);
     document.getElementById('status-filter')?.addEventListener('change', filterApplications);
     document.getElementById('program-filter')?.addEventListener('change', filterApplications);
-    document.getElementById('reviewer-filter')?.addEventListener('change', filterApplications);
 
     document.getElementById('bulk-approve-btn')?.addEventListener('click', () => {
       const note = prompt('Optional decision note (will be sent in email):');
@@ -674,13 +576,6 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     document.getElementById('bulk-waitlist-btn')?.addEventListener('click', () => {
       const note = prompt('Optional decision note (will be sent in email):');
       updateApplicationStatus(Array.from(selectedAppIds), 'waitlisted', note || '');
-    });
-
-    document.getElementById('bulk-assign-btn')?.addEventListener('click', () => {
-      const reviewerId = (document.getElementById('bulk-assign-select') as HTMLSelectElement).value;
-      if (reviewerId) {
-        assignReviewer(Array.from(selectedAppIds), reviewerId);
-      }
     });
 
     document.getElementById('close-modal')?.addEventListener('click', hideModal);

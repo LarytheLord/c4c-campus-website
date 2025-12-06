@@ -88,6 +88,7 @@ export const POST: APIRoute = async ({ request }) => {
         user_id: authData.user.id,
         program,
         status: 'pending',
+        role: 'student', // All new signups are students by default
         name: applicationData.name,
         email,
         whatsapp: applicationData.whatsapp,
