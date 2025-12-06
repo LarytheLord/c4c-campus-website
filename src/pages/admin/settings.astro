@@ -1,30 +1,8 @@
 ---
-import BaseLayout from '../../layouts/BaseLayout.astro';
+import AdminLayout from '../../layouts/AdminLayout.astro';
 ---
 
-<BaseLayout title="Platform Settings - Admin" hideHeader={true} hideFooter={true}>
-  <div class="min-h-screen bg-background">
-    <!-- Admin Header -->
-    <div class="sticky top-0 z-50 bg-surface border-b border-border">
-      <div class="container mx-auto px-4 py-4">
-        <div class="flex items-center justify-between gap-4">
-          <div class="flex items-center gap-4 flex-1">
-            <a href="/admin/dashboard" class="flex-shrink-0">
-              <img src="/logo.jpeg" alt="C4C Campus" class="h-10 w-10 rounded-lg" />
-            </a>
-            <div>
-              <h1 class="text-xl sm:text-2xl font-bold">Platform Settings</h1>
-              <p class="text-text-muted text-sm">White-labeling & Configuration</p>
-            </div>
-          </div>
-          <div class="flex items-center gap-3">
-            <a href="/admin/dashboard" class="btn btn-ghost btn-sm">Back to Dashboard</a>
-            <button id="logout-btn" class="btn btn-ghost text-sm">Sign Out</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
+<AdminLayout title="Platform Settings - Admin" currentPage="settings">
     <!-- Loading State -->
     <div id="loading-state" class="container mx-auto px-4 py-12">
       <div class="text-center">
@@ -194,11 +172,6 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     }
 
     // Event listeners
-    document.getElementById('logout-btn')?.addEventListener('click', async () => {
-      await supabase.auth.signOut();
-      window.location.href = '/login';
-    });
-
     document.querySelectorAll('.settings-tab').forEach(btn => {
       btn.addEventListener('click', () => {
         const tab = btn.getAttribute('data-tab');
@@ -212,4 +185,4 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     // Initialize
     initSettings();
   </script>
-</BaseLayout>
+</AdminLayout>

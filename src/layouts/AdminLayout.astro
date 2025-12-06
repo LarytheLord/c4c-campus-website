@@ -1,0 +1,122 @@
+---
+import BaseLayout from './BaseLayout.astro';
+
+interface Props {
+  title: string;
+  currentPage?: string;
+}
+
+const { title, currentPage = '' } = Astro.props;
+
+const navItems = [
+  { href: '/admin/dashboard', label: 'Dashboard', key: 'dashboard' },
+  { href: '/admin/applications-review', label: 'Applications', key: 'applications-review' },
+  { href: '/admin/users', label: 'Users', key: 'users' },
+  { href: '/admin/cohorts', label: 'Cohorts', key: 'cohorts' },
+  { href: '/admin/courses', label: 'Courses', key: 'courses' },
+  { href: '/admin/analytics', label: 'Analytics', key: 'analytics' },
+];
+---
+
+<BaseLayout title={title} hideHeader={true} hideFooter={true}>
+  <div class="min-h-screen bg-background">
+    <!-- Admin Header -->
+    <header class="sticky top-0 z-50 bg-surface border-b border-border">
+      <div class="container mx-auto px-4 py-3">
+        <div class="flex items-center justify-between gap-4">
+          <!-- Left: Logo + Brand -->
+          <a href="/admin/dashboard" class="flex items-center gap-3 flex-shrink-0">
+            <img src="/logo.jpeg" alt="C4C Campus" class="h-10 w-10 rounded-lg" />
+            <div class="hidden sm:block">
+              <span class="font-bold text-lg">C4C Admin</span>
+            </div>
+          </a>
+
+          <!-- Center: Navigation -->
+          <nav class="hidden md:flex items-center gap-1">
+            {navItems.map(item => (
+              <a
+                href={item.href}
+                class:list={[
+                  'px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                  currentPage === item.key
+                    ? 'bg-primary text-white'
+                    : 'text-text-muted hover:text-text hover:bg-surface-hover'
+                ]}
+              >
+                {item.label}
+              </a>
+            ))}
+          </nav>
+
+          <!-- Right: Actions -->
+          <div class="flex items-center gap-2">
+            <a href="/admin/settings" class="btn btn-ghost btn-sm hidden sm:flex">
+              Settings
+            </a>
+            <button id="admin-logout-btn" class="btn btn-ghost btn-sm text-error">
+              Sign Out
+            </button>
+          </div>
+        </div>
+
+        <!-- Mobile Navigation -->
+        <nav class="flex md:hidden items-center gap-1 mt-3 overflow-x-auto pb-2 -mb-2">
+          {navItems.map(item => (
+            <a
+              href={item.href}
+              class:list={[
+                'px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors',
+                currentPage === item.key
+                  ? 'bg-primary text-white'
+                  : 'text-text-muted hover:text-text bg-surface-hover'
+              ]}
+            >
+              {item.label}
+            </a>
+          ))}
+        </nav>
+      </div>
+    </header>
+
+    <!-- Page Content -->
+    <main>
+      <slot />
+    </main>
+  </div>
+
+  <script>
+    import { supabase } from '../lib/supabase';
+
+    // Check admin access
+    async function checkAdminAccess() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        window.location.href = '/login';
+        return false;
+      }
+
+      const { data: application } = await supabase
+        .from('applications')
+        .select('role')
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (!application || application.role !== 'admin') {
+        window.location.href = '/dashboard?error=unauthorized';
+        return false;
+      }
+
+      return true;
+    }
+
+    // Logout handler
+    document.getElementById('admin-logout-btn')?.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = '/login';
+    });
+
+    // Check access on load
+    checkAdminAccess();
+  </script>
+</BaseLayout>

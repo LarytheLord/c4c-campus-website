@@ -1,0 +1,119 @@
+---
+import BaseLayout from './BaseLayout.astro';
+
+interface Props {
+  title: string;
+  currentPage?: string;
+}
+
+const { title, currentPage = '' } = Astro.props;
+
+const navItems = [
+  { href: '/teacher/courses', label: 'My Courses', key: 'courses' },
+  { href: '/teacher/progress', label: 'Student Progress', key: 'progress' },
+  { href: '/teacher/cohorts', label: 'Cohorts', key: 'cohorts' },
+];
+---
+
+<BaseLayout title={title} hideHeader={true} hideFooter={true}>
+  <div class="min-h-screen bg-background">
+    <!-- Teacher Header -->
+    <header class="sticky top-0 z-50 bg-white border-b border-border">
+      <div class="container mx-auto px-4 py-3">
+        <div class="flex items-center justify-between gap-4">
+          <!-- Left: Logo + Brand -->
+          <a href="/teacher/courses" class="flex items-center gap-3 flex-shrink-0">
+            <img src="/logo.jpeg" alt="C4C Campus" class="h-10 w-10 rounded-lg" />
+            <div class="hidden sm:block">
+              <span class="font-bold text-lg">Teacher Portal</span>
+            </div>
+          </a>
+
+          <!-- Center: Navigation -->
+          <nav class="hidden md:flex items-center gap-1">
+            {navItems.map(item => (
+              <a
+                href={item.href}
+                class:list={[
+                  'px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                  currentPage === item.key
+                    ? 'bg-primary text-white'
+                    : 'text-text-muted hover:text-text hover:bg-gray-100'
+                ]}
+              >
+                {item.label}
+              </a>
+            ))}
+          </nav>
+
+          <!-- Right: Actions -->
+          <div class="flex items-center gap-2">
+            <a href="/courses" class="btn btn-ghost btn-sm hidden sm:flex">
+              Browse Courses
+            </a>
+            <button id="teacher-logout-btn" class="btn btn-ghost btn-sm text-error">
+              Sign Out
+            </button>
+          </div>
+        </div>
+
+        <!-- Mobile Navigation -->
+        <nav class="flex md:hidden items-center gap-1 mt-3 overflow-x-auto pb-2 -mb-2">
+          {navItems.map(item => (
+            <a
+              href={item.href}
+              class:list={[
+                'px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors',
+                currentPage === item.key
+                  ? 'bg-primary text-white'
+                  : 'text-text-muted hover:text-text bg-gray-100'
+              ]}
+            >
+              {item.label}
+            </a>
+          ))}
+        </nav>
+      </div>
+    </header>
+
+    <!-- Page Content -->
+    <main>
+      <slot />
+    </main>
+  </div>
+
+  <script>
+    import { supabase } from '../lib/supabase';
+
+    // Check teacher access
+    async function checkTeacherAccess() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        window.location.href = '/login';
+        return false;
+      }
+
+      const { data: application } = await supabase
+        .from('applications')
+        .select('role')
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (!application || (application.role !== 'teacher' && application.role !== 'admin')) {
+        window.location.href = '/dashboard?error=unauthorized';
+        return false;
+      }
+
+      return true;
+    }
+
+    // Logout handler
+    document.getElementById('teacher-logout-btn')?.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = '/login';
+    });
+
+    // Check access on load
+    checkTeacherAccess();
+  </script>
+</BaseLayout>

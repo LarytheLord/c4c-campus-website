@@ -1,53 +1,16 @@
 ---
 /**
  * Teacher Progress Dashboard Page
- * Displays comprehensive analytics for cohort progress:
- * - Overview statistics
- * - Progress charts
- * - Struggling students alerts
- * - Leaderboard
- * - CSV export functionality
- * - Auto-refresh every 5 minutes
+ * Displays comprehensive analytics for cohort progress
  */
-import BaseLayout from '../../layouts/BaseLayout.astro';
+import TeacherLayout from '../../layouts/TeacherLayout.astro';
 import CohortStats from '../../components/CohortStats';
 import ProgressChart from '../../components/ProgressChart';
 import StrugglingStudents from '../../components/StrugglingStudents';
 import Leaderboard from '../../components/Leaderboard';
 ---
 
-<BaseLayout title="Progress Dashboard - Teacher - C4C Campus" hideHeader={true} hideFooter={true}>
-  <div class="min-h-screen bg-background">
-    <!-- Teacher Header -->
-    <div class="sticky top-0 z-50 bg-surface border-b border-border">
-      <div class="container mx-auto px-4 py-4">
-        <div class="flex items-center justify-between gap-4">
-          <div class="flex items-center gap-4 flex-1">
-            <a href="/teacher/courses" class="flex-shrink-0">
-              <img src="/logo.jpeg" alt="C4C Campus" class="h-10 w-10 rounded-lg" />
-            </a>
-            <div>
-              <h1 class="text-xl sm:text-2xl font-bold">Progress Dashboard</h1>
-              <p class="text-text-muted text-sm" id="subtitle">Track student progress and engagement</p>
-            </div>
-          </div>
-          <div class="flex items-center gap-3">
-            <button id="refresh-btn" class="btn btn-ghost btn-sm" title="Refresh data">
-              <span id="refresh-icon">🔄</span> Refresh
-            </button>
-            <button id="export-btn" class="hidden btn btn-secondary btn-sm" title="Export to CSV">
-              📊 Export CSV
-            </button>
-            <a href="/teacher/courses" class="btn btn-ghost btn-sm">
-              Back to Dashboard
-            </a>
-            <button id="logout-btn" class="btn btn-ghost text-sm">
-              Sign Out
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+<TeacherLayout title="Progress Dashboard - Teacher - C4C Campus" currentPage="progress">
 
     <!-- Loading State -->
     <div id="loading-state" class="container mx-auto px-4 py-12">
@@ -63,8 +26,8 @@ import Leaderboard from '../../components/Leaderboard';
         <div class="card">
           <h2 class="text-2xl font-bold mb-4">Access Denied</h2>
           <p class="text-text-muted mb-6">You need teacher or admin privileges to access this page.</p>
-          <a href="/dashboard" class="btn btn-primary">
-            Go to Dashboard
+          <a href="/teacher/courses" class="btn btn-primary">
+            Go to Teacher Dashboard
           </a>
         </div>
       </div>
@@ -74,7 +37,7 @@ import Leaderboard from '../../components/Leaderboard';
     <div id="main-content" class="hidden container mx-auto px-4 py-8">
       <!-- Breadcrumbs -->
       <nav class="mb-6 text-sm text-text-muted">
-        <a href="/dashboard" class="hover:text-primary transition-colors">Dashboard</a>
+        <a href="/teacher/courses" class="hover:text-primary transition-colors">Teacher Dashboard</a>
         <span class="mx-2">/</span>
         <a href="/teacher/courses" class="hover:text-primary transition-colors">Teacher</a>
         <span class="mx-2">/</span>
@@ -417,4 +380,4 @@ import Leaderboard from '../../components/Leaderboard';
     // Initialize
     init();
   </script>
-</BaseLayout>
+</TeacherLayout>

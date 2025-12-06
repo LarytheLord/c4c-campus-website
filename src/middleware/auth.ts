@@ -55,26 +55,51 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return redirect('/login?error=config');
   }
 
-  // Extract auth cookie
+  // Extract auth token from cookies
+  // Supabase stores auth in a cookie named sb-<project-ref>-auth-token
+  // The value is a JSON object with access_token and refresh_token
   const cookies = request.headers.get('cookie') || '';
-  const authTokenMatch = cookies.match(/sb-[^=]+-auth-token=([^;]+)/);
-  
-  if (!authTokenMatch) {
-    logger.debug('No auth token found', { pathname });
+
+  // Try to find Supabase auth cookie (format: sb-<ref>-auth-token)
+  const authCookieMatch = cookies.match(/sb-[^=]+-auth-token=([^;]+)/);
+
+  // Also check for our custom storage format
+  const storageCookieMatch = cookies.match(/sb-[^=]+-auth-token-code-verifier=([^;]+)/);
+
+  let accessToken: string | null = null;
+  let refreshToken: string | null = null;
+
+  if (authCookieMatch) {
+    try {
+      const decoded = decodeURIComponent(authCookieMatch[1]);
+      // Handle base64 encoded JSON or raw JSON
+      let tokenData;
+      try {
+        tokenData = JSON.parse(decoded);
+      } catch {
+        // Try base64 decode
+        tokenData = JSON.parse(atob(decoded));
+      }
+      accessToken = tokenData.access_token || tokenData[0];
+      refreshToken = tokenData.refresh_token || tokenData[1];
+    } catch (e) {
+      logger.debug('Failed to parse auth cookie', { error: String(e) });
+    }
+  }
+
+  if (!accessToken) {
+    logger.debug('No valid auth token found', { pathname, hasCookie: !!authCookieMatch });
     return redirect(`/login?redirect=${encodeURIComponent(pathname)}`);
   }
 
-  // Create client with auth token
-  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    global: {
-      headers: {
-        cookie: cookies
-      }
-    }
-  });
+  // Create client and set session from token
+  const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-  // Get user session
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  // Set the session using the tokens from the cookie
+  const { data: { session }, error: sessionError } = await supabase.auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken || ''
+  });
 
   if (sessionError || !session) {
     logger.debug('Invalid session', { pathname, error: sessionError?.message });

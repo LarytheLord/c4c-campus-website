@@ -2,44 +2,11 @@
 /**
  * Cohort Management Page
  * Individual cohort detail and management interface
- * Features:
- * - Cohort details and settings
- * - Enrolled students list
- * - Student enrollment management
- * - Cohort schedule
- * - Progress tracking
- * - Student management (add/remove)
  */
-import BaseLayout from '../../../layouts/BaseLayout.astro';
+import TeacherLayout from '../../../layouts/TeacherLayout.astro';
 ---
 
-<BaseLayout title="Manage Cohort - Teacher - C4C Campus" hideHeader={true} hideFooter={true}>
-  <div class="min-h-screen bg-background">
-    <!-- Teacher Header -->
-    <div class="sticky top-0 z-50 bg-white border-b border-border">
-      <div class="container mx-auto px-4 py-4">
-        <div class="flex items-center justify-between gap-4">
-          <div class="flex items-center gap-4 flex-1">
-            <a href="/teacher/courses" class="flex-shrink-0">
-              <img src="/logo.jpeg" alt="C4C Campus" class="h-10 w-10 rounded-lg" />
-            </a>
-            <div>
-              <h1 class="text-xl sm:text-2xl font-bold" id="cohort-name-header">Cohort Management</h1>
-              <p class="text-text-muted text-sm" id="course-name-header">Loading...</p>
-            </div>
-          </div>
-          <div class="flex items-center gap-3">
-            <a href="/teacher/courses" class="btn btn-ghost btn-sm">
-              Back to Dashboard
-            </a>
-            <button id="logout-btn" class="btn btn-ghost text-sm">
-              Sign Out
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
+<TeacherLayout title="Manage Cohort - Teacher - C4C Campus" currentPage="cohorts">
     <!-- Loading State -->
     <div id="loading-state" class="container mx-auto px-4 py-12">
       <div class="text-center">
@@ -56,7 +23,7 @@ import BaseLayout from '../../../layouts/BaseLayout.astro';
           <h2 class="text-2xl font-bold mb-4">Cohort Not Found</h2>
           <p class="text-text-muted mb-6">The cohort you're looking for doesn't exist or you don't have access to it.</p>
           <a href="/teacher/courses" class="btn btn-primary">
-            Back to Dashboard
+            Back to Teacher Dashboard
           </a>
         </div>
       </div>
@@ -66,7 +33,7 @@ import BaseLayout from '../../../layouts/BaseLayout.astro';
     <div id="main-content" class="hidden container mx-auto px-4 py-8">
       <!-- Breadcrumbs -->
       <nav class="mb-6 text-sm text-text-muted">
-        <a href="/dashboard" class="hover:text-primary transition-colors">Dashboard</a>
+        <a href="/teacher/courses" class="hover:text-primary transition-colors">Teacher Dashboard</a>
         <span class="mx-2">/</span>
         <a href="/teacher/courses" class="hover:text-primary transition-colors">Teacher</a>
         <span class="mx-2">/</span>
@@ -695,4 +662,4 @@ import BaseLayout from '../../../layouts/BaseLayout.astro';
     // Initialize
     init();
   </script>
-</BaseLayout>
+</TeacherLayout>

@@ -1,39 +1,8 @@
 ---
-import BaseLayout from '../../layouts/BaseLayout.astro';
+import TeacherLayout from '../../layouts/TeacherLayout.astro';
 ---
 
-<BaseLayout title="Teacher Dashboard - C4C Campus" hideHeader={true} hideFooter={true}>
-  <div class="min-h-screen bg-background">
-    <!-- Teacher Header -->
-    <div class="sticky top-0 z-50 bg-white border-b border-border">
-      <div class="container mx-auto px-4 py-4">
-        <div class="flex items-center justify-between gap-4">
-          <div class="flex items-center gap-4 flex-1">
-            <a href="/teacher/courses" class="flex-shrink-0">
-              <img src="/logo.jpeg" alt="C4C Campus" class="h-10 w-10 rounded-lg" />
-            </a>
-            <div>
-              <h1 class="text-xl sm:text-2xl font-bold">Teacher Dashboard</h1>
-              <p class="text-text-muted text-sm" id="welcome-text">Welcome back!</p>
-            </div>
-          </div>
-          <div class="flex items-center gap-3">
-            <!-- Navigation Links -->
-            <button id="quick-cohorts-btn" class="btn btn-secondary btn-sm">
-              👥 Cohorts
-            </button>
-            <a href="/teacher/progress" class="btn btn-primary btn-sm">
-              📊 Progress Dashboard
-            </a>
-            <a href="/courses" class="hidden sm:block btn btn-ghost btn-sm">Browse Courses</a>
-            <button id="logout-btn" class="btn btn-ghost text-sm">
-              Sign Out
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
+<TeacherLayout title="Teacher Dashboard - C4C Campus" currentPage="courses">
     <!-- Loading State -->
     <div id="loading-state" class="container mx-auto px-4 py-12">
       <div class="text-center">
@@ -48,8 +17,8 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
         <div class="card">
           <h2 class="text-2xl font-bold mb-4">Access Denied</h2>
           <p class="text-text-muted mb-6">You need teacher or admin privileges to access this page.</p>
-          <a href="/dashboard" class="btn btn-primary">
-            Go to Dashboard
+          <a href="/teacher/courses" class="btn btn-primary">
+            Go to Teacher Dashboard
           </a>
         </div>
       </div>
@@ -59,7 +28,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     <div id="teacher-content" class="hidden container mx-auto px-4 py-8">
       <!-- Breadcrumbs -->
       <nav class="mb-6 text-sm text-text-muted">
-        <a href="/dashboard" class="hover:text-primary transition-colors">Dashboard</a>
+        <a href="/teacher/courses" class="hover:text-primary transition-colors">Teacher Dashboard</a>
         <span class="mx-2">/</span>
         <span id="breadcrumb-current">My Courses</span>
       </nav>
@@ -1196,4 +1165,4 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     // Initialize
     init();
   </script>
-</BaseLayout>
+</TeacherLayout>
