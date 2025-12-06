@@ -1,0 +1,409 @@
+---
+/**
+ * Notification Preferences Page
+ * Allows users to configure their notification settings across all channels
+ */
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// Check authentication
+const accessToken = Astro.cookies.get('sb-access-token')?.value;
+const refreshToken = Astro.cookies.get('sb-refresh-token')?.value;
+
+if (!accessToken || !refreshToken) {
+  return Astro.redirect('/login?redirect=/notifications/preferences');
+}
+
+// Get user
+const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken);
+
+if (authError || !user) {
+  return Astro.redirect('/login?redirect=/notifications/preferences');
+}
+
+// Fetch current preferences
+let preferences = null;
+let error = null;
+
+try {
+  const response = await fetch(`${Astro.url.origin}/api/notifications/preferences`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (response.ok) {
+    const data = await response.json();
+    preferences = data.preferences;
+  } else {
+    error = 'Failed to load preferences';
+  }
+} catch (err) {
+  error = 'Failed to load preferences';
+  console.error('Error fetching preferences:', err);
+}
+
+const eventTypes = [
+  { id: 'enrollment', name: 'Course Enrollment', description: 'When you enroll in a new course', category: 'Courses' },
+  { id: 'lesson_published', name: 'New Lessons', description: 'When new lessons are published', category: 'Courses' },
+  { id: 'course_update', name: 'Course Updates', description: 'Important updates to your courses', category: 'Courses' },
+  { id: 'assignment_due', name: 'Assignment Reminders', description: 'Reminders when assignments are due soon', category: 'Assignments' },
+  { id: 'assignment_graded', name: 'Assignment Grades', description: 'When your assignments are graded', category: 'Assignments' },
+  { id: 'quiz_available', name: 'Quiz Available', description: 'When new quizzes become available', category: 'Assignments' },
+  { id: 'grade_received', name: 'Grade Received', description: 'When you receive any grade', category: 'Assignments' },
+  { id: 'message', name: 'Direct Messages', description: 'When you receive a direct message', category: 'Communication' },
+  { id: 'discussion_reply', name: 'Discussion Replies', description: 'Replies to your discussion posts', category: 'Communication' },
+  { id: 'mention', name: 'Mentions', description: 'When someone mentions you', category: 'Communication' },
+  { id: 'announcement', name: 'Announcements', description: 'Platform-wide announcements', category: 'Communication' },
+  { id: 'certificate_issued', name: 'Certificates', description: 'When you earn a certificate', category: 'Achievements' },
+  { id: 'progress_milestone', name: 'Progress Milestones', description: 'When you reach learning milestones', category: 'Achievements' },
+  { id: 'cohort_update', name: 'Cohort Updates', description: 'Updates about your cohorts', category: 'Admin' },
+  { id: 'application_update', name: 'Application Status', description: 'Updates on your applications', category: 'Admin' },
+];
+
+const categories = ['Courses', 'Assignments', 'Communication', 'Achievements', 'Admin'];
+---
+
+<BaseLayout title="Notification Preferences">
+  <div class="max-w-4xl mx-auto px-4 py-8">
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold text-gray-900 mb-2">Notification Preferences</h1>
+      <p class="text-gray-600">
+        Customize how and when you receive notifications across all channels.
+      </p>
+    </div>
+
+    {error && (
+      <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+        <p class="text-red-800">{error}</p>
+      </div>
+    )}
+
+    <form id="preferences-form" class="space-y-8">
+      <!-- Global Channel Settings -->
+      <section class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">Global Settings</h2>
+        <p class="text-sm text-gray-600 mb-6">
+          Enable or disable notification channels globally. You can fine-tune per-event settings below.
+        </p>
+
+        <div class="space-y-4">
+          <label class="flex items-center justify-between p-4 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+            <div class="flex items-center gap-3">
+              <span class="text-2xl">📱</span>
+              <div>
+                <p class="font-medium text-gray-900">In-App Notifications</p>
+                <p class="text-sm text-gray-600">Show notifications in the notification bell</p>
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              name="inapp_enabled"
+              checked={preferences?.inapp_enabled !== false}
+              class="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+            />
+          </label>
+
+          <label class="flex items-center justify-between p-4 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+            <div class="flex items-center gap-3">
+              <span class="text-2xl">📧</span>
+              <div>
+                <p class="font-medium text-gray-900">Email Notifications</p>
+                <p class="text-sm text-gray-600">Send notifications to your email</p>
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              name="email_enabled"
+              checked={preferences?.email_enabled !== false}
+              class="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+            />
+          </label>
+
+          <label class="flex items-center justify-between p-4 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+            <div class="flex items-center gap-3">
+              <span class="text-2xl">🔔</span>
+              <div>
+                <p class="font-medium text-gray-900">Push Notifications</p>
+                <p class="text-sm text-gray-600">Browser push notifications (coming soon)</p>
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              name="push_enabled"
+              checked={preferences?.push_enabled === true}
+              disabled
+              class="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            />
+          </label>
+        </div>
+      </section>
+
+      <!-- Email Digest Settings -->
+      <section class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">Email Digest</h2>
+        <p class="text-sm text-gray-600 mb-6">
+          Instead of individual emails, receive a summary of notifications at scheduled intervals.
+        </p>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Digest Frequency</label>
+            <select
+              name="digest_mode"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="off" selected={preferences?.digest_mode === 'off'}>Off - Send emails immediately</option>
+              <option value="realtime" selected={preferences?.digest_mode === 'realtime' || !preferences?.digest_mode}>Realtime - Send emails immediately</option>
+              <option value="hourly" selected={preferences?.digest_mode === 'hourly'}>Hourly - Every hour</option>
+              <option value="daily" selected={preferences?.digest_mode === 'daily'}>Daily - Once per day</option>
+              <option value="weekly" selected={preferences?.digest_mode === 'weekly'}>Weekly - Once per week</option>
+            </select>
+          </div>
+
+          <div id="digest-time-container" class="hidden">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Digest Time</label>
+            <input
+              type="time"
+              name="digest_time"
+              value={preferences?.digest_time || '09:00:00'}
+              class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+            <p class="text-xs text-gray-500 mt-1">Time of day to send digest (in your local timezone)</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Quiet Hours -->
+      <section class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">Quiet Hours</h2>
+        <p class="text-sm text-gray-600 mb-6">
+          Don't send notifications during specific hours (e.g., while sleeping).
+        </p>
+
+        <div class="space-y-4">
+          <label class="flex items-center gap-3">
+            <input
+              type="checkbox"
+              name="quiet_hours_enabled"
+              id="quiet-hours-enabled"
+              checked={preferences?.quiet_hours_enabled === true}
+              class="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+            />
+            <span class="font-medium text-gray-900">Enable Quiet Hours</span>
+          </label>
+
+          <div id="quiet-hours-settings" class="hidden pl-8 space-y-3 border-l-2 border-gray-200">
+            <div class="flex gap-4">
+              <div class="flex-1">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+                <input
+                  type="time"
+                  name="quiet_hours_start"
+                  value={preferences?.quiet_hours_start || '22:00:00'}
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div class="flex-1">
+                <label class="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+                <input
+                  type="time"
+                  name="quiet_hours_end"
+                  value={preferences?.quiet_hours_end || '08:00:00'}
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+            <p class="text-xs text-gray-500">No notifications will be sent during these hours</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Per-Event Preferences -->
+      <section class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">Event Preferences</h2>
+        <p class="text-sm text-gray-600 mb-6">
+          Fine-tune which events trigger notifications on each channel.
+        </p>
+
+        <div class="space-y-6">
+          {categories.map((category) => (
+            <div>
+              <h3 class="text-lg font-medium text-gray-900 mb-3">{category}</h3>
+              <div class="space-y-2">
+                {eventTypes
+                  .filter((event) => event.category === category)
+                  .map((event) => (
+                    <div class="flex items-start gap-4 p-3 bg-gray-50 rounded-lg">
+                      <div class="flex-1">
+                        <p class="font-medium text-gray-900">{event.name}</p>
+                        <p class="text-sm text-gray-600">{event.description}</p>
+                      </div>
+                      <div class="flex items-center gap-3">
+                        <label class="flex items-center gap-1 cursor-pointer" title="In-App">
+                          <span class="text-sm text-gray-600">📱</span>
+                          <input
+                            type="checkbox"
+                            name={`event_${event.id}_inapp`}
+                            checked={preferences?.event_preferences?.[event.id]?.inapp !== false}
+                            class="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                          />
+                        </label>
+                        <label class="flex items-center gap-1 cursor-pointer" title="Email">
+                          <span class="text-sm text-gray-600">📧</span>
+                          <input
+                            type="checkbox"
+                            name={`event_${event.id}_email`}
+                            checked={preferences?.event_preferences?.[event.id]?.email !== false}
+                            class="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <!-- Save Button -->
+      <div class="flex items-center justify-between">
+        <button
+          type="button"
+          id="test-notification-btn"
+          class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+        >
+          Send Test Notification
+        </button>
+
+        <button
+          type="submit"
+          class="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        >
+          Save Preferences
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    import { showToast, setButtonLoading } from '../../lib/notifications';
+
+    const form = document.getElementById('preferences-form') as HTMLFormElement;
+    const digestModeSelect = form.querySelector('[name="digest_mode"]') as HTMLSelectElement;
+    const digestTimeContainer = document.getElementById('digest-time-container');
+    const quietHoursEnabled = document.getElementById('quiet-hours-enabled') as HTMLInputElement;
+    const quietHoursSettings = document.getElementById('quiet-hours-settings');
+    const testNotificationBtn = document.getElementById('test-notification-btn');
+
+    // Show/hide digest time based on digest mode
+    digestModeSelect?.addEventListener('change', () => {
+      const mode = digestModeSelect.value;
+      if (mode === 'daily' || mode === 'weekly') {
+        digestTimeContainer?.classList.remove('hidden');
+      } else {
+        digestTimeContainer?.classList.add('hidden');
+      }
+    });
+
+    // Trigger on page load
+    digestModeSelect?.dispatchEvent(new Event('change'));
+
+    // Show/hide quiet hours settings
+    quietHoursEnabled?.addEventListener('change', () => {
+      if (quietHoursEnabled.checked) {
+        quietHoursSettings?.classList.remove('hidden');
+      } else {
+        quietHoursSettings?.classList.add('hidden');
+      }
+    });
+
+    // Trigger on page load
+    if (quietHoursEnabled?.checked) {
+      quietHoursSettings?.classList.remove('hidden');
+    }
+
+    // Handle form submission
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const submitBtn = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+      setButtonLoading(submitBtn, true);
+
+      try {
+        const formData = new FormData(form);
+
+        // Build event preferences object
+        const eventPreferences: Record<string, any> = {};
+        formData.forEach((value, key) => {
+          if (key.startsWith('event_')) {
+            const [, eventId, channel] = key.split('_');
+            if (!eventPreferences[eventId]) {
+              eventPreferences[eventId] = {};
+            }
+            eventPreferences[eventId][channel] = value === 'on';
+          }
+        });
+
+        const preferences = {
+          inapp_enabled: formData.get('inapp_enabled') === 'on',
+          email_enabled: formData.get('email_enabled') === 'on',
+          push_enabled: formData.get('push_enabled') === 'on',
+          digest_mode: formData.get('digest_mode'),
+          digest_time: formData.get('digest_time'),
+          quiet_hours_enabled: formData.get('quiet_hours_enabled') === 'on',
+          quiet_hours_start: formData.get('quiet_hours_start'),
+          quiet_hours_end: formData.get('quiet_hours_end'),
+          event_preferences: eventPreferences,
+        };
+
+        const response = await fetch('/api/notifications/preferences', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(preferences),
+        });
+
+        if (response.ok) {
+          showToast('Preferences saved successfully!', 'success');
+        } else {
+          const data = await response.json();
+          showToast(data.error || 'Failed to save preferences', 'error');
+        }
+      } catch (error: any) {
+        showToast(error.message || 'Failed to save preferences', 'error');
+      } finally {
+        setButtonLoading(submitBtn, false);
+      }
+    });
+
+    // Test notification
+    testNotificationBtn?.addEventListener('click', async () => {
+      setButtonLoading(testNotificationBtn as HTMLButtonElement, true, 'Sending...');
+
+      try {
+        const response = await fetch('/api/notifications/test', {
+          method: 'POST',
+        });
+
+        if (response.ok) {
+          showToast('Test notification sent! Check your notification bell.', 'success');
+        } else {
+          showToast('Failed to send test notification', 'error');
+        }
+      } catch (error) {
+        showToast('Failed to send test notification', 'error');
+      } finally {
+        setButtonLoading(testNotificationBtn as HTMLButtonElement, false);
+      }
+    });
+  </script>
+</BaseLayout>

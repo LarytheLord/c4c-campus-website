@@ -1,0 +1,7 @@
+module_id,name,slug,video_path,youtube_url,video_duration_seconds,text_content,order_index,resources
+1,Introduction to AI Safety,intro-ai-safety,,,300,Learn the fundamentals of AI safety and why it matters for the future of humanity.,1,"[]"
+1,Understanding AI Alignment,understanding-alignment,,,450,Explore the AI alignment problem and current approaches to solving it.,2,"[{""name"":""alignment-paper.pdf"",""path"":""resources/alignment-paper.pdf""}]"
+1,Technical Safety Research,technical-safety,videos/technical-safety.mp4,,600,Deep dive into technical approaches to AI safety research.,3,"[{""name"":""research-notes.pdf"",""path"":""resources/research-notes.pdf""},{""name"":""code-examples.zip"",""path"":""resources/code-examples.zip""}]"
+2,Building Safe AI Systems,building-safe-ai,,,500,Practical guide to building AI systems with safety in mind.,1,"[]"
+2,Testing AI Safety,testing-safety,,https://youtube.com/watch?v=example,700,Methods for testing and validating AI safety properties.,2,"[{""name"":""testing-checklist.pdf"",""path"":""resources/testing-checklist.pdf""}]"
+2,Deployment Best Practices,deployment-practices,,,400,Best practices for safely deploying AI systems in production.,3,"[]"

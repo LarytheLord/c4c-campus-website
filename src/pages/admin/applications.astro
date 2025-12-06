@@ -1,0 +1,564 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Application Review - Admin - C4C Campus" hideHeader={true} hideFooter={true}>
+  <div class="min-h-screen bg-background">
+    <!-- Admin Header -->
+    <div class="sticky top-0 z-50 bg-surface border-b border-border">
+      <div class="container mx-auto px-4 py-4">
+        <div class="flex items-center justify-between gap-4">
+          <div class="flex items-center gap-4 flex-1">
+            <a href="/admin/dashboard" class="flex-shrink-0">
+              <img src="/logo.jpeg" alt="C4C Campus" class="h-10 w-10 rounded-lg" />
+            </a>
+            <div>
+              <h1 class="text-xl sm:text-2xl font-bold">Application Review</h1>
+              <p class="text-text-muted text-sm">Review and manage program applications</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <a href="/admin/dashboard" class="btn btn-ghost btn-sm">Dashboard</a>
+            <a href="/admin/users" class="btn btn-ghost btn-sm">Users</a>
+            <a href="/admin/analytics" class="btn btn-ghost btn-sm">Analytics</a>
+            <button id="logout-btn" class="btn btn-ghost text-sm">Sign Out</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loading-state" class="container mx-auto px-4 py-12">
+      <div class="text-center">
+        <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+        <p class="mt-4 text-text-muted">Loading applications...</p>
+      </div>
+    </div>
+
+    <!-- Access Denied State -->
+    <div id="access-denied" class="hidden container mx-auto px-4 py-12">
+      <div class="max-w-md mx-auto text-center">
+        <div class="card">
+          <h2 class="text-2xl font-bold mb-4">Access Denied</h2>
+          <p class="text-text-muted mb-6">You need admin privileges to access this page.</p>
+          <a href="/dashboard" class="btn btn-primary">Go to Dashboard</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Applications Content -->
+    <div id="applications-content" class="hidden">
+      <div class="container mx-auto px-4 py-8">
+        <!-- Statistics Overview -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div class="card">
+            <div class="text-sm text-text-muted">Total Applications</div>
+            <div class="text-2xl font-bold" id="stat-total">-</div>
+          </div>
+          <div class="card">
+            <div class="text-sm text-text-muted">Pending</div>
+            <div class="text-2xl font-bold text-yellow-500" id="stat-pending">-</div>
+          </div>
+          <div class="card">
+            <div class="text-sm text-text-muted">Approved</div>
+            <div class="text-2xl font-bold text-green-500" id="stat-approved">-</div>
+          </div>
+          <div class="card">
+            <div class="text-sm text-text-muted">Rejected</div>
+            <div class="text-2xl font-bold text-red-500" id="stat-rejected">-</div>
+          </div>
+        </div>
+
+        <!-- Filters and Bulk Actions -->
+        <div class="card mb-6">
+          <div class="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+            <div class="flex-1 flex gap-4 flex-wrap">
+              <!-- Search -->
+              <input
+                type="text"
+                id="search-input"
+                placeholder="Search by name or email..."
+                class="border border-border rounded-lg px-4 py-2 bg-background flex-1 min-w-[200px]"
+              />
+
+              <!-- Status Filter -->
+              <select id="status-filter" class="border border-border rounded-lg px-4 py-2 bg-background">
+                <option value="">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+                <option value="waitlisted">Waitlisted</option>
+              </select>
+
+              <!-- Program Filter -->
+              <select id="program-filter" class="border border-border rounded-lg px-4 py-2 bg-background">
+                <option value="">All Programs</option>
+                <option value="bootcamp">Bootcamp</option>
+                <option value="accelerator">Accelerator</option>
+                <option value="hackathon">Hackathon</option>
+              </select>
+            </div>
+
+            <!-- Bulk Actions -->
+            <div class="flex gap-2">
+              <button id="bulk-approve-btn" class="btn btn-success btn-sm" disabled>
+                Approve Selected
+              </button>
+              <button id="bulk-reject-btn" class="btn btn-error btn-sm" disabled>
+                Reject Selected
+              </button>
+              <button id="bulk-waitlist-btn" class="btn btn-secondary btn-sm" disabled>
+                Waitlist Selected
+              </button>
+            </div>
+          </div>
+          <p class="text-sm text-text-muted mt-2" id="selection-count">
+            0 applications selected
+          </p>
+        </div>
+
+        <!-- Applications List -->
+        <div id="applications-list" class="space-y-4">
+          <div class="text-center py-12">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="empty-state" class="hidden card text-center py-12">
+          <p class="text-text-muted">No applications found</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Detail Modal -->
+  <div id="detail-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto p-4">
+    <div class="card max-w-2xl w-full my-8">
+      <div class="flex justify-between items-start mb-6">
+        <h3 class="text-xl font-bold">Application Details</h3>
+        <button id="close-modal" class="text-text-muted hover:text-text">&times;</button>
+      </div>
+      <div id="modal-content">
+        <!-- Content will be inserted here -->
+      </div>
+      <div class="flex gap-3 justify-end mt-6 pt-6 border-t border-border">
+        <button id="modal-approve" class="btn btn-success">Approve</button>
+        <button id="modal-reject" class="btn btn-error">Reject</button>
+        <button id="modal-waitlist" class="btn btn-secondary">Waitlist</button>
+        <button id="modal-close" class="btn btn-ghost">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    import { supabase } from '../../lib/supabase';
+    import { showToast, showConfirm } from '../../lib/notifications';
+
+    let currentUser: any = null;
+    let allApplications: any[] = [];
+    let filteredApplications: any[] = [];
+    let selectedAppIds = new Set<string>();
+    let currentApplication: any = null;
+
+    async function checkAdminAccess() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        window.location.href = '/login';
+        return false;
+      }
+
+      currentUser = session.user;
+
+      const { data: application } = await supabase
+        .from('applications')
+        .select('role')
+        .eq('user_id', currentUser.id)
+        .single();
+
+      if (!application || application.role !== 'admin') {
+        document.getElementById('loading-state')?.classList.add('hidden');
+        document.getElementById('access-denied')?.classList.remove('hidden');
+        return false;
+      }
+
+      return true;
+    }
+
+    async function loadApplications() {
+      try {
+        const { data: applications, error } = await supabase
+          .from('applications')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        allApplications = applications || [];
+        filteredApplications = [...allApplications];
+
+        updateStatistics();
+        renderApplications();
+
+      } catch (error) {
+        console.error('Error loading applications:', error);
+        document.getElementById('empty-state')?.classList.remove('hidden');
+      }
+    }
+
+    function updateStatistics() {
+      const total = allApplications.length;
+      const pending = allApplications.filter(a => a.status === 'pending').length;
+      const approved = allApplications.filter(a => a.status === 'approved').length;
+      const rejected = allApplications.filter(a => a.status === 'rejected').length;
+
+      document.getElementById('stat-total')!.textContent = total.toString();
+      document.getElementById('stat-pending')!.textContent = pending.toString();
+      document.getElementById('stat-approved')!.textContent = approved.toString();
+      document.getElementById('stat-rejected')!.textContent = rejected.toString();
+    }
+
+    function filterApplications() {
+      const searchTerm = (document.getElementById('search-input') as HTMLInputElement).value.toLowerCase();
+      const statusFilter = (document.getElementById('status-filter') as HTMLSelectElement).value;
+      const programFilter = (document.getElementById('program-filter') as HTMLSelectElement).value;
+
+      filteredApplications = allApplications.filter(app => {
+        const matchesSearch = app.name.toLowerCase().includes(searchTerm) ||
+                             app.email.toLowerCase().includes(searchTerm);
+        const matchesStatus = !statusFilter || app.status === statusFilter;
+        const matchesProgram = !programFilter || app.program === programFilter;
+        return matchesSearch && matchesStatus && matchesProgram;
+      });
+
+      renderApplications();
+    }
+
+    function renderApplications() {
+      const container = document.getElementById('applications-list')!;
+      const emptyState = document.getElementById('empty-state')!;
+
+      if (filteredApplications.length === 0) {
+        container.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+
+      container.innerHTML = filteredApplications.map(app => {
+        const statusColor = app.status === 'pending' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
+                           app.status === 'approved' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
+                           app.status === 'rejected' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                           'bg-blue-500/10 text-blue-500 border-blue-500/20';
+
+        const programBadge = app.program === 'bootcamp' ? 'Bootcamp' :
+                            app.program === 'accelerator' ? 'Accelerator' : 'Hackathon';
+
+        const isChecked = selectedAppIds.has(app.id);
+
+        return `
+          <div class="card">
+            <div class="flex items-start gap-4">
+              <input type="checkbox" class="app-checkbox mt-1 rounded" data-app-id="${app.id}" ${isChecked ? 'checked' : ''} />
+
+              <div class="flex-1 min-w-0">
+                <div class="flex items-start justify-between gap-4 mb-2">
+                  <div>
+                    <h4 class="font-semibold text-lg">${app.name}</h4>
+                    <p class="text-sm text-text-muted">${app.email}</p>
+                    ${app.whatsapp ? `<p class="text-sm text-text-muted">WhatsApp: ${app.whatsapp}</p>` : ''}
+                  </div>
+                  <div class="flex gap-2 items-start flex-shrink-0">
+                    <span class="px-2 py-1 rounded text-xs font-medium bg-primary/10 text-primary">
+                      ${programBadge}
+                    </span>
+                    <span class="px-2 py-1 rounded text-xs font-medium border ${statusColor}">
+                      ${app.status}
+                    </span>
+                  </div>
+                </div>
+
+                ${app.motivation ? `
+                  <div class="mb-3">
+                    <p class="text-sm text-text-muted line-clamp-2">${app.motivation}</p>
+                  </div>
+                ` : ''}
+
+                <div class="flex items-center gap-4 text-xs text-text-muted">
+                  <span>Applied: ${new Date(app.created_at).toLocaleDateString()}</span>
+                  ${app.reviewed_at ? `<span>Reviewed: ${new Date(app.reviewed_at).toLocaleDateString()}</span>` : ''}
+                </div>
+
+                <div class="flex gap-2 mt-4">
+                  <button class="view-btn btn btn-ghost btn-sm" data-app-id="${app.id}">
+                    View Details
+                  </button>
+                  ${app.status === 'pending' ? `
+                    <button class="approve-btn btn btn-success btn-sm" data-app-id="${app.id}">
+                      Approve
+                    </button>
+                    <button class="reject-btn btn btn-error btn-sm" data-app-id="${app.id}">
+                      Reject
+                    </button>
+                  ` : ''}
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      attachEventListeners();
+      updateSelectionCount();
+    }
+
+    function attachEventListeners() {
+      // Checkboxes
+      document.querySelectorAll('.app-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => {
+          const appId = (e.target as HTMLInputElement).dataset.appId!;
+          if ((e.target as HTMLInputElement).checked) {
+            selectedAppIds.add(appId);
+          } else {
+            selectedAppIds.delete(appId);
+          }
+          updateSelectionCount();
+        });
+      });
+
+      // View buttons
+      document.querySelectorAll('.view-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const appId = (e.target as HTMLElement).dataset.appId!;
+          showApplicationDetails(appId);
+        });
+      });
+
+      // Quick action buttons
+      document.querySelectorAll('.approve-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const appId = (e.target as HTMLElement).dataset.appId!;
+          await updateApplicationStatus(appId, 'approved');
+        });
+      });
+
+      document.querySelectorAll('.reject-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const appId = (e.target as HTMLElement).dataset.appId!;
+          await updateApplicationStatus(appId, 'rejected');
+        });
+      });
+    }
+
+    function updateSelectionCount() {
+      const count = selectedAppIds.size;
+      document.getElementById('selection-count')!.textContent =
+        `${count} application${count !== 1 ? 's' : ''} selected`;
+
+      const bulkButtons = ['bulk-approve-btn', 'bulk-reject-btn', 'bulk-waitlist-btn'];
+      bulkButtons.forEach(id => {
+        (document.getElementById(id) as HTMLButtonElement).disabled = count === 0;
+      });
+    }
+
+    async function updateApplicationStatus(appId: string, status: string) {
+      try {
+        const { error } = await supabase
+          .from('applications')
+          .update({
+            status,
+            reviewed_at: new Date().toISOString(),
+            reviewed_by: currentUser.id
+          })
+          .eq('id', appId);
+
+        if (error) throw error;
+
+        // Update local data
+        const app = allApplications.find(a => a.id === appId);
+        if (app) {
+          app.status = status;
+          app.reviewed_at = new Date().toISOString();
+          app.reviewed_by = currentUser.id;
+        }
+
+        updateStatistics();
+        filterApplications();
+
+      } catch (error) {
+        console.error('Error updating status:', error);
+        showToast('Failed to update application status. Please try again.', 'error');
+      }
+    }
+
+    async function bulkUpdateStatus(status: string) {
+      if (selectedAppIds.size === 0) return;
+
+      showConfirm(`Update ${selectedAppIds.size} application(s) to ${status}?`, async () => {
+        const loadingId = showToast('Updating applications...', 'info', 0);
+
+        try {
+          const appIds = Array.from(selectedAppIds);
+
+          const { error } = await supabase
+            .from('applications')
+            .update({
+              status,
+              reviewed_at: new Date().toISOString(),
+              reviewed_by: currentUser.id
+            })
+            .in('id', appIds);
+
+          if (error) throw error;
+
+          // Update local data
+          appIds.forEach(appId => {
+            const app = allApplications.find(a => a.id === appId);
+            if (app) {
+              app.status = status;
+              app.reviewed_at = new Date().toISOString();
+              app.reviewed_by = currentUser.id;
+            }
+          });
+
+          selectedAppIds.clear();
+          updateStatistics();
+          filterApplications();
+          dismissToast(loadingId);
+          showToast(`Successfully updated ${appIds.length} application(s)`, 'success');
+
+        } catch (error) {
+          console.error('Error in bulk update:', error);
+          dismissToast(loadingId);
+          showToast('Failed to update applications. Please try again.', 'error');
+        }
+      });
+    }
+
+    function showApplicationDetails(appId: string) {
+      const app = allApplications.find(a => a.id === appId);
+      if (!app) return;
+
+      currentApplication = app;
+
+      const content = document.getElementById('modal-content')!;
+      content.innerHTML = `
+        <div class="space-y-4">
+          <div>
+            <h4 class="font-semibold mb-1">Name</h4>
+            <p class="text-text-muted">${app.name}</p>
+          </div>
+          <div>
+            <h4 class="font-semibold mb-1">Email</h4>
+            <p class="text-text-muted">${app.email}</p>
+          </div>
+          ${app.whatsapp ? `
+            <div>
+              <h4 class="font-semibold mb-1">WhatsApp</h4>
+              <p class="text-text-muted">${app.whatsapp}</p>
+            </div>
+          ` : ''}
+          ${app.location ? `
+            <div>
+              <h4 class="font-semibold mb-1">Location</h4>
+              <p class="text-text-muted">${app.location}</p>
+            </div>
+          ` : ''}
+          ${app.discord ? `
+            <div>
+              <h4 class="font-semibold mb-1">Discord</h4>
+              <p class="text-text-muted">${app.discord}</p>
+            </div>
+          ` : ''}
+          <div>
+            <h4 class="font-semibold mb-1">Program</h4>
+            <p class="text-text-muted">${app.program}</p>
+          </div>
+          ${app.motivation ? `
+            <div>
+              <h4 class="font-semibold mb-1">Motivation</h4>
+              <p class="text-text-muted">${app.motivation}</p>
+            </div>
+          ` : ''}
+          ${app.technical_experience ? `
+            <div>
+              <h4 class="font-semibold mb-1">Technical Experience</h4>
+              <p class="text-text-muted">${app.technical_experience}</p>
+            </div>
+          ` : ''}
+          ${app.commitment ? `
+            <div>
+              <h4 class="font-semibold mb-1">Commitment</h4>
+              <p class="text-text-muted">${app.commitment}</p>
+            </div>
+          ` : ''}
+          ${app.interests ? `
+            <div>
+              <h4 class="font-semibold mb-1">Interests</h4>
+              <p class="text-text-muted">${app.interests.join(', ')}</p>
+            </div>
+          ` : ''}
+        </div>
+      `;
+
+      document.getElementById('detail-modal')?.classList.remove('hidden');
+    }
+
+    function hideModal() {
+      document.getElementById('detail-modal')?.classList.add('hidden');
+      currentApplication = null;
+    }
+
+    async function initApplicationsPage() {
+      const hasAccess = await checkAdminAccess();
+      if (!hasAccess) return;
+
+      document.getElementById('loading-state')?.classList.add('hidden');
+      document.getElementById('applications-content')?.classList.remove('hidden');
+
+      await loadApplications();
+    }
+
+    // Event Listeners
+    document.getElementById('search-input')?.addEventListener('input', filterApplications);
+    document.getElementById('status-filter')?.addEventListener('change', filterApplications);
+    document.getElementById('program-filter')?.addEventListener('change', filterApplications);
+
+    document.getElementById('bulk-approve-btn')?.addEventListener('click', () => bulkUpdateStatus('approved'));
+    document.getElementById('bulk-reject-btn')?.addEventListener('click', () => bulkUpdateStatus('rejected'));
+    document.getElementById('bulk-waitlist-btn')?.addEventListener('click', () => bulkUpdateStatus('waitlisted'));
+
+    document.getElementById('close-modal')?.addEventListener('click', hideModal);
+    document.getElementById('modal-close')?.addEventListener('click', hideModal);
+
+    document.getElementById('modal-approve')?.addEventListener('click', async () => {
+      if (currentApplication) {
+        await updateApplicationStatus(currentApplication.id, 'approved');
+        hideModal();
+      }
+    });
+
+    document.getElementById('modal-reject')?.addEventListener('click', async () => {
+      if (currentApplication) {
+        await updateApplicationStatus(currentApplication.id, 'rejected');
+        hideModal();
+      }
+    });
+
+    document.getElementById('modal-waitlist')?.addEventListener('click', async () => {
+      if (currentApplication) {
+        await updateApplicationStatus(currentApplication.id, 'waitlisted');
+        hideModal();
+      }
+    });
+
+    document.getElementById('logout-btn')?.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = '/login';
+    });
+
+    // Initialize
+    initApplicationsPage();
+  </script>
+</BaseLayout>

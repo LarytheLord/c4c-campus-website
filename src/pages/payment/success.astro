@@ -1,0 +1,367 @@
+---
+/**
+ * Payment Success Page
+ *
+ * Confirms successful payment and displays enrollment/subscription details
+ */
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const sessionId = Astro.url.searchParams.get('session_id');
+
+// Server-side verification will be done via API call from client
+---
+
+<BaseLayout title="Payment Successful - C4C Campus">
+  <div class="success-page">
+    <div class="container">
+      <div id="loading-state" class="loading-state">
+        <div class="spinner"></div>
+        <p>Verifying your payment...</p>
+      </div>
+
+      <div id="success-state" class="success-state" style="display: none;">
+        <div class="success-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+
+        <h1 class="success-title">Payment Successful!</h1>
+        <p class="success-message" id="success-message"></p>
+
+        <div class="details-card" id="details-card" style="display: none;">
+          <h3>Order Details</h3>
+          <div class="details-content" id="details-content"></div>
+        </div>
+
+        <div class="actions">
+          <a href="/dashboard" class="btn btn-primary">Go to Dashboard</a>
+          <a href="/courses" class="btn btn-secondary">Browse Courses</a>
+        </div>
+
+        <div class="next-steps">
+          <h3>What's Next?</h3>
+          <ul>
+            <li>Check your email for payment confirmation</li>
+            <li>Access your courses from the dashboard</li>
+            <li>Join our community forum to connect with other students</li>
+            <li>Explore cohort-based learning opportunities</li>
+          </ul>
+        </div>
+      </div>
+
+      <div id="error-state" class="error-state" style="display: none;">
+        <div class="error-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h1 class="error-title">Verification Failed</h1>
+        <p class="error-message" id="error-message"></p>
+        <a href="/pricing" class="btn btn-primary">Back to Pricing</a>
+      </div>
+    </div>
+  </div>
+
+  <script define:vars={{ sessionId }}>
+    async function verifyPayment() {
+      if (!sessionId) {
+        showError('No session ID provided');
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('sb-access-token');
+
+        if (!token) {
+          window.location.href = '/login';
+          return;
+        }
+
+        const response = await fetch('/api/payments/verify', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ sessionId }),
+        });
+
+        const data = await response.json();
+
+        if (!data.success || !data.verified) {
+          showError(data.error || 'Payment verification failed');
+          return;
+        }
+
+        showSuccess(data);
+      } catch (error) {
+        console.error('Verification error:', error);
+        showError('Failed to verify payment. Please contact support.');
+      }
+    }
+
+    function showSuccess(data) {
+      document.getElementById('loading-state').style.display = 'none';
+      document.getElementById('success-state').style.display = 'block';
+
+      const messageEl = document.getElementById('success-message');
+      const detailsCard = document.getElementById('details-card');
+      const detailsContent = document.getElementById('details-content');
+
+      if (data.type === 'course_purchase' && data.course) {
+        messageEl.textContent = `You've successfully enrolled in ${data.course.title}!`;
+
+        detailsCard.style.display = 'block';
+        detailsContent.innerHTML = `
+          <div class="detail-row">
+            <span class="detail-label">Course:</span>
+            <span class="detail-value">${data.course.title}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Amount Paid:</span>
+            <span class="detail-value">$${(data.amountTotal / 100).toFixed(2)}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Status:</span>
+            <span class="detail-value success-badge">Confirmed</span>
+          </div>
+        `;
+      } else if (data.type === 'subscription' && data.subscription) {
+        messageEl.textContent = `Welcome to C4C Campus ${data.subscription.planType.toUpperCase()} plan!`;
+
+        detailsCard.style.display = 'block';
+        detailsContent.innerHTML = `
+          <div class="detail-row">
+            <span class="detail-label">Plan:</span>
+            <span class="detail-value">${data.subscription.planType} (${data.subscription.status})</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Next Billing Date:</span>
+            <span class="detail-value">${new Date(data.subscription.currentPeriodEnd).toLocaleDateString()}</span>
+          </div>
+        `;
+      } else {
+        messageEl.textContent = 'Your payment was processed successfully!';
+      }
+    }
+
+    function showError(message) {
+      document.getElementById('loading-state').style.display = 'none';
+      document.getElementById('error-state').style.display = 'block';
+      document.getElementById('error-message').textContent = message;
+    }
+
+    // Verify payment on page load
+    verifyPayment();
+  </script>
+
+  <style>
+    .success-page {
+      min-height: 100vh;
+      background: linear-gradient(to bottom, #f7fafc, #edf2f7);
+      padding: 4rem 1.5rem;
+    }
+
+    .container {
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    /* Loading State */
+    .loading-state {
+      text-align: center;
+      padding: 4rem 2rem;
+    }
+
+    .spinner {
+      width: 4rem;
+      height: 4rem;
+      border: 4px solid #e2e8f0;
+      border-top-color: #3182ce;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 2rem;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Success State */
+    .success-state,
+    .error-state {
+      background: white;
+      border-radius: 16px;
+      padding: 3rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      text-align: center;
+    }
+
+    .success-icon,
+    .error-icon {
+      width: 5rem;
+      height: 5rem;
+      margin: 0 auto 2rem;
+    }
+
+    .success-icon svg {
+      color: #48bb78;
+    }
+
+    .error-icon svg {
+      color: #f56565;
+    }
+
+    .success-title,
+    .error-title {
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: #1a202c;
+      margin-bottom: 1rem;
+    }
+
+    .success-message,
+    .error-message {
+      font-size: 1.25rem;
+      color: #4a5568;
+      margin-bottom: 2rem;
+    }
+
+    .details-card {
+      background: #f7fafc;
+      border-radius: 12px;
+      padding: 2rem;
+      margin: 2rem 0;
+      text-align: left;
+    }
+
+    .details-card h3 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #2d3748;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+
+    .details-content {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .detail-row:last-child {
+      border-bottom: none;
+    }
+
+    .detail-label {
+      font-weight: 600;
+      color: #718096;
+    }
+
+    .detail-value {
+      color: #2d3748;
+    }
+
+    .success-badge {
+      background: #c6f6d5;
+      color: #22543d;
+      padding: 0.25rem 0.75rem;
+      border-radius: 12px;
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+
+    .actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      margin: 2rem 0;
+    }
+
+    .btn {
+      padding: 0.875rem 2rem;
+      border-radius: 8px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: all 0.3s;
+      display: inline-block;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-secondary {
+      background: white;
+      color: #3182ce;
+      border: 2px solid #3182ce;
+    }
+
+    .btn-secondary:hover {
+      background: #3182ce;
+      color: white;
+    }
+
+    .next-steps {
+      margin-top: 3rem;
+      text-align: left;
+    }
+
+    .next-steps h3 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #2d3748;
+      margin-bottom: 1rem;
+    }
+
+    .next-steps ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .next-steps li {
+      padding: 0.75rem 0;
+      padding-left: 2rem;
+      position: relative;
+      color: #4a5568;
+    }
+
+    .next-steps li::before {
+      content: '✓';
+      position: absolute;
+      left: 0;
+      color: #48bb78;
+      font-weight: 700;
+    }
+
+    @media (max-width: 768px) {
+      .success-title,
+      .error-title {
+        font-size: 2rem;
+      }
+
+      .actions {
+        flex-direction: column;
+      }
+
+      .btn {
+        width: 100%;
+      }
+    }
+  </style>
+</BaseLayout>

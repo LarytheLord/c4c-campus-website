@@ -1,0 +1,507 @@
+---
+/**
+ * Lesson Page - Individual lesson with video, content, and discussions
+ *
+ * Features:
+ * - Video player
+ * - Lesson content (markdown)
+ * - Downloadable resources
+ * - Discussion thread
+ * - Progress tracking
+ * - Navigation (prev/next lesson)
+ *
+ * URL: /lessons/{slug}
+ */
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { DiscussionThread } from '../../components/DiscussionThread';
+
+export const prerender = false;
+---
+
+<BaseLayout title="Lesson - C4C Campus" hideHeader={true} hideFooter={true}>
+  <div class="min-h-screen bg-background">
+    <!-- Header -->
+    <div class="sticky top-0 z-50 bg-surface border-b border-border">
+      <div class="container mx-auto px-4 py-4">
+        <div class="flex items-center justify-between gap-4">
+          <div class="flex items-center gap-4 flex-1">
+            <a href="/dashboard" class="flex-shrink-0">
+              <img src="/logo.jpeg" alt="C4C Campus" class="h-10 w-10 rounded-lg" />
+            </a>
+            <div>
+              <h1 class="text-xl sm:text-2xl font-bold" id="lesson-title">Lesson</h1>
+              <p class="text-text-muted text-sm" id="breadcrumb">Loading...</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <button id="back-btn" class="btn btn-ghost btn-sm">Back to Course</button>
+            <button id="logout-btn" class="btn btn-ghost text-sm">Sign Out</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loading-state" class="container mx-auto px-4 py-12">
+      <div class="text-center">
+        <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+        <p class="mt-4 text-text-muted">Loading lesson...</p>
+      </div>
+    </div>
+
+    <!-- Lesson Content -->
+    <div id="lesson-content" class="hidden">
+      <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- Video Player -->
+        <div id="video-container" class="mb-8">
+          <div class="bg-black rounded-lg overflow-hidden shadow-lg aspect-video">
+            <video
+              id="lesson-video"
+              class="w-full h-full"
+              controls
+              controlsList="nodownload"
+            >
+              <source id="video-source" src="" type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+          </div>
+          <div class="mt-4 flex items-center justify-between">
+            <div>
+              <button id="mark-complete-btn" class="btn btn-primary">
+                Mark as Complete
+              </button>
+            </div>
+            <div class="flex gap-2">
+              <button id="prev-lesson-btn" class="btn btn-ghost btn-sm" style="display: none;">
+                ← Previous
+              </button>
+              <button id="next-lesson-btn" class="btn btn-ghost btn-sm" style="display: none;">
+                Next →
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lesson Text Content -->
+        <div id="text-content-container" class="hidden mb-8 card">
+          <div class="prose prose-sm sm:prose max-w-none" id="text-content">
+            <!-- Markdown content will be rendered here -->
+          </div>
+        </div>
+
+        <!-- Resources -->
+        <div id="resources-container" class="hidden mb-8 card">
+          <h3 class="text-lg font-bold mb-4">Resources</h3>
+          <div id="resources-list" class="space-y-2">
+            <!-- Resources will be listed here -->
+          </div>
+        </div>
+
+        <!-- Assignments -->
+        <div id="assignments-container" class="hidden mb-8 card">
+          <h3 class="text-lg font-bold mb-4">Assignments</h3>
+          <div id="assignments-list" class="space-y-3">
+            <!-- Assignments will be listed here -->
+          </div>
+        </div>
+
+        <!-- Quiz Section -->
+        <div id="quiz-container" class="hidden mb-8">
+          <div id="quiz-root"></div>
+        </div>
+
+        <!-- Discussion Section -->
+        <div id="discussion-container" class="card">
+          <div id="discussion-root"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  import { createClient } from '@supabase/supabase-js';
+  import { marked } from 'marked';
+  import { showToast } from '@/lib/notifications';
+
+  const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+  const supabase = createClient(supabaseUrl!, supabaseAnonKey!);
+
+  let currentUser: any = null;
+  let currentLesson: any = null;
+  let currentModule: any = null;
+  let currentCourse: any = null;
+  let userCohortId: string | null = null;
+  let isTeacher = false;
+
+  async function init() {
+    // Get slug from URL
+    const pathParts = window.location.pathname.split('/');
+    const slug = pathParts[pathParts.length - 1];
+
+    // Check authentication
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
+      return;
+    }
+
+    currentUser = user;
+
+    // Check if user is teacher
+    const { data: application } = await supabase
+      .from('applications')
+      .select('email')
+      .eq('user_id', user.id)
+      .single();
+
+    isTeacher = application?.email?.startsWith('teacher@') || false;
+
+    // Load lesson
+    await loadLesson(slug);
+
+    // Show content
+    document.getElementById('loading-state')?.classList.add('hidden');
+    document.getElementById('lesson-content')?.classList.remove('hidden');
+
+    // Render discussion component
+    renderDiscussion();
+
+    setupEventListeners();
+  }
+
+  async function loadLesson(slug: string) {
+    // Fetch lesson with module and course info
+    const { data: lesson, error } = await supabase
+      .from('lessons')
+      .select(`
+        *,
+        modules:module_id (
+          *,
+          courses:course_id (*)
+        )
+      `)
+      .eq('slug', slug)
+      .single();
+
+    if (error || !lesson) {
+      showToast('Lesson not found', 'error');
+      setTimeout(() => {
+        window.location.href = '/courses';
+      }, 1500);
+      return;
+    }
+
+    currentLesson = lesson;
+    currentModule = lesson.modules;
+    currentCourse = lesson.modules.courses;
+
+    // Get user's cohort for this course
+    const { data: enrollment } = await supabase
+      .from('cohort_enrollments')
+      .select('cohort_id')
+      .eq('user_id', currentUser.id)
+      .eq('status', 'active')
+      .limit(1)
+      .single();
+
+    userCohortId = enrollment?.cohort_id || null;
+
+    // Update UI
+    document.getElementById('lesson-title')!.textContent = lesson.title;
+    document.getElementById('breadcrumb')!.textContent =
+      `${currentCourse.title} / ${currentModule.title} / ${lesson.title}`;
+
+    // Video
+    const videoDiv = document.querySelector('#video-container .bg-black') as HTMLElement;
+    if (lesson.video_url) {
+      // Check if it's a YouTube URL
+      const youtubeId = extractYouTubeId(lesson.video_url);
+      if (youtubeId && videoDiv) {
+        videoDiv.innerHTML = `
+          <iframe
+            class="w-full h-full"
+            src="https://www.youtube.com/embed/${youtubeId}"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen
+          ></iframe>
+        `;
+      } else {
+        // Regular video file
+        const videoSource = document.getElementById('video-source') as HTMLSourceElement;
+        videoSource.src = lesson.video_url;
+        const video = document.getElementById('lesson-video') as HTMLVideoElement;
+        video.load();
+      }
+    } else {
+      document.getElementById('video-container')?.classList.add('hidden');
+    }
+
+    // Text content
+    if (lesson.content) {
+      const container = document.getElementById('text-content-container');
+      const content = document.getElementById('text-content');
+      if (container && content) {
+        content.innerHTML = marked.parse(lesson.content);
+        container.classList.remove('hidden');
+      }
+    }
+
+    // Resources
+    if (lesson.resources && lesson.resources.length > 0) {
+      const container = document.getElementById('resources-container');
+      const list = document.getElementById('resources-list');
+      if (container && list) {
+        list.innerHTML = lesson.resources.map((resource: any) => `
+          <a
+            href="${resource.path}"
+            download
+            class="flex items-center gap-3 p-3 border border-border rounded-lg hover:bg-surface-hover transition-colors"
+          >
+            <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <div class="flex-1">
+              <div class="font-medium">${resource.name}</div>
+              <div class="text-xs text-text-muted">${formatBytes(resource.size)}</div>
+            </div>
+          </a>
+        `).join('');
+        container.classList.remove('hidden');
+      }
+    }
+
+    // Load assignments for this lesson
+    await loadAssignments();
+
+    // Load quizzes for this lesson
+    await loadQuizzes();
+
+    // Back button
+    const backBtn = document.getElementById('back-btn');
+    if (backBtn) {
+      backBtn.addEventListener('click', () => {
+        window.location.href = `/courses/${currentCourse.slug}`;
+      });
+    }
+  }
+
+  async function loadAssignments() {
+    if (!currentLesson) return;
+
+    try {
+      // Fetch assignments for this lesson
+      const { data: assignments, error } = await supabase
+        .from('assignments')
+        .select('*')
+        .eq('lesson_id', currentLesson.id)
+        .eq('is_published', true)
+        .order('due_date', { ascending: true });
+
+      if (error) {
+        console.error('Error loading assignments:', error);
+        return;
+      }
+
+      if (!assignments || assignments.length === 0) {
+        return;
+      }
+
+      // Get user's submissions for these assignments
+      const assignmentIds = assignments.map(a => a.id);
+      const { data: submissions } = await supabase
+        .from('assignment_submissions')
+        .select('*')
+        .in('assignment_id', assignmentIds)
+        .eq('user_id', currentUser.id);
+
+      const container = document.getElementById('assignments-container');
+      const list = document.getElementById('assignments-list');
+
+      if (!container || !list) return;
+
+      const now = new Date();
+
+      list.innerHTML = assignments.map((assignment: any) => {
+        const submission = submissions?.find((s: any) => s.assignment_id === assignment.id);
+        const dueDate = assignment.due_date ? new Date(assignment.due_date) : null;
+        const isPastDue = dueDate && now > dueDate;
+        const hasSubmission = submission !== undefined;
+
+        let statusBadge = '';
+        let statusColor = 'border-blue-200 bg-blue-50';
+
+        if (!hasSubmission) {
+          if (isPastDue && !assignment.allow_late_submissions) {
+            statusBadge = '<span class="px-3 py-1 bg-red-100 text-red-700 text-xs font-medium rounded-full">Closed</span>';
+            statusColor = 'border-gray-300 bg-gray-50';
+          } else if (isPastDue) {
+            statusBadge = '<span class="px-3 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">Late</span>';
+            statusColor = 'border-orange-200 bg-orange-50';
+          } else {
+            statusBadge = '<span class="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">Not Submitted</span>';
+            statusColor = 'border-blue-200 bg-blue-50';
+          }
+        } else if (submission.status === 'graded') {
+          const points = submission.points_earned || submission.grade || 0;
+          statusBadge = `<span class="px-3 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">Graded: ${points}/${assignment.max_points}</span>`;
+          statusColor = 'border-green-200 bg-green-50';
+        } else {
+          statusBadge = '<span class="px-3 py-1 bg-yellow-100 text-yellow-700 text-xs font-medium rounded-full">Submitted</span>';
+          statusColor = 'border-yellow-200 bg-yellow-50';
+        }
+
+        return `
+          <a
+            href="/assignments/${assignment.id}"
+            class="flex items-start justify-between gap-4 p-4 border-2 ${statusColor} rounded-lg hover:shadow-md transition-all"
+          >
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-1">
+                <h4 class="font-semibold text-base truncate">${assignment.title}</h4>
+                ${statusBadge}
+              </div>
+              ${assignment.description ? `<p class="text-sm text-text-muted line-clamp-2 mb-2">${assignment.description}</p>` : ''}
+              <div class="flex items-center gap-4 text-xs text-text-muted">
+                ${dueDate ? `
+                  <span class="${isPastDue ? 'text-red-600 font-medium' : ''}">
+                    📅 Due: ${dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </span>
+                ` : '<span>No due date</span>'}
+                <span>🎯 ${assignment.max_points} points</span>
+              </div>
+            </div>
+            <div class="flex-shrink-0">
+              <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </div>
+          </a>
+        `;
+      }).join('');
+
+      container.classList.remove('hidden');
+    } catch (error) {
+      console.error('Error loading assignments:', error);
+    }
+  }
+
+  async function loadQuizzes() {
+    if (!currentLesson) return;
+
+    try {
+      // Fetch quizzes for this lesson
+      const { data: quizzes, error } = await supabase
+        .from('quizzes')
+        .select('id')
+        .eq('lesson_id', currentLesson.id)
+        .eq('is_published', true);
+
+      if (error) {
+        console.error('Error loading quizzes:', error);
+        return;
+      }
+
+      if (!quizzes || quizzes.length === 0) {
+        return;
+      }
+
+      const container = document.getElementById('quiz-container');
+      const root = document.getElementById('quiz-root');
+
+      if (!container || !root) return;
+
+      // Show the first quiz (typically one quiz per lesson)
+      const quizId = quizzes[0].id;
+
+      // Import and render QuizCard component
+      import('../../components/QuizCard').then(({ QuizCard }) => {
+        import('react-dom/client').then(({ createRoot }) => {
+          const reactRoot = createRoot(root);
+          reactRoot.render(
+            QuizCard({
+              quizId,
+              lessonId: currentLesson.id,
+            })
+          );
+        });
+      });
+
+      container.classList.remove('hidden');
+    } catch (error) {
+      console.error('Error loading quizzes:', error);
+    }
+  }
+
+  function renderDiscussion() {
+    if (!userCohortId || !currentLesson) return;
+
+    const root = document.getElementById('discussion-root');
+    if (!root) return;
+
+    // Import and render React component
+    import('../../components/DiscussionThread').then(({ DiscussionThread }) => {
+      import('react-dom/client').then(({ createRoot }) => {
+        const reactRoot = createRoot(root);
+        reactRoot.render(
+          DiscussionThread({
+            lessonId: currentLesson.id,
+            cohortId: userCohortId!,
+            currentUserId: currentUser.id,
+            isTeacher: isTeacher,
+          })
+        );
+      });
+    });
+  }
+
+  function extractYouTubeId(url: string): string | null {
+    const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[7].length === 11) ? match[7] : null;
+  }
+
+  function formatBytes(bytes: number): string {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  }
+
+  function setupEventListeners() {
+    // Mark complete button
+    document.getElementById('mark-complete-btn')?.addEventListener('click', async () => {
+      if (!currentUser || !currentLesson) return;
+
+      const { error } = await supabase
+        .from('lesson_progress')
+        .upsert({
+          user_id: currentUser.id,
+          lesson_id: currentLesson.id,
+          completed: true,
+          completed_at: new Date().toISOString(),
+        });
+
+      if (error) {
+        showToast('Failed to mark lesson as complete', 'error');
+      } else {
+        showToast('Lesson marked as complete!', 'success');
+      }
+    });
+
+    // Logout
+    document.getElementById('logout-btn')?.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = '/login';
+    });
+  }
+
+  // Initialize
+  init();
+</script>
+</BaseLayout>

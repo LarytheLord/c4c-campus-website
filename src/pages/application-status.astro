@@ -1,0 +1,474 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Application Status - C4C Campus">
+  <div class="min-h-screen bg-background">
+    <!-- Header -->
+    <div class="bg-surface border-b border-border">
+      <div class="container mx-auto px-4 py-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="text-2xl font-bold">Application Status</h1>
+            <p class="text-text-muted" id="welcome-text">Welcome!</p>
+          </div>
+          <button id="logout-btn" class="btn btn-ghost text-sm">
+            Sign Out
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loading-state" class="container mx-auto px-4 py-12">
+      <div class="text-center">
+        <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+        <p class="mt-4 text-text-muted">Loading your application...</p>
+      </div>
+    </div>
+
+    <!-- Not Logged In -->
+    <div id="not-logged-in" class="hidden container mx-auto px-4 py-12">
+      <div class="max-w-md mx-auto text-center">
+        <div class="card">
+          <h2 class="text-2xl font-bold mb-4">Please Sign In</h2>
+          <p class="text-text-muted mb-6">You need to be logged in to view your application status.</p>
+          <a href="/login" class="btn btn-primary">
+            Go to Login
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- No Application Found -->
+    <div id="no-application" class="hidden container mx-auto px-4 py-12">
+      <div class="max-w-md mx-auto text-center">
+        <div class="card">
+          <h2 class="text-2xl font-bold mb-4">No Application Found</h2>
+          <p class="text-text-muted mb-6">We couldn't find an application associated with your account.</p>
+          <a href="/apply" class="btn btn-primary">
+            Submit Application
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Application Status Content -->
+    <div id="status-content" class="hidden container mx-auto px-4 py-8">
+      <div class="max-w-4xl mx-auto">
+
+        <!-- Pending Status -->
+        <div id="status-pending" class="hidden">
+          <div class="card bg-yellow-50 border-yellow-200 mb-8">
+            <div class="flex items-start gap-4">
+              <div class="flex-shrink-0">
+                <svg class="w-12 h-12 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+              <div class="flex-1">
+                <h2 class="text-2xl font-bold text-yellow-900 mb-2">Application Under Review</h2>
+                <p class="text-yellow-800 mb-4">
+                  Thank you for applying to C4C Campus! We have received your application and our team is currently reviewing it. We'll notify you via email once a decision has been made.
+                </p>
+                <div class="text-sm text-yellow-700">
+                  <p><strong>Submitted:</strong> <span id="submitted-date">-</span></p>
+                  <p><strong>Program:</strong> <span id="program-name" class="capitalize">-</span></p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Application Details -->
+          <div class="card mb-6">
+            <div class="flex items-center justify-between mb-6">
+              <h3 class="text-xl font-bold">Your Application</h3>
+              <button id="edit-btn" class="btn btn-secondary">
+                Edit Application
+              </button>
+            </div>
+
+            <div id="application-details" class="space-y-6">
+              <!-- Details loaded dynamically -->
+            </div>
+          </div>
+
+          <!-- What Happens Next -->
+          <div class="card">
+            <h3 class="text-xl font-bold mb-4">What Happens Next?</h3>
+            <ol class="space-y-4">
+              <li class="flex gap-3">
+                <span class="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-sm font-bold">1</span>
+                <div>
+                  <strong>Review Process</strong>
+                  <p class="text-text-muted text-sm">Our team reviews all applications carefully. This typically takes 3-5 business days.</p>
+                </div>
+              </li>
+              <li class="flex gap-3">
+                <span class="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-sm font-bold">2</span>
+                <div>
+                  <strong>Decision Email</strong>
+                  <p class="text-text-muted text-sm">You'll receive an email at <span id="user-email" class="font-medium">-</span> with our decision.</p>
+                </div>
+              </li>
+              <li class="flex gap-3">
+                <span class="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-sm font-bold">3</span>
+                <div>
+                  <strong>Access to Platform</strong>
+                  <p class="text-text-muted text-sm">If approved, you'll gain access to the student dashboard, course materials, and all program resources.</p>
+                </div>
+              </li>
+            </ol>
+          </div>
+        </div>
+
+        <!-- Rejected Status -->
+        <div id="status-rejected" class="hidden">
+          <div class="card bg-red-50 border-red-200">
+            <div class="flex items-start gap-4">
+              <div class="flex-shrink-0">
+                <svg class="w-12 h-12 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </div>
+              <div class="flex-1">
+                <h2 class="text-2xl font-bold text-red-900 mb-2">Application Not Approved</h2>
+                <p class="text-red-800 mb-4">
+                  Thank you for your interest in C4C Campus. Unfortunately, we are unable to offer you a place in the program at this time.
+                </p>
+                <p class="text-red-700 mb-4">
+                  We receive many more applications than we have capacity for, and this decision does not reflect on your potential or commitment to our mission.
+                </p>
+                <p class="text-red-700">
+                  You are welcome to reapply in future cohorts. Keep building your skills and we hope to see your application again!
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Waitlisted Status -->
+        <div id="status-waitlisted" class="hidden">
+          <div class="card bg-blue-50 border-blue-200">
+            <div class="flex items-start gap-4">
+              <div class="flex-shrink-0">
+                <svg class="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+              <div class="flex-1">
+                <h2 class="text-2xl font-bold text-blue-900 mb-2">You're on the Waitlist</h2>
+                <p class="text-blue-800 mb-4">
+                  Your application has been reviewed and we're impressed! While we don't have immediate capacity, you've been placed on our waitlist.
+                </p>
+                <p class="text-blue-700">
+                  If a spot opens up, we'll contact you via email. You'll also be prioritized for the next cohort.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Edit Application Modal -->
+    <div id="edit-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-surface rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="p-6">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-bold">Edit Application</h2>
+            <button id="close-edit-modal" class="text-text-muted hover:text-text-primary">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+
+          <form id="edit-form" class="space-y-4">
+            <!-- Form fields loaded dynamically based on program -->
+            <div id="edit-form-fields"></div>
+
+            <div class="flex gap-3 pt-4">
+              <button type="submit" class="btn btn-primary flex-1">
+                Save Changes
+              </button>
+              <button type="button" id="cancel-edit" class="btn btn-ghost flex-1">
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    import { supabase } from '../lib/supabase';
+
+    let currentUser: any = null;
+    let userApplication: any = null;
+
+    // Check authentication and load application
+    async function checkAuthAndLoadApplication() {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        document.getElementById('loading-state')?.classList.add('hidden');
+        document.getElementById('not-logged-in')?.classList.remove('hidden');
+        return;
+      }
+
+      currentUser = session.user;
+
+      // Fetch user's application
+      const { data: application, error } = await supabase
+        .from('applications')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .single();
+
+      if (error || !application) {
+        document.getElementById('loading-state')?.classList.add('hidden');
+        document.getElementById('no-application')?.classList.remove('hidden');
+        return;
+      }
+
+      userApplication = application;
+
+      // If approved, redirect to dashboard
+      if (application.status === 'approved') {
+        window.location.href = '/dashboard';
+        return;
+      }
+
+      // Show application status
+      displayApplicationStatus();
+    }
+
+    // Display application status
+    function displayApplicationStatus() {
+      if (!userApplication) return;
+
+      const welcomeText = document.getElementById('welcome-text');
+      if (welcomeText) {
+        welcomeText.textContent = `Welcome, ${userApplication.name.split(' ')[0]}!`;
+      }
+
+      // Show status card based on status
+      const statusId = `status-${userApplication.status}`;
+      document.getElementById(statusId)?.classList.remove('hidden');
+
+      // Fill in details
+      const submittedDate = document.getElementById('submitted-date');
+      if (submittedDate) {
+        submittedDate.textContent = new Date(userApplication.created_at).toLocaleDateString('en-IN', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      }
+
+      const programName = document.getElementById('program-name');
+      if (programName) {
+        programName.textContent = userApplication.program;
+      }
+
+      const userEmail = document.getElementById('user-email');
+      if (userEmail) {
+        userEmail.textContent = userApplication.email;
+      }
+
+      // Display application details
+      displayApplicationDetails();
+
+      // Show content
+      document.getElementById('loading-state')?.classList.add('hidden');
+      document.getElementById('status-content')?.classList.remove('hidden');
+    }
+
+    // Display application details
+    function displayApplicationDetails() {
+      const detailsContainer = document.getElementById('application-details');
+      if (!detailsContainer || !userApplication) return;
+
+      let html = `
+        <div class="grid md:grid-cols-2 gap-4">
+          <div>
+            <label class="text-sm font-medium text-text-muted">Name</label>
+            <p class="mt-1">${userApplication.name}</p>
+          </div>
+          <div>
+            <label class="text-sm font-medium text-text-muted">Email</label>
+            <p class="mt-1">${userApplication.email}</p>
+          </div>
+          <div>
+            <label class="text-sm font-medium text-text-muted">WhatsApp</label>
+            <p class="mt-1">${userApplication.whatsapp || '-'}</p>
+          </div>
+          <div>
+            <label class="text-sm font-medium text-text-muted">Location</label>
+            <p class="mt-1">${userApplication.location || '-'}</p>
+          </div>
+          <div>
+            <label class="text-sm font-medium text-text-muted">Discord</label>
+            <p class="mt-1">${userApplication.discord || '-'}</p>
+          </div>
+        </div>
+      `;
+
+      if (userApplication.program === 'bootcamp') {
+        html += `
+          <div class="mt-4">
+            <label class="text-sm font-medium text-text-muted">Interests</label>
+            <p class="mt-1">${userApplication.interests?.join(', ') || '-'}</p>
+          </div>
+          <div class="mt-4">
+            <label class="text-sm font-medium text-text-muted">Motivation</label>
+            <p class="mt-1 whitespace-pre-wrap">${userApplication.motivation || '-'}</p>
+          </div>
+          <div class="mt-4">
+            <label class="text-sm font-medium text-text-muted">Technical Experience</label>
+            <p class="mt-1 whitespace-pre-wrap">${userApplication.technical_experience || '-'}</p>
+          </div>
+          <div class="mt-4">
+            <label class="text-sm font-medium text-text-muted">Commitment</label>
+            <p class="mt-1 whitespace-pre-wrap">${userApplication.commitment || '-'}</p>
+          </div>
+        `;
+      } else if (userApplication.program === 'accelerator') {
+        html += `
+          <div class="mt-4">
+            <label class="text-sm font-medium text-text-muted">Track</label>
+            <p class="mt-1 capitalize">${userApplication.track || '-'}</p>
+          </div>
+          <div class="mt-4">
+            <label class="text-sm font-medium text-text-muted">Project Name</label>
+            <p class="mt-1">${userApplication.project_name || '-'}</p>
+          </div>
+          <div class="mt-4">
+            <label class="text-sm font-medium text-text-muted">Project Description</label>
+            <p class="mt-1 whitespace-pre-wrap">${userApplication.project_description || '-'}</p>
+          </div>
+        `;
+      }
+
+      detailsContainer.innerHTML = html;
+    }
+
+    // Open edit modal
+    function openEditModal() {
+      if (!userApplication) return;
+
+      const modal = document.getElementById('edit-modal');
+      const formFields = document.getElementById('edit-form-fields');
+
+      if (!formFields) return;
+
+      // Build form based on program
+      let html = `
+        <div>
+          <label class="block text-sm font-medium mb-2">WhatsApp Number</label>
+          <input type="tel" name="whatsapp" value="${userApplication.whatsapp || ''}" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="+91-9876543210">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-2">Location</label>
+          <input type="text" name="location" value="${userApplication.location || ''}" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Mumbai, Maharashtra">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-2">Discord Handle</label>
+          <input type="text" name="discord" value="${userApplication.discord || ''}" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="username#1234">
+        </div>
+      `;
+
+      if (userApplication.program === 'bootcamp') {
+        html += `
+          <div>
+            <label class="block text-sm font-medium mb-2">Motivation</label>
+            <textarea name="motivation" rows="4" class="w-full px-4 py-2 border border-gray-300 rounded-lg">${userApplication.motivation || ''}</textarea>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">Technical Experience</label>
+            <textarea name="technicalExperience" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg">${userApplication.technical_experience || ''}</textarea>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">Commitment</label>
+            <textarea name="commitment" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg">${userApplication.commitment || ''}</textarea>
+          </div>
+        `;
+      }
+
+      formFields.innerHTML = html;
+      modal?.classList.remove('hidden');
+    }
+
+    // Close edit modal
+    function closeEditModal() {
+      document.getElementById('edit-modal')?.classList.add('hidden');
+    }
+
+    // Save application changes
+    async function saveApplicationChanges(e: Event) {
+      e.preventDefault();
+
+      const form = e.target as HTMLFormElement;
+      const formData = new FormData(form);
+
+      const updates: any = {
+        whatsapp: formData.get('whatsapp'),
+        location: formData.get('location'),
+        discord: formData.get('discord')
+      };
+
+      if (userApplication.program === 'bootcamp') {
+        updates.motivation = formData.get('motivation');
+        updates.technical_experience = formData.get('technicalExperience');
+        updates.commitment = formData.get('commitment');
+      }
+
+      const { error } = await supabase
+        .from('applications')
+        .update(updates)
+        .eq('id', userApplication.id);
+
+      if (error) {
+        alert('Error updating application: ' + error.message);
+        return;
+      }
+
+      alert('Application updated successfully!');
+      closeEditModal();
+
+      // Reload application
+      const { data } = await supabase
+        .from('applications')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .single();
+
+      if (data) {
+        userApplication = data;
+        displayApplicationDetails();
+      }
+    }
+
+    // Event listeners
+    document.getElementById('edit-btn')?.addEventListener('click', openEditModal);
+    document.getElementById('close-edit-modal')?.addEventListener('click', closeEditModal);
+    document.getElementById('cancel-edit')?.addEventListener('click', closeEditModal);
+    document.getElementById('edit-form')?.addEventListener('submit', saveApplicationChanges);
+
+    document.getElementById('logout-btn')?.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = '/';
+    });
+
+    // Click outside modal to close
+    document.getElementById('edit-modal')?.addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeEditModal();
+    });
+
+    // Initialize
+    checkAuthAndLoadApplication();
+  </script>
+</BaseLayout>

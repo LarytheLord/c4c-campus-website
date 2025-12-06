@@ -1,0 +1,344 @@
+---
+/**
+ * Pricing Page
+ *
+ * Displays subscription pricing tiers and individual course pricing
+ */
+
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PricingTable from '../components/payments/PricingTable';
+---
+
+<BaseLayout title="Pricing - C4C Campus">
+  <div class="pricing-page">
+    <!-- Hero Section -->
+    <section class="pricing-hero">
+      <div class="container">
+        <h1 class="hero-title">Choose Your Learning Path</h1>
+        <p class="hero-subtitle">
+          Transparent pricing, no hidden fees. Cancel anytime.
+        </p>
+        <div class="billing-toggle">
+          <button id="monthly-toggle" class="toggle-btn active">Monthly</button>
+          <button id="yearly-toggle" class="toggle-btn">Yearly <span class="badge">Save 17%</span></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Pricing Tiers -->
+    <section class="pricing-tiers">
+      <div class="container">
+        <PricingTable client:load />
+      </div>
+    </section>
+
+    <!-- Social Proof -->
+    <section class="social-proof">
+      <div class="container">
+        <p class="proof-text">Join 2,500+ students already learning on C4C Campus</p>
+        <div class="stats">
+          <div class="stat">
+            <span class="stat-number">2,500+</span>
+            <span class="stat-label">Active Students</span>
+          </div>
+          <div class="stat">
+            <span class="stat-number">50+</span>
+            <span class="stat-label">Expert Teachers</span>
+          </div>
+          <div class="stat">
+            <span class="stat-number">200+</span>
+            <span class="stat-label">Courses Available</span>
+          </div>
+          <div class="stat">
+            <span class="stat-number">4.8/5</span>
+            <span class="stat-label">Average Rating</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="faq-section">
+      <div class="container">
+        <h2 class="section-title">Frequently Asked Questions</h2>
+        <div class="faq-grid">
+          <div class="faq-item">
+            <h3 class="faq-question">Can I switch plans anytime?</h3>
+            <p class="faq-answer">
+              Yes! You can upgrade or downgrade your plan at any time. If you upgrade,
+              you'll be charged a prorated amount. If you downgrade, the change will
+              take effect at the end of your current billing period.
+            </p>
+          </div>
+
+          <div class="faq-item">
+            <h3 class="faq-question">Do you offer refunds?</h3>
+            <p class="faq-answer">
+              We offer a 30-day money-back guarantee for all course purchases and
+              subscriptions. If you're not satisfied, contact us for a full refund.
+            </p>
+          </div>
+
+          <div class="faq-item">
+            <h3 class="faq-question">What's included in the Pro plan?</h3>
+            <p class="faq-answer">
+              The Pro plan includes unlimited access to all premium courses, cohort-based
+              learning, priority support, downloadable resources, and course certificates.
+            </p>
+          </div>
+
+          <div class="faq-item">
+            <h3 class="faq-question">Are there any hidden fees?</h3>
+            <p class="faq-answer">
+              No hidden fees! The price you see is the price you pay. Sales tax may
+              be added based on your location.
+            </p>
+          </div>
+
+          <div class="faq-item">
+            <h3 class="faq-question">Can I purchase individual courses?</h3>
+            <p class="faq-answer">
+              Yes! You can purchase individual courses without a subscription. Course
+              prices range from $49 to $499 depending on the level and content.
+            </p>
+          </div>
+
+          <div class="faq-item">
+            <h3 class="faq-question">Do you offer student discounts?</h3>
+            <p class="faq-answer">
+              Yes! We offer a 50% discount for students from underrepresented communities.
+              Contact us with proof of enrollment to apply.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Money-Back Guarantee -->
+    <section class="guarantee-section">
+      <div class="container">
+        <div class="guarantee-box">
+          <svg class="guarantee-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <h3>30-Day Money-Back Guarantee</h3>
+          <p>
+            Not satisfied? Get a full refund within 30 days of purchase. No questions asked.
+          </p>
+        </div>
+      </div>
+    </section>
+  </div>
+</BaseLayout>
+
+<style>
+  .pricing-page {
+    min-height: 100vh;
+    background: linear-gradient(to bottom, #f7fafc, #edf2f7);
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+
+  /* Hero Section */
+  .pricing-hero {
+    padding: 4rem 0 3rem;
+    text-align: center;
+  }
+
+  .hero-title {
+    font-size: 3rem;
+    font-weight: 800;
+    color: #1a202c;
+    margin-bottom: 1rem;
+  }
+
+  .hero-subtitle {
+    font-size: 1.25rem;
+    color: #4a5568;
+    margin-bottom: 2rem;
+  }
+
+  .billing-toggle {
+    display: inline-flex;
+    background: white;
+    border-radius: 50px;
+    padding: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .toggle-btn {
+    padding: 0.75rem 2rem;
+    border: none;
+    background: transparent;
+    border-radius: 50px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .toggle-btn.active {
+    background: #3182ce;
+    color: white;
+  }
+
+  .badge {
+    background: #48bb78;
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  /* Pricing Tiers */
+  .pricing-tiers {
+    padding: 3rem 0;
+  }
+
+  /* Social Proof */
+  .social-proof {
+    padding: 3rem 0;
+    background: white;
+  }
+
+  .proof-text {
+    text-align: center;
+    font-size: 1.25rem;
+    color: #2d3748;
+    margin-bottom: 2rem;
+    font-weight: 600;
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 2rem;
+  }
+
+  .stat {
+    text-align: center;
+  }
+
+  .stat-number {
+    display: block;
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #3182ce;
+    margin-bottom: 0.5rem;
+  }
+
+  .stat-label {
+    display: block;
+    font-size: 1rem;
+    color: #718096;
+  }
+
+  /* FAQ Section */
+  .faq-section {
+    padding: 4rem 0;
+  }
+
+  .section-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 3rem;
+    color: #1a202c;
+  }
+
+  .faq-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+  }
+
+  .faq-item {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .faq-question {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #2d3748;
+    margin-bottom: 1rem;
+  }
+
+  .faq-answer {
+    font-size: 1rem;
+    color: #4a5568;
+    line-height: 1.6;
+  }
+
+  /* Guarantee Section */
+  .guarantee-section {
+    padding: 4rem 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+
+  .guarantee-box {
+    text-align: center;
+    color: white;
+  }
+
+  .guarantee-icon {
+    width: 4rem;
+    height: 4rem;
+    margin: 0 auto 1rem;
+  }
+
+  .guarantee-box h3 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+  }
+
+  .guarantee-box p {
+    font-size: 1.125rem;
+    opacity: 0.9;
+  }
+
+  @media (max-width: 768px) {
+    .hero-title {
+      font-size: 2rem;
+    }
+
+    .hero-subtitle {
+      font-size: 1rem;
+    }
+
+    .faq-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<script>
+  // Billing toggle functionality
+  const monthlyToggle = document.getElementById('monthly-toggle');
+  const yearlyToggle = document.getElementById('yearly-toggle');
+
+  monthlyToggle?.addEventListener('click', () => {
+    monthlyToggle.classList.add('active');
+    yearlyToggle?.classList.remove('active');
+    // Dispatch custom event to update pricing table
+    window.dispatchEvent(new CustomEvent('billing-interval-change', { detail: 'monthly' }));
+  });
+
+  yearlyToggle?.addEventListener('click', () => {
+    yearlyToggle.classList.add('active');
+    monthlyToggle?.classList.remove('active');
+    // Dispatch custom event to update pricing table
+    window.dispatchEvent(new CustomEvent('billing-interval-change', { detail: 'yearly' }));
+  });
+</script>
+</BaseLayout>

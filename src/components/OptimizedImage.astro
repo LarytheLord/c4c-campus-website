@@ -1,0 +1,87 @@
+---
+/**
+ * OptimizedImage Component
+ *
+ * Automatically serves optimized WebP images with JPEG fallbacks
+ * and responsive sizes for different viewport widths.
+ *
+ * Usage:
+ *   <OptimizedImage
+ *     src="/images/hero.jpg"
+ *     alt="Hero image"
+ *     width={1920}
+ *     height={1080}
+ *   />
+ */
+
+import { Image } from 'astro:assets';
+
+interface Props {
+  src: string;
+  alt: string;
+  width?: number;
+  height?: number;
+  class?: string;
+  loading?: 'lazy' | 'eager';
+  decoding?: 'async' | 'sync' | 'auto';
+  sizes?: string;
+  quality?: number;
+}
+
+const {
+  src,
+  alt,
+  width = 1920,
+  height,
+  class: className = '',
+  loading = 'lazy',
+  decoding = 'async',
+  sizes = '(max-width: 640px) 640px, (max-width: 1024px) 1024px, 1920px',
+  quality = 85,
+} = Astro.props;
+
+// Determine if this is a local or remote image
+const isRemote = src.startsWith('http://') || src.startsWith('https://');
+const isLocal = !isRemote;
+
+// For local images, use Astro's built-in image optimization
+// For remote images, use picture element with manual optimization
+---
+
+{isLocal ? (
+  <Image
+    src={src}
+    alt={alt}
+    width={width}
+    height={height}
+    class={className}
+    loading={loading}
+    decoding={decoding}
+    format="webp"
+    quality={quality}
+  />
+) : (
+  <picture>
+    <source
+      type="image/webp"
+      srcset={`${src}?format=webp&quality=${quality}`}
+      sizes={sizes}
+    />
+    <img
+      src={src}
+      alt={alt}
+      width={width}
+      height={height}
+      class={className}
+      loading={loading}
+      decoding={decoding}
+    />
+  </picture>
+)}
+
+<style>
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+</style>
