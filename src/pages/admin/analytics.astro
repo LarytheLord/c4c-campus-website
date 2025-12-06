@@ -226,11 +226,11 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
           .gte('enrolled_at', thirtyDaysAgo.toISOString())
           .order('enrolled_at', { ascending: true });
 
-        // Group by day
+        // Group by day - include today (31 days total: 30 days ago through today)
         const dailyCounts: { [key: string]: number } = {};
         const labels: string[] = [];
 
-        for (let i = 0; i < 30; i++) {
+        for (let i = 0; i <= 30; i++) {
           const date = new Date(thirtyDaysAgo);
           date.setDate(date.getDate() + i);
           const dateStr = date.toISOString().split('T')[0];

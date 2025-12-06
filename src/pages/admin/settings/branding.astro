@@ -1,27 +1,16 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
 ---
 
-<BaseLayout title="Branding Settings - Admin" hideHeader={true} hideFooter={true}>
-  <div class="min-h-screen bg-background">
-    <!-- Admin Header -->
-    <div class="sticky top-0 z-50 bg-surface border-b border-border">
-      <div class="container mx-auto px-4 py-4">
-        <div class="flex items-center justify-between gap-4">
-          <div class="flex items-center gap-4 flex-1">
-            <a href="/admin/dashboard" class="flex-shrink-0">
-              <img src="/logo.jpeg" alt="C4C Campus" class="h-10 w-10 rounded-lg" id="header-logo" />
-            </a>
-            <div>
-              <h1 class="text-xl sm:text-2xl font-bold">Branding Settings</h1>
-              <p class="text-text-muted text-sm">Customize your platform's look and feel</p>
-            </div>
-          </div>
-          <div class="flex items-center gap-3">
-            <a href="/admin/settings" class="btn btn-ghost btn-sm">Back to Settings</a>
-            <button id="logout-btn" class="btn btn-ghost text-sm">Sign Out</button>
-          </div>
+<AdminLayout title="Branding Settings - Admin" currentPage="settings">
+    <!-- Header -->
+    <div class="container mx-auto px-4 py-6">
+      <div class="flex items-center justify-between gap-4 mb-6">
+        <div>
+          <h1 class="text-2xl font-bold">Branding Settings</h1>
+          <p class="text-text-muted text-sm">Customize your platform's look and feel</p>
         </div>
+        <a href="/admin/settings" class="btn btn-ghost btn-sm">← Back to Settings</a>
       </div>
     </div>
 
@@ -186,7 +175,6 @@ import BaseLayout from '../../../layouts/BaseLayout.astro';
     <div id="error-toast" class="hidden fixed bottom-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg">
       <span id="error-message">Error saving changes</span>
     </div>
-  </div>
 
   <script>
     import { supabase } from '../../../lib/supabase';
@@ -413,13 +401,8 @@ import BaseLayout from '../../../layouts/BaseLayout.astro';
         }
       });
 
-      // Logout
-      document.getElementById('logout-btn')?.addEventListener('click', async () => {
-        await supabase.auth.signOut();
-        window.location.href = '/login';
-      });
     }
 
     init();
   </script>
-</BaseLayout>
+</AdminLayout>

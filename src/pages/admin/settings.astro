@@ -59,7 +59,6 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
         </div>
       </div>
     </div>
-  </div>
 
   <style>
     .settings-tab {
@@ -84,7 +83,8 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 
     .settings-tab.active {
       border-color: var(--color-primary);
-      background: rgba(16, 185, 129, 0.1);
+      background: var(--color-primary);
+      color: white;
     }
 
     .settings-tab span:last-child {
@@ -137,25 +137,56 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       });
       document.querySelector(`[data-tab="${tab}"]`)?.classList.add('active');
 
-      // Load appropriate content
+      // Load appropriate content inline
       switch (tab) {
         case 'branding':
-          window.location.href = '/admin/settings/branding';
+          content.innerHTML = `
+            <div class="card">
+              <h2 class="text-xl font-bold mb-4">🎨 Branding Settings</h2>
+              <p class="text-text-muted mb-4">Customize your platform's look and feel.</p>
+              <a href="/admin/settings/branding" class="btn btn-primary">Open Branding Editor</a>
+            </div>
+          `;
           break;
         case 'platform':
-          window.location.href = '/admin/settings/platform';
+          content.innerHTML = `
+            <div class="card">
+              <h2 class="text-xl font-bold mb-4">⚙️ Platform Settings</h2>
+              <p class="text-text-muted">Platform configuration settings coming soon.</p>
+            </div>
+          `;
           break;
         case 'features':
-          window.location.href = '/admin/settings/features';
+          content.innerHTML = `
+            <div class="card">
+              <h2 class="text-xl font-bold mb-4">🚀 Feature Flags</h2>
+              <p class="text-text-muted">Feature flag management coming soon.</p>
+            </div>
+          `;
           break;
         case 'email':
-          window.location.href = '/admin/settings/email-templates';
+          content.innerHTML = `
+            <div class="card">
+              <h2 class="text-xl font-bold mb-4">📧 Email Templates</h2>
+              <p class="text-text-muted">Email template customization coming soon.</p>
+            </div>
+          `;
           break;
         case 'advanced':
-          window.location.href = '/admin/settings/advanced';
+          content.innerHTML = `
+            <div class="card">
+              <h2 class="text-xl font-bold mb-4">🔧 Advanced Settings</h2>
+              <p class="text-text-muted">Advanced configuration options coming soon.</p>
+            </div>
+          `;
           break;
         case 'import-export':
-          window.location.href = '/admin/settings/import-export';
+          content.innerHTML = `
+            <div class="card">
+              <h2 class="text-xl font-bold mb-4">📦 Import/Export</h2>
+              <p class="text-text-muted">Data import and export tools coming soon.</p>
+            </div>
+          `;
           break;
       }
     }

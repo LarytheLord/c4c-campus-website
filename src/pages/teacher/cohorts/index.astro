@@ -77,8 +77,11 @@ import TeacherLayout from '../../../layouts/TeacherLayout.astro';
 
       if (error) {
         console.error('Error loading cohorts:', error);
-        if (grid) grid.innerHTML = '<p class="text-red-500 col-span-full text-center py-8">Error loading cohorts. Please try again.</p>';
-        return;
+        // If the error is just "no rows returned" treat it as empty
+        if (error.code !== 'PGRST116') {
+          if (grid) grid.innerHTML = '<p class="text-red-500 col-span-full text-center py-8">Error loading cohorts. Please try again.</p>';
+          return;
+        }
       }
 
       if (!cohorts || cohorts.length === 0) {
