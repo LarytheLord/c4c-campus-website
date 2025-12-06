@@ -1,0 +1,958 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { createClient } from '@supabase/supabase-js';
+
+// Enable server-side rendering for this dynamic route
+export const prerender = false;
+
+const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  throw new Error('Missing Supabase environment variables');
+}
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
+---
+
+<BaseLayout title="Course Details - C4C Campus" hideHeader={true} hideFooter={true}>
+  <div class="min-h-screen bg-background">
+    <!-- Internal Header -->
+    <div class="sticky top-0 z-50 bg-surface border-b border-border">
+      <div class="container mx-auto px-4 py-4">
+        <div class="flex items-center justify-between gap-4">
+          <div class="flex items-center gap-4 flex-1">
+            <a href="/dashboard" class="flex-shrink-0">
+              <img src="/logo.jpeg" alt="C4C Campus" class="h-10 w-10 rounded-lg" />
+            </a>
+            <div>
+              <h1 class="text-xl sm:text-2xl font-bold" id="course-title">Course</h1>
+              <p class="text-text-muted text-sm" id="breadcrumb">Loading...</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <a href="/courses" class="hidden sm:block btn btn-ghost btn-sm">Back to Courses</a>
+            <button id="logout-btn" class="btn btn-ghost text-sm">Sign Out</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loading-state" class="container mx-auto px-4 py-12">
+      <div class="text-center">
+        <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+        <p class="mt-4 text-text-muted">Loading course...</p>
+      </div>
+    </div>
+
+    <!-- Course Content -->
+    <div id="course-content" class="hidden container mx-auto px-4 py-8">
+      <!-- Breadcrumb Navigation -->
+      <nav class="mb-6 flex items-center gap-2 text-sm">
+        <a href="/dashboard" class="text-text-muted hover:text-primary transition-colors">Dashboard</a>
+        <span class="text-text-muted">/</span>
+        <a href="/courses" class="text-text-muted hover:text-primary transition-colors">Courses</a>
+        <span class="text-text-muted">/</span>
+        <span id="breadcrumb-course-name" class="text-text font-medium">Course</span>
+      </nav>
+
+      <!-- Course Info Card -->
+      <div class="card mb-6">
+        <div class="flex justify-between items-start mb-4">
+          <div class="flex-1">
+            <h2 class="text-2xl font-bold mb-2" id="course-name">Course Name</h2>
+            <p class="text-text-muted mb-4" id="course-description">Description</p>
+            <div class="flex gap-2 text-sm" id="course-meta">
+              <!-- Meta info -->
+            </div>
+          </div>
+          <div class="flex gap-2" id="teacher-actions" style="display: none;">
+            <button id="edit-course-btn" class="btn btn-primary btn-sm">Edit Course</button>
+            <button id="add-module-btn" class="btn btn-primary btn-sm">Add Module</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Available Cohorts Section (for students) -->
+      <div id="cohorts-section" class="hidden mb-6">
+        <h2 class="text-2xl font-bold mb-4">Available Cohorts</h2>
+        <div id="cohorts-loading" class="text-center py-6">
+          <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
+          <p class="mt-2 text-text-muted">Loading cohorts...</p>
+        </div>
+        <div id="cohorts-grid" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Cohorts will be inserted here -->
+        </div>
+        <div id="cohorts-empty" class="hidden card text-center py-8">
+          <p class="text-text-muted">No active cohorts available at this time.</p>
+        </div>
+      </div>
+
+      <!-- Modules & Lessons -->
+      <div id="modules-container">
+        <div id="modules-loading" class="text-center py-12">
+          <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
+          <p class="mt-2 text-text-muted">Loading modules...</p>
+        </div>
+
+        <div id="modules-list" class="hidden space-y-4">
+          <!-- Modules will be inserted here -->
+        </div>
+
+        <div id="modules-empty" class="hidden text-center py-12 card">
+          <p class="text-text-muted">No modules yet. Add your first module to get started!</p>
+          <button class="btn btn-primary mt-4" onclick="document.getElementById('add-module-btn').click()">
+            Add First Module
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add/Edit Module Modal -->
+    <div id="module-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-lg max-w-lg w-full shadow-xl">
+        <div class="p-6">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-bold" id="module-modal-title">Add Module</h2>
+            <button id="close-module-modal" class="text-text-muted hover:text-text-primary">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+
+          <form id="module-form" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium mb-2">Module Name*</label>
+              <input type="text" id="module-name" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" required />
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2">Description</label>
+              <textarea id="module-description" rows="3" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white"></textarea>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2">Order</label>
+              <input type="number" id="module-order" min="1" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" required />
+            </div>
+
+            <div class="flex gap-3 pt-4">
+              <button type="submit" class="btn btn-primary flex-1">Save Module</button>
+              <button type="button" id="cancel-module-modal" class="btn btn-ghost flex-1">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add/Edit Lesson Modal -->
+    <div id="lesson-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-xl">
+        <div class="p-6">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-bold" id="lesson-modal-title">Add Lesson</h2>
+            <button id="close-lesson-modal" class="text-text-muted hover:text-text-primary">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+
+          <form id="lesson-form" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium mb-2">Lesson Name*</label>
+              <input type="text" id="lesson-name" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" required />
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2">URL Slug*</label>
+              <input type="text" id="lesson-slug" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" required />
+              <p class="text-xs text-gray-500 mt-1">Auto-generated from lesson name</p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2">Video Type</label>
+              <select id="lesson-video-type" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white">
+                <option value="">No Video</option>
+                <option value="youtube">YouTube Link</option>
+                <option value="upload">Uploaded Video</option>
+              </select>
+            </div>
+
+            <div id="youtube-field" class="hidden">
+              <label class="block text-sm font-medium mb-2">YouTube URL</label>
+              <input type="url" id="lesson-youtube" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" placeholder="https://youtube.com/watch?v=..." />
+              <p class="text-xs text-gray-500 mt-1">Full YouTube video URL</p>
+            </div>
+
+            <div id="upload-field" class="hidden">
+              <label class="block text-sm font-medium mb-2">Video Path</label>
+              <input type="text" id="lesson-video-path" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" placeholder="/videos/lesson-1.mp4" />
+              <p class="text-xs text-gray-500 mt-1">Path to uploaded video file</p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2">Video Duration (seconds)</label>
+              <input type="number" id="lesson-duration" min="0" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" />
+              <p class="text-xs text-gray-500 mt-1">Optional - for progress tracking</p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2">Text Content (Markdown)</label>
+              <textarea id="lesson-content" rows="4" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" placeholder="Additional lesson content, notes, or instructions..."></textarea>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2">Order</label>
+              <input type="number" id="lesson-order" min="1" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" required />
+            </div>
+
+            <div class="flex gap-3 pt-4">
+              <button type="submit" class="btn btn-primary flex-1">Save Lesson</button>
+              <button type="button" id="cancel-lesson-modal" class="btn btn-ghost flex-1">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  import { createClient } from '@supabase/supabase-js';
+  import {
+    isModuleUnlocked,
+    getUnlockDate,
+    getCohortModuleStatuses,
+    formatUnlockDate,
+    getDaysUntilUnlock,
+    type ModuleUnlockStatus
+  } from '@/lib/time-gating';
+  import { showToast, showConfirm, setButtonLoading } from '@/lib/notifications';
+
+  const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+  const supabase = createClient(supabaseUrl!, supabaseAnonKey!);
+
+  let currentUser: any = null;
+  let currentCourse: any = null;
+  let modules: any[] = [];
+  let cohorts: any[] = [];
+  let userEnrollments: Set<string> = new Set();
+  let userCohortId: string | null = null;
+  let moduleStatuses: Map<number, ModuleUnlockStatus> = new Map();
+  let editingModule: any = null;
+  let editingLesson: any = null;
+  let currentModuleId: number | null = null;
+  let isTeacher = false;
+
+  async function init() {
+    // Get slug from URL
+    const pathParts = window.location.pathname.split('/');
+    const slug = pathParts[pathParts.length - 1];
+
+    // Check authentication - all users must be logged in
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      // Redirect to login - no public access
+      window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
+      return;
+    }
+
+    currentUser = user;
+
+    // Check if user is teacher
+    const { data: application } = await supabase
+      .from('applications')
+      .select('email')
+      .eq('user_id', user.id)
+      .single();
+
+    isTeacher = application?.email?.startsWith('teacher@') || false;
+
+    // Load course
+    await loadCourse(slug);
+
+    // Load cohorts and module statuses if not teacher
+    if (!isTeacher && currentCourse) {
+      await loadCohorts();
+      await loadModuleStatuses();
+    }
+
+    // Show content
+    document.getElementById('loading-state')?.classList.add('hidden');
+    document.getElementById('course-content')?.classList.remove('hidden');
+
+    setupEventListeners();
+  }
+
+  async function loadModuleStatuses() {
+    // Get user's active cohort enrollment for this course
+    const { data: enrollments } = await supabase
+      .from('cohort_enrollments')
+      .select(`
+        cohort_id,
+        cohorts!inner (
+          course_id
+        )
+      `)
+      .eq('user_id', currentUser.id)
+      .eq('status', 'active')
+      .eq('cohorts.course_id', currentCourse.id)
+      .order('enrolled_at', { ascending: false })
+      .limit(1);
+
+    if (enrollments && enrollments.length > 0) {
+      const enrollment = enrollments[0];
+      userCohortId = enrollment.cohort_id;
+      // Load all module statuses for this cohort
+      moduleStatuses = await getCohortModuleStatuses(userCohortId, supabase, isTeacher);
+    }
+  }
+
+  async function loadCourse(slug: string) {
+    const { data: course, error } = await supabase
+      .from('courses')
+      .select('*')
+      .eq('slug', slug)
+      .single();
+
+    if (error || !course) {
+      showToast('Course not found', 'error');
+      setTimeout(() => {
+        window.location.href = '/courses';
+      }, 1500);
+      return;
+    }
+
+    currentCourse = course;
+
+    // Update UI
+    document.getElementById('course-title')!.textContent = course.title;
+    document.getElementById('course-name')!.textContent = course.title;
+    document.getElementById('course-description')!.textContent = course.description || 'No description';
+    document.getElementById('breadcrumb')!.textContent = `Course / ${course.title}`;
+    document.getElementById('breadcrumb-course-name')!.textContent = course.title;
+
+    const metaHtml = `
+      <span class="px-2 py-1 bg-primary/10 rounded">${formatTrack(course.track)}</span>
+      <span class="px-2 py-1 bg-primary/10 rounded">${formatDifficulty(course.difficulty)}</span>
+      ${course.default_duration_weeks ? `<span class="px-2 py-1 bg-primary/10 rounded">${course.default_duration_weeks} weeks</span>` : ''}
+      ${course.is_published ? '<span class="px-2 py-1 bg-green-500/10 text-green-500 rounded">Published</span>' : '<span class="px-2 py-1 bg-orange-500/10 text-orange-500 rounded">Draft</span>'}
+    `;
+    document.getElementById('course-meta')!.innerHTML = metaHtml;
+
+    // Show teacher actions only if user is the course creator
+    // At this point currentUser is guaranteed to be non-null (see init() check)
+    const isCreator = course.created_by === currentUser.id;
+    if (isCreator) {
+      document.getElementById('teacher-actions')!.style.display = 'flex';
+    }
+
+    // Load modules
+    await loadModules();
+  }
+
+  async function loadModules() {
+    const loading = document.getElementById('modules-loading');
+    const list = document.getElementById('modules-list');
+    const empty = document.getElementById('modules-empty');
+
+    loading?.classList.remove('hidden');
+    list?.classList.add('hidden');
+    empty?.classList.add('hidden');
+
+    // Fetch modules with lessons
+    const { data: modulesData, error } = await supabase
+      .from('modules')
+      .select(`
+        *,
+        lessons(*)
+      `)
+      .eq('course_id', currentCourse.id)
+      .order('order_index', { ascending: true });
+
+    loading?.classList.add('hidden');
+
+    if (error) {
+      console.error('Error loading modules:', error);
+      empty?.classList.remove('hidden');
+      return;
+    }
+
+    modules = modulesData || [];
+
+    if (modules.length === 0) {
+      empty?.classList.remove('hidden');
+      return;
+    }
+
+    // Render modules
+    list!.innerHTML = modules.map(module => {
+      const lessons = (module.lessons || []).sort((a: any, b: any) => a.order_index - b.order_index);
+      // currentUser is guaranteed to be non-null at this point (see init() check)
+      const canEdit = currentCourse.created_by === currentUser.id;
+
+      // Check module lock status
+      const moduleStatus = moduleStatuses.get(module.id);
+      const isLocked = moduleStatus && !moduleStatus.isUnlocked;
+      const unlockDate = moduleStatus?.unlockDate;
+      const daysUntil = unlockDate ? getDaysUntilUnlock(unlockDate) : null;
+
+      return `
+        <div class="card ${isLocked ? 'opacity-75 bg-gray-50' : ''}">
+          <div class="flex justify-between items-start mb-4">
+            <div class="flex-1">
+              <div class="flex items-center gap-2">
+                <h3 class="text-xl font-bold">${module.order_index}. ${module.title}</h3>
+                ${isLocked ? `
+                  <span class="inline-flex items-center gap-1 px-2 py-1 bg-orange-500/10 text-orange-600 text-xs rounded">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                    </svg>
+                    Locked
+                  </span>
+                ` : ''}
+              </div>
+              ${module.description ? `<p class="text-sm text-text-muted mt-1">${module.description}</p>` : ''}
+              ${isLocked && unlockDate ? `
+                <div class="mt-2 text-sm text-orange-600">
+                  <span class="font-medium">Unlocks ${formatUnlockDate(unlockDate)}</span>
+                  ${daysUntil !== null && daysUntil > 0 ? ` (in ${daysUntil} day${daysUntil === 1 ? '' : 's'})` : ''}
+                </div>
+              ` : ''}
+            </div>
+            ${canEdit ? `
+              <div class="flex gap-2">
+                <button class="btn btn-sm btn-ghost add-lesson" data-module-id="${module.id}">+ Lesson</button>
+                <button class="btn btn-sm btn-ghost edit-module" data-id="${module.id}">Edit</button>
+                <button class="btn btn-sm btn-ghost delete-module" data-id="${module.id}">Delete</button>
+              </div>
+            ` : ''}
+          </div>
+
+          ${lessons.length > 0 ? `
+            <div class="space-y-2">
+              ${lessons.map((lesson: any) => `
+                <div class="p-3 border border-border rounded-lg ${isLocked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-surface-hover cursor-pointer'} flex justify-between items-center">
+                  <div class="flex-1">
+                    <div class="flex items-center gap-2">
+                      <span class="font-medium">${lesson.order_index}. ${lesson.title}</span>
+                      ${isLocked ? `
+                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                        </svg>
+                      ` : ''}
+                    </div>
+                    ${lesson.duration_minutes ? `<div class="text-xs text-text-muted">${lesson.duration_minutes} min</div>` : ''}
+                  </div>
+                  ${canEdit ? `
+                    <div class="flex gap-2">
+                      <button class="btn btn-sm btn-ghost edit-lesson" data-id="${lesson.id}" data-module-id="${module.id}">Edit</button>
+                      <button class="btn btn-sm btn-ghost delete-lesson" data-id="${lesson.id}">Delete</button>
+                    </div>
+                  ` : ''}
+                </div>
+              `).join('')}
+            </div>
+          ` : `
+            <p class="text-sm text-text-muted">No lessons yet${canEdit ? '. Click "+ Lesson" to add one.' : '.'}</p>
+          `}
+        </div>
+      `;
+    }).join('');
+
+    list?.classList.remove('hidden');
+
+    // Add event listeners for course creator only
+    // currentUser is guaranteed to be non-null at this point (see init() check)
+    if (currentCourse.created_by === currentUser.id) {
+      list?.querySelectorAll('.add-lesson').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const moduleId = parseInt(btn.getAttribute('data-module-id')!);
+          addLesson(moduleId);
+        });
+      });
+
+      list?.querySelectorAll('.edit-module').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = parseInt(btn.getAttribute('data-id')!);
+          editModule(id);
+        });
+      });
+
+      list?.querySelectorAll('.delete-module').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = parseInt(btn.getAttribute('data-id')!);
+          showConfirm('Delete this module and all its lessons?', async () => {
+            await deleteModule(id);
+          });
+        });
+      });
+
+      list?.querySelectorAll('.edit-lesson').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = parseInt(btn.getAttribute('data-id')!);
+          const moduleId = parseInt(btn.getAttribute('data-module-id')!);
+          editLesson(id, moduleId);
+        });
+      });
+
+      list?.querySelectorAll('.delete-lesson').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = parseInt(btn.getAttribute('data-id')!);
+          showConfirm('Delete this lesson?', async () => {
+            await deleteLesson(id);
+          });
+        });
+      });
+    }
+  }
+
+  async function loadCohorts() {
+    const loading = document.getElementById('cohorts-loading');
+    const grid = document.getElementById('cohorts-grid');
+    const empty = document.getElementById('cohorts-empty');
+    const section = document.getElementById('cohorts-section');
+
+    section?.classList.remove('hidden');
+    loading?.classList.remove('hidden');
+    grid?.classList.add('hidden');
+    empty?.classList.add('hidden');
+
+    // Fetch active/upcoming cohorts for this course
+    const { data: cohortsData, error } = await supabase
+      .from('cohorts')
+      .select('*')
+      .eq('course_id', currentCourse.id)
+      .in('status', ['upcoming', 'active'])
+      .order('start_date', { ascending: true });
+
+    loading?.classList.add('hidden');
+
+    if (error) {
+      console.error('Error loading cohorts:', error);
+      empty?.classList.remove('hidden');
+      return;
+    }
+
+    cohorts = cohortsData || [];
+
+    // Load user's enrollments
+    const { data: enrollmentsData } = await supabase
+      .from('cohort_enrollments')
+      .select('cohort_id')
+      .eq('user_id', currentUser.id);
+
+    userEnrollments = new Set(enrollmentsData?.map(e => e.cohort_id) || []);
+
+    if (cohorts.length === 0) {
+      empty?.classList.remove('hidden');
+      return;
+    }
+
+    // Render cohorts
+    grid!.innerHTML = cohorts.map(cohort => {
+      const isEnrolled = userEnrollments.has(cohort.id);
+      const startDate = new Date(cohort.start_date).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+      const endDate = cohort.end_date
+        ? new Date(cohort.end_date).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+          })
+        : 'Ongoing';
+
+      return `
+        <div class="card">
+          <div class="flex justify-between items-start mb-3">
+            <h3 class="text-lg font-bold">${cohort.name}</h3>
+            <span class="text-xs px-2 py-1 ${
+              cohort.status === 'active' ? 'bg-green-500/10 text-green-500' : 'bg-blue-500/10 text-blue-500'
+            } rounded">${cohort.status === 'active' ? 'Active' : 'Upcoming'}</span>
+          </div>
+          <div class="space-y-2 text-sm mb-4">
+            <div class="flex items-center gap-2 text-text-muted">
+              <span>📅</span>
+              <span>${startDate} - ${endDate}</span>
+            </div>
+            ${cohort.max_students ? `
+              <div class="flex items-center gap-2 text-text-muted">
+                <span>👥</span>
+                <span>Max ${cohort.max_students} students</span>
+              </div>
+            ` : ''}
+          </div>
+          ${isEnrolled ?
+            '<div class="badge bg-green-500/10 text-green-500 w-full text-center py-2">✓ Enrolled</div>' :
+            '<button class="btn btn-primary w-full enroll-cohort-btn" data-cohort-id="' + cohort.id + '" data-cohort-name="' + cohort.name + '">Enroll in Cohort</button>'
+          }
+        </div>
+      `;
+    }).join('');
+
+    grid?.classList.remove('hidden');
+
+    // Add event listeners for enroll buttons
+    grid?.querySelectorAll('.enroll-cohort-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const cohortId = btn.getAttribute('data-cohort-id');
+        const cohortName = btn.getAttribute('data-cohort-name');
+        const button = btn as HTMLButtonElement;
+
+        // Add loading state
+        setButtonLoading(button, true, 'Enrolling...');
+
+        await enrollInCohort(cohortId!, cohortName!);
+
+        // Reset button state
+        setButtonLoading(button, false, 'Enroll in Cohort');
+      });
+    });
+  }
+
+  async function enrollInCohort(cohortId: string, cohortName: string) {
+    if (!currentUser) {
+      showToast('Please login to enroll in cohorts', 'error');
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 1500);
+      return;
+    }
+
+    showConfirm(`Enroll in ${cohortName}?`, async () => {
+      const loadingId = showToast('Enrolling...', 'info', 0);
+
+      try {
+        // Get the user's session token
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!session) {
+          dismissToast(loadingId);
+          showToast('Session expired. Please login again.', 'error');
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 1500);
+          return;
+        }
+
+        // Call the cohort enrollment API endpoint
+        const response = await fetch('/api/enroll-cohort', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({ cohortId })
+        });
+
+        const result = await response.json();
+
+        dismissToast(loadingId);
+
+        if (!response.ok) {
+          if (response.status === 409) {
+            if (result.error.includes('full')) {
+              showToast('This cohort is full. Please try another cohort.', 'error');
+            } else {
+              showToast('You are already enrolled in this cohort!', 'warning');
+            }
+          } else {
+            showToast('Error enrolling: ' + (result.error || 'Unknown error'), 'error');
+          }
+          return;
+        }
+
+        showToast('Successfully enrolled in ' + cohortName + '!', 'success');
+        await loadCohorts(); // Reload to update UI
+        await loadModuleStatuses(); // Reload module statuses
+        await loadModules(); // Reload modules to show lock status
+      } catch (error) {
+        console.error('Enrollment error:', error);
+        dismissToast(loadingId);
+        showToast('Error enrolling in cohort. Please try again.', 'error');
+      }
+    });
+  }
+
+  function setupEventListeners() {
+    // Edit course button - redirect to teacher dashboard
+    document.getElementById('edit-course-btn')?.addEventListener('click', () => {
+      window.location.href = '/teacher/courses';
+    });
+
+    // Module modal
+    document.getElementById('add-module-btn')?.addEventListener('click', () => {
+      editingModule = null;
+      showModuleModal();
+    });
+
+    document.getElementById('close-module-modal')?.addEventListener('click', closeModuleModal);
+    document.getElementById('cancel-module-modal')?.addEventListener('click', closeModuleModal);
+    document.getElementById('module-form')?.addEventListener('submit', handleModuleSubmit);
+
+    // Lesson modal
+    document.getElementById('close-lesson-modal')?.addEventListener('click', closeLessonModal);
+    document.getElementById('cancel-lesson-modal')?.addEventListener('click', closeLessonModal);
+    document.getElementById('lesson-form')?.addEventListener('submit', handleLessonSubmit);
+
+    // Auto-generate lesson slug
+    document.getElementById('lesson-name')?.addEventListener('input', (e) => {
+      const name = (e.target as HTMLInputElement).value;
+      const slugInput = document.getElementById('lesson-slug') as HTMLInputElement;
+      if (!editingLesson && slugInput) {
+        slugInput.value = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      }
+    });
+
+    // Video type selector
+    document.getElementById('lesson-video-type')?.addEventListener('change', (e) => {
+      const type = (e.target as HTMLSelectElement).value;
+      const youtubeField = document.getElementById('youtube-field');
+      const uploadField = document.getElementById('upload-field');
+
+      youtubeField?.classList.toggle('hidden', type !== 'youtube');
+      uploadField?.classList.toggle('hidden', type !== 'upload');
+    });
+
+    // Logout
+    document.getElementById('logout-btn')?.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = '/login';
+    });
+  }
+
+  function showModuleModal() {
+    const modal = document.getElementById('module-modal');
+    const form = document.getElementById('module-form') as HTMLFormElement;
+    const title = document.getElementById('module-modal-title');
+
+    if (editingModule) {
+      title!.textContent = 'Edit Module';
+      (document.getElementById('module-name') as HTMLInputElement).value = editingModule.name;
+      (document.getElementById('module-description') as HTMLTextAreaElement).value = editingModule.description || '';
+      (document.getElementById('module-order') as HTMLInputElement).value = editingModule.order_index;
+    } else {
+      title!.textContent = 'Add Module';
+      form.reset();
+      (document.getElementById('module-order') as HTMLInputElement).value = (modules.length + 1).toString();
+    }
+
+    modal?.classList.remove('hidden');
+  }
+
+  function closeModuleModal() {
+    document.getElementById('module-modal')?.classList.add('hidden');
+    editingModule = null;
+  }
+
+  async function handleModuleSubmit(e: Event) {
+    e.preventDefault();
+
+    const moduleData = {
+      course_id: currentCourse.id,
+      name: (document.getElementById('module-name') as HTMLInputElement).value,
+      description: (document.getElementById('module-description') as HTMLTextAreaElement).value,
+      order_index: parseInt((document.getElementById('module-order') as HTMLInputElement).value)
+    };
+
+    if (editingModule) {
+      const { error } = await supabase
+        .from('modules')
+        .update(moduleData)
+        .eq('id', editingModule.id);
+
+      if (error) {
+        showToast('Error updating module: ' + error.message, 'error');
+        return;
+      }
+    } else {
+      const { error } = await supabase
+        .from('modules')
+        .insert([moduleData]);
+
+      if (error) {
+        showToast('Error creating module: ' + error.message, 'error');
+        return;
+      }
+    }
+
+    closeModuleModal();
+    await loadModules();
+  }
+
+  function editModule(id: number) {
+    editingModule = modules.find(m => m.id === id);
+    if (editingModule) {
+      showModuleModal();
+    }
+  }
+
+  async function deleteModule(id: number) {
+    const { error } = await supabase
+      .from('modules')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      showToast('Error deleting module: ' + error.message, 'error');
+      return;
+    }
+
+    showToast('Module deleted successfully', 'success');
+    await loadModules();
+  }
+
+  function addLesson(moduleId: number) {
+    currentModuleId = moduleId;
+    editingLesson = null;
+    showLessonModal();
+  }
+
+  function showLessonModal() {
+    const modal = document.getElementById('lesson-modal');
+    const form = document.getElementById('lesson-form') as HTMLFormElement;
+    const title = document.getElementById('lesson-modal-title');
+
+    const module = modules.find(m => m.id === currentModuleId);
+    const lessonCount = module?.lessons?.length || 0;
+
+    if (editingLesson) {
+      title!.textContent = 'Edit Lesson';
+      (document.getElementById('lesson-name') as HTMLInputElement).value = editingLesson.name;
+      (document.getElementById('lesson-slug') as HTMLInputElement).value = editingLesson.slug;
+      (document.getElementById('lesson-duration') as HTMLInputElement).value = editingLesson.video_duration_seconds || '';
+      (document.getElementById('lesson-content') as HTMLTextAreaElement).value = editingLesson.text_content || '';
+      (document.getElementById('lesson-order') as HTMLInputElement).value = editingLesson.order_index;
+
+      // Set video type and fields
+      const videoTypeSelect = document.getElementById('lesson-video-type') as HTMLSelectElement;
+      const youtubeInput = document.getElementById('lesson-youtube') as HTMLInputElement;
+      const videoPathInput = document.getElementById('lesson-video-path') as HTMLInputElement;
+
+      if (editingLesson.youtube_url) {
+        videoTypeSelect.value = 'youtube';
+        youtubeInput.value = editingLesson.youtube_url;
+        document.getElementById('youtube-field')?.classList.remove('hidden');
+      } else if (editingLesson.video_path) {
+        videoTypeSelect.value = 'upload';
+        videoPathInput.value = editingLesson.video_path;
+        document.getElementById('upload-field')?.classList.remove('hidden');
+      } else {
+        videoTypeSelect.value = '';
+      }
+    } else {
+      title!.textContent = 'Add Lesson';
+      form.reset();
+      (document.getElementById('lesson-order') as HTMLInputElement).value = (lessonCount + 1).toString();
+      document.getElementById('youtube-field')?.classList.add('hidden');
+      document.getElementById('upload-field')?.classList.add('hidden');
+    }
+
+    modal?.classList.remove('hidden');
+  }
+
+  function closeLessonModal() {
+    document.getElementById('lesson-modal')?.classList.add('hidden');
+    editingLesson = null;
+    currentModuleId = null;
+  }
+
+  async function handleLessonSubmit(e: Event) {
+    e.preventDefault();
+
+    const videoType = (document.getElementById('lesson-video-type') as HTMLSelectElement).value;
+    const youtubeUrl = (document.getElementById('lesson-youtube') as HTMLInputElement).value;
+    const videoPath = (document.getElementById('lesson-video-path') as HTMLInputElement).value;
+
+    const lessonData: any = {
+      module_id: currentModuleId || editingLesson.module_id,
+      name: (document.getElementById('lesson-name') as HTMLInputElement).value,
+      slug: (document.getElementById('lesson-slug') as HTMLInputElement).value,
+      video_duration_seconds: parseInt((document.getElementById('lesson-duration') as HTMLInputElement).value) || null,
+      text_content: (document.getElementById('lesson-content') as HTMLTextAreaElement).value,
+      order_index: parseInt((document.getElementById('lesson-order') as HTMLInputElement).value),
+      youtube_url: videoType === 'youtube' ? youtubeUrl : null,
+      video_path: videoType === 'upload' ? videoPath : null
+    };
+
+    if (editingLesson) {
+      const { error } = await supabase
+        .from('lessons')
+        .update(lessonData)
+        .eq('id', editingLesson.id);
+
+      if (error) {
+        showToast('Error updating lesson: ' + error.message, 'error');
+        return;
+      }
+    } else {
+      const { error } = await supabase
+        .from('lessons')
+        .insert([lessonData]);
+
+      if (error) {
+        showToast('Error creating lesson: ' + error.message, 'error');
+        return;
+      }
+    }
+
+    closeLessonModal();
+    await loadModules();
+  }
+
+  function editLesson(id: number, moduleId: number) {
+    const module = modules.find(m => m.id === moduleId);
+    editingLesson = module?.lessons?.find((l: any) => l.id === id);
+    currentModuleId = moduleId;
+    if (editingLesson) {
+      showLessonModal();
+    }
+  }
+
+  async function deleteLesson(id: number) {
+    const { error } = await supabase
+      .from('lessons')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      showToast('Error deleting lesson: ' + error.message, 'error');
+      return;
+    }
+
+    showToast('Lesson deleted successfully', 'success');
+    await loadModules();
+  }
+
+  function formatTrack(track: string): string {
+    const map: Record<string, string> = {
+      'animal-advocacy': 'Animal Advocacy',
+      'climate': 'Climate',
+      'ai-safety': 'AI Safety',
+      'general': 'General'
+    };
+    return map[track] || track;
+  }
+
+  function formatDifficulty(difficulty: string): string {
+    return difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
+  }
+
+  function formatDuration(seconds: number): string {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }
+
+  // Initialize
+  init();
+</script>
+</BaseLayout>

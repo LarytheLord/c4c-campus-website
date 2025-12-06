@@ -1,0 +1,753 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Application Review - Admin - C4C Campus" hideHeader={true} hideFooter={true}>
+  <div class="min-h-screen bg-background">
+    <!-- Admin Header -->
+    <div class="sticky top-0 z-50 bg-surface border-b border-border">
+      <div class="container mx-auto px-4 py-4">
+        <div class="flex items-center justify-between gap-4">
+          <div class="flex items-center gap-4 flex-1">
+            <a href="/admin/dashboard" class="flex-shrink-0">
+              <img src="/logo.jpeg" alt="C4C Campus" class="h-10 w-10 rounded-lg" />
+            </a>
+            <div>
+              <h1 class="text-xl sm:text-2xl font-bold">Application Review System</h1>
+              <p class="text-text-muted text-sm">Review, assign, and manage applications with email notifications</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <a href="/admin/dashboard" class="btn btn-ghost btn-sm">Dashboard</a>
+            <a href="/admin/users" class="btn btn-ghost btn-sm">Users</a>
+            <a href="/admin/analytics" class="btn btn-ghost btn-sm">Analytics</a>
+            <button id="logout-btn" class="btn btn-ghost text-sm">Sign Out</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loading-state" class="container mx-auto px-4 py-12">
+      <div class="text-center">
+        <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+        <p class="mt-4 text-text-muted">Loading applications...</p>
+      </div>
+    </div>
+
+    <!-- Access Denied State -->
+    <div id="access-denied" class="hidden container mx-auto px-4 py-12">
+      <div class="max-w-md mx-auto text-center">
+        <div class="card">
+          <h2 class="text-2xl font-bold mb-4">Access Denied</h2>
+          <p class="text-text-muted mb-6">You need admin privileges to access this page.</p>
+          <a href="/dashboard" class="btn btn-primary">Go to Dashboard</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Applications Content -->
+    <div id="applications-content" class="hidden">
+      <div class="container mx-auto px-4 py-8">
+        <!-- Statistics Overview -->
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+          <div class="card">
+            <div class="text-sm text-text-muted">Total</div>
+            <div class="text-2xl font-bold" id="stat-total">-</div>
+          </div>
+          <div class="card">
+            <div class="text-sm text-text-muted">Pending</div>
+            <div class="text-2xl font-bold text-yellow-500" id="stat-pending">-</div>
+          </div>
+          <div class="card">
+            <div class="text-sm text-text-muted">Approved</div>
+            <div class="text-2xl font-bold text-green-500" id="stat-approved">-</div>
+          </div>
+          <div class="card">
+            <div class="text-sm text-text-muted">Rejected</div>
+            <div class="text-2xl font-bold text-red-500" id="stat-rejected">-</div>
+          </div>
+          <div class="card">
+            <div class="text-sm text-text-muted">Waitlisted</div>
+            <div class="text-2xl font-bold text-blue-500" id="stat-waitlisted">-</div>
+          </div>
+        </div>
+
+        <!-- Filters and Actions -->
+        <div class="card mb-6">
+          <div class="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+            <div class="flex-1 flex gap-3 flex-wrap">
+              <input
+                type="text"
+                id="search-input"
+                placeholder="Search by name or email..."
+                class="border border-border rounded-lg px-4 py-2 bg-background flex-1 min-w-[200px]"
+              />
+              <select id="status-filter" class="border border-border rounded-lg px-4 py-2 bg-background">
+                <option value="">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+                <option value="waitlisted">Waitlisted</option>
+              </select>
+              <select id="program-filter" class="border border-border rounded-lg px-4 py-2 bg-background">
+                <option value="">All Programs</option>
+                <option value="bootcamp">Bootcamp</option>
+                <option value="accelerator">Accelerator</option>
+                <option value="hackathon">Hackathon</option>
+              </select>
+              <select id="reviewer-filter" class="border border-border rounded-lg px-4 py-2 bg-background">
+                <option value="">All Reviewers</option>
+                <option value="unassigned">Unassigned</option>
+                <option value="me">Assigned to Me</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Bulk Actions -->
+          <div class="mt-4 pt-4 border-t border-border">
+            <div class="flex flex-wrap gap-3 items-center">
+              <p class="text-sm text-text-muted" id="selection-count">0 selected</p>
+              <div class="flex gap-2 flex-wrap">
+                <button id="bulk-approve-btn" class="btn btn-success btn-sm" disabled>
+                  Approve & Email
+                </button>
+                <button id="bulk-reject-btn" class="btn btn-error btn-sm" disabled>
+                  Reject & Email
+                </button>
+                <button id="bulk-waitlist-btn" class="btn btn-secondary btn-sm" disabled>
+                  Waitlist & Email
+                </button>
+                <select id="bulk-assign-select" class="border border-border rounded-lg px-3 py-1.5 text-sm bg-background" disabled>
+                  <option value="">Assign to...</option>
+                </select>
+                <button id="bulk-assign-btn" class="btn btn-ghost btn-sm" disabled>
+                  Assign
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Applications List -->
+        <div id="applications-list" class="space-y-4">
+          <div class="text-center py-12">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="empty-state" class="hidden card text-center py-12">
+          <p class="text-text-muted">No applications found</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Detail Modal -->
+  <div id="detail-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto p-4">
+    <div class="card max-w-4xl w-full my-8 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-start mb-6 sticky top-0 bg-surface pb-4 border-b border-border">
+        <h3 class="text-xl font-bold">Application Details</h3>
+        <button id="close-modal" class="text-text-muted hover:text-text text-2xl">&times;</button>
+      </div>
+
+      <div id="modal-content" class="space-y-6">
+        <!-- Content will be inserted here -->
+      </div>
+
+      <!-- Review Notes Section -->
+      <div class="mt-8 pt-6 border-t border-border">
+        <h4 class="text-lg font-semibold mb-4">Review Notes</h4>
+        <div id="notes-list" class="space-y-3 mb-4">
+          <!-- Notes will be inserted here -->
+        </div>
+        <div class="flex gap-3">
+          <textarea
+            id="new-note-input"
+            placeholder="Add a review note..."
+            class="flex-1 border border-border rounded-lg px-4 py-2 bg-background min-h-[80px]"
+          ></textarea>
+          <button id="add-note-btn" class="btn btn-primary self-start">Add Note</button>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex gap-3 justify-end mt-6 pt-6 border-t border-border">
+        <div class="flex-1">
+          <input
+            type="text"
+            id="decision-note-input"
+            placeholder="Optional: Add decision note (will be sent in email)"
+            class="w-full border border-border rounded-lg px-4 py-2 bg-background"
+          />
+        </div>
+        <button id="modal-approve" class="btn btn-success">Approve & Email</button>
+        <button id="modal-reject" class="btn btn-error">Reject & Email</button>
+        <button id="modal-waitlist" class="btn btn-secondary">Waitlist & Email</button>
+        <button id="modal-close" class="btn btn-ghost">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    import { supabase } from '../../lib/supabase';
+
+    let currentUser: any = null;
+    let allApplications: any[] = [];
+    let filteredApplications: any[] = [];
+    let selectedAppIds = new Set<string>();
+    let currentApplication: any = null;
+    let reviewers: any[] = [];
+
+    async function checkAdminAccess() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        window.location.href = '/login';
+        return false;
+      }
+
+      currentUser = session.user;
+
+      const { data: application } = await supabase
+        .from('applications')
+        .select('role')
+        .eq('user_id', currentUser.id)
+        .single();
+
+      if (!application || application.role !== 'admin') {
+        document.getElementById('loading-state')?.classList.add('hidden');
+        document.getElementById('access-denied')?.classList.remove('hidden');
+        return false;
+      }
+
+      return true;
+    }
+
+    async function loadReviewers() {
+      try {
+        const response = await fetch('/api/admin/reviewers', {
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          reviewers = data.reviewers || [];
+
+          // Populate reviewer dropdowns
+          const assignSelect = document.getElementById('bulk-assign-select') as HTMLSelectElement;
+          reviewers.forEach(reviewer => {
+            const option = document.createElement('option');
+            option.value = reviewer.user_id;
+            option.textContent = `${reviewer.name} (${reviewer.stats.pending} pending)`;
+            assignSelect.appendChild(option);
+          });
+
+          // Add to filter
+          const filterSelect = document.getElementById('reviewer-filter') as HTMLSelectElement;
+          reviewers.forEach(reviewer => {
+            const option = document.createElement('option');
+            option.value = reviewer.user_id;
+            option.textContent = reviewer.name;
+            filterSelect.appendChild(option);
+          });
+        }
+      } catch (error) {
+        console.error('Error loading reviewers:', error);
+      }
+    }
+
+    async function loadApplications() {
+      try {
+        const { data: applications, error } = await supabase
+          .from('applications')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        allApplications = applications || [];
+        filteredApplications = [...allApplications];
+
+        updateStatistics();
+        renderApplications();
+
+      } catch (error) {
+        console.error('Error loading applications:', error);
+        document.getElementById('empty-state')?.classList.remove('hidden');
+      }
+    }
+
+    function updateStatistics() {
+      const total = allApplications.length;
+      const pending = allApplications.filter(a => a.status === 'pending').length;
+      const approved = allApplications.filter(a => a.status === 'approved').length;
+      const rejected = allApplications.filter(a => a.status === 'rejected').length;
+      const waitlisted = allApplications.filter(a => a.status === 'waitlisted').length;
+
+      document.getElementById('stat-total')!.textContent = total.toString();
+      document.getElementById('stat-pending')!.textContent = pending.toString();
+      document.getElementById('stat-approved')!.textContent = approved.toString();
+      document.getElementById('stat-rejected')!.textContent = rejected.toString();
+      document.getElementById('stat-waitlisted')!.textContent = waitlisted.toString();
+    }
+
+    function filterApplications() {
+      const searchTerm = (document.getElementById('search-input') as HTMLInputElement).value.toLowerCase();
+      const statusFilter = (document.getElementById('status-filter') as HTMLSelectElement).value;
+      const programFilter = (document.getElementById('program-filter') as HTMLSelectElement).value;
+      const reviewerFilter = (document.getElementById('reviewer-filter') as HTMLSelectElement).value;
+
+      filteredApplications = allApplications.filter(app => {
+        const matchesSearch = app.name.toLowerCase().includes(searchTerm) ||
+                             app.email.toLowerCase().includes(searchTerm);
+        const matchesStatus = !statusFilter || app.status === statusFilter;
+        const matchesProgram = !programFilter || app.program === programFilter;
+
+        let matchesReviewer = true;
+        if (reviewerFilter === 'unassigned') {
+          matchesReviewer = !app.assigned_reviewer_id;
+        } else if (reviewerFilter === 'me') {
+          matchesReviewer = app.assigned_reviewer_id === currentUser.id;
+        } else if (reviewerFilter) {
+          matchesReviewer = app.assigned_reviewer_id === reviewerFilter;
+        }
+
+        return matchesSearch && matchesStatus && matchesProgram && matchesReviewer;
+      });
+
+      renderApplications();
+    }
+
+    function renderApplications() {
+      const container = document.getElementById('applications-list')!;
+      const emptyState = document.getElementById('empty-state')!;
+
+      if (filteredApplications.length === 0) {
+        container.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+
+      container.innerHTML = filteredApplications.map(app => {
+        const statusColor = app.status === 'pending' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
+                           app.status === 'approved' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
+                           app.status === 'rejected' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                           'bg-blue-500/10 text-blue-500 border-blue-500/20';
+
+        const programBadge = app.program === 'bootcamp' ? 'Bootcamp' :
+                            app.program === 'accelerator' ? 'Accelerator' : 'Hackathon';
+
+        const isChecked = selectedAppIds.has(app.id);
+
+        const reviewer = reviewers.find(r => r.user_id === app.assigned_reviewer_id);
+        const reviewerBadge = reviewer
+          ? `<span class="text-xs px-2 py-1 bg-purple-500/10 text-purple-500 rounded">Assigned to: ${reviewer.name}</span>`
+          : '<span class="text-xs px-2 py-1 bg-gray-500/10 text-gray-500 rounded">Unassigned</span>';
+
+        return `
+          <div class="card">
+            <div class="flex items-start gap-4">
+              <input type="checkbox" class="app-checkbox mt-1 rounded" data-app-id="${app.id}" ${isChecked ? 'checked' : ''} />
+
+              <div class="flex-1 min-w-0">
+                <div class="flex items-start justify-between gap-4 mb-2">
+                  <div>
+                    <h4 class="font-semibold text-lg">${app.name}</h4>
+                    <p class="text-sm text-text-muted">${app.email}</p>
+                    ${app.whatsapp ? `<p class="text-sm text-text-muted">WhatsApp: ${app.whatsapp}</p>` : ''}
+                  </div>
+                  <div class="flex gap-2 items-start flex-shrink-0 flex-wrap">
+                    <span class="px-2 py-1 rounded text-xs font-medium bg-primary/10 text-primary">
+                      ${programBadge}
+                    </span>
+                    <span class="px-2 py-1 rounded text-xs font-medium border ${statusColor}">
+                      ${app.status}
+                    </span>
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  ${reviewerBadge}
+                </div>
+
+                ${app.motivation ? `
+                  <div class="mb-3">
+                    <p class="text-sm text-text-muted line-clamp-2">${app.motivation}</p>
+                  </div>
+                ` : ''}
+
+                <div class="flex items-center gap-4 text-xs text-text-muted">
+                  <span>Applied: ${new Date(app.created_at).toLocaleDateString()}</span>
+                  ${app.reviewed_at ? `<span>Reviewed: ${new Date(app.reviewed_at).toLocaleDateString()}</span>` : ''}
+                  ${app.assignment_date ? `<span>Assigned: ${new Date(app.assignment_date).toLocaleDateString()}</span>` : ''}
+                </div>
+
+                <div class="flex gap-2 mt-4">
+                  <button class="view-btn btn btn-primary btn-sm" data-app-id="${app.id}">
+                    View & Review
+                  </button>
+                  ${app.status === 'pending' ? `
+                    <button class="quick-approve-btn btn btn-success btn-sm" data-app-id="${app.id}">
+                      Quick Approve
+                    </button>
+                  ` : ''}
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      attachEventListeners();
+      updateSelectionCount();
+    }
+
+    function attachEventListeners() {
+      // Checkboxes
+      document.querySelectorAll('.app-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => {
+          const appId = (e.target as HTMLInputElement).dataset.appId!;
+          if ((e.target as HTMLInputElement).checked) {
+            selectedAppIds.add(appId);
+          } else {
+            selectedAppIds.delete(appId);
+          }
+          updateSelectionCount();
+        });
+      });
+
+      // View buttons
+      document.querySelectorAll('.view-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const appId = (e.target as HTMLElement).dataset.appId!;
+          showApplicationDetails(appId);
+        });
+      });
+
+      // Quick approve buttons
+      document.querySelectorAll('.quick-approve-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const appId = (e.target as HTMLElement).dataset.appId!;
+          await updateApplicationStatus([appId], 'approved', '');
+        });
+      });
+    }
+
+    function updateSelectionCount() {
+      const count = selectedAppIds.size;
+      document.getElementById('selection-count')!.textContent =
+        `${count} selected`;
+
+      const bulkButtons = ['bulk-approve-btn', 'bulk-reject-btn', 'bulk-waitlist-btn', 'bulk-assign-select', 'bulk-assign-btn'];
+      bulkButtons.forEach(id => {
+        const el = document.getElementById(id);
+        if (el instanceof HTMLButtonElement || el instanceof HTMLSelectElement) {
+          el.disabled = count === 0;
+        }
+      });
+    }
+
+    async function updateApplicationStatus(appIds: string[], status: string, decisionNote: string) {
+      try {
+        const response = await fetch('/api/admin/update-application-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            application_ids: appIds,
+            status,
+            decision_note: decisionNote,
+            send_email: true
+          })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Failed to update status');
+        }
+
+        // Update local data
+        appIds.forEach(appId => {
+          const app = allApplications.find(a => a.id === appId);
+          if (app) {
+            app.status = status;
+            app.reviewed_at = new Date().toISOString();
+            app.reviewed_by = currentUser.id;
+            if (decisionNote) app.decision_note = decisionNote;
+          }
+        });
+
+        selectedAppIds.clear();
+        updateStatistics();
+        filterApplications();
+
+        alert(`Successfully updated ${appIds.length} application(s). Emails sent: ${result.email_results?.success || 0}`);
+
+      } catch (error) {
+        console.error('Error updating status:', error);
+        alert('Failed to update application status. Please try again.');
+      }
+    }
+
+    async function assignReviewer(appIds: string[], reviewerId: string | null) {
+      try {
+        const response = await fetch('/api/admin/assign-reviewer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            application_ids: appIds,
+            reviewer_id: reviewerId
+          })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Failed to assign reviewer');
+        }
+
+        // Update local data
+        appIds.forEach(appId => {
+          const app = allApplications.find(a => a.id === appId);
+          if (app) {
+            app.assigned_reviewer_id = reviewerId;
+            app.assignment_date = reviewerId ? new Date().toISOString() : null;
+          }
+        });
+
+        selectedAppIds.clear();
+        filterApplications();
+        alert(result.message);
+
+      } catch (error) {
+        console.error('Error assigning reviewer:', error);
+        alert('Failed to assign reviewer. Please try again.');
+      }
+    }
+
+    async function loadReviewNotes(applicationId: string) {
+      try {
+        const response = await fetch(`/api/admin/review-notes?application_id=${applicationId}`, {
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          renderNotes(data.notes || []);
+        }
+      } catch (error) {
+        console.error('Error loading notes:', error);
+      }
+    }
+
+    function renderNotes(notes: any[]) {
+      const container = document.getElementById('notes-list')!;
+
+      if (notes.length === 0) {
+        container.innerHTML = '<p class="text-sm text-text-muted">No review notes yet</p>';
+        return;
+      }
+
+      container.innerHTML = notes.map(note => `
+        <div class="border border-border rounded-lg p-3">
+          <div class="flex justify-between items-start mb-2">
+            <div>
+              <span class="text-sm font-semibold">${note.reviewer_name}</span>
+              <span class="text-xs text-text-muted ml-2">${new Date(note.created_at).toLocaleString()}</span>
+            </div>
+            ${note.is_internal ? '<span class="text-xs px-2 py-1 bg-gray-500/10 text-gray-500 rounded">Internal</span>' : ''}
+          </div>
+          <p class="text-sm">${note.note}</p>
+        </div>
+      `).join('');
+    }
+
+    async function addReviewNote(applicationId: string, note: string) {
+      try {
+        const response = await fetch('/api/admin/review-notes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            application_id: applicationId,
+            note,
+            is_internal: true
+          })
+        });
+
+        if (response.ok) {
+          await loadReviewNotes(applicationId);
+          (document.getElementById('new-note-input') as HTMLTextAreaElement).value = '';
+        } else {
+          throw new Error('Failed to add note');
+        }
+      } catch (error) {
+        console.error('Error adding note:', error);
+        alert('Failed to add note. Please try again.');
+      }
+    }
+
+    async function showApplicationDetails(appId: string) {
+      const app = allApplications.find(a => a.id === appId);
+      if (!app) return;
+
+      currentApplication = app;
+
+      const content = document.getElementById('modal-content')!;
+      content.innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h4 class="font-semibold mb-1">Name</h4>
+            <p class="text-text-muted">${app.name}</p>
+          </div>
+          <div>
+            <h4 class="font-semibold mb-1">Email</h4>
+            <p class="text-text-muted">${app.email}</p>
+          </div>
+          ${app.whatsapp ? `
+            <div>
+              <h4 class="font-semibold mb-1">WhatsApp</h4>
+              <p class="text-text-muted">${app.whatsapp}</p>
+            </div>
+          ` : ''}
+          ${app.location ? `
+            <div>
+              <h4 class="font-semibold mb-1">Location</h4>
+              <p class="text-text-muted">${app.location}</p>
+            </div>
+          ` : ''}
+          ${app.discord ? `
+            <div>
+              <h4 class="font-semibold mb-1">Discord</h4>
+              <p class="text-text-muted">${app.discord}</p>
+            </div>
+          ` : ''}
+          <div>
+            <h4 class="font-semibold mb-1">Program</h4>
+            <p class="text-text-muted">${app.program}</p>
+          </div>
+        </div>
+
+        ${app.motivation ? `
+          <div class="mt-6">
+            <h4 class="font-semibold mb-2">Motivation</h4>
+            <p class="text-text-muted">${app.motivation}</p>
+          </div>
+        ` : ''}
+        ${app.technical_experience ? `
+          <div class="mt-4">
+            <h4 class="font-semibold mb-2">Technical Experience</h4>
+            <p class="text-text-muted">${app.technical_experience}</p>
+          </div>
+        ` : ''}
+        ${app.commitment ? `
+          <div class="mt-4">
+            <h4 class="font-semibold mb-2">Commitment</h4>
+            <p class="text-text-muted">${app.commitment}</p>
+          </div>
+        ` : ''}
+        ${app.interests ? `
+          <div class="mt-4">
+            <h4 class="font-semibold mb-2">Interests</h4>
+            <p class="text-text-muted">${app.interests.join(', ')}</p>
+          </div>
+        ` : ''}
+      `;
+
+      await loadReviewNotes(appId);
+      document.getElementById('detail-modal')?.classList.remove('hidden');
+    }
+
+    function hideModal() {
+      document.getElementById('detail-modal')?.classList.add('hidden');
+      currentApplication = null;
+    }
+
+    async function initApplicationsPage() {
+      const hasAccess = await checkAdminAccess();
+      if (!hasAccess) return;
+
+      document.getElementById('loading-state')?.classList.add('hidden');
+      document.getElementById('applications-content')?.classList.remove('hidden');
+
+      await loadReviewers();
+      await loadApplications();
+    }
+
+    // Event Listeners
+    document.getElementById('search-input')?.addEventListener('input', filterApplications);
+    document.getElementById('status-filter')?.addEventListener('change', filterApplications);
+    document.getElementById('program-filter')?.addEventListener('change', filterApplications);
+    document.getElementById('reviewer-filter')?.addEventListener('change', filterApplications);
+
+    document.getElementById('bulk-approve-btn')?.addEventListener('click', () => {
+      const note = prompt('Optional decision note (will be sent in email):');
+      updateApplicationStatus(Array.from(selectedAppIds), 'approved', note || '');
+    });
+
+    document.getElementById('bulk-reject-btn')?.addEventListener('click', () => {
+      const note = prompt('Optional decision note (will be sent in email):');
+      updateApplicationStatus(Array.from(selectedAppIds), 'rejected', note || '');
+    });
+
+    document.getElementById('bulk-waitlist-btn')?.addEventListener('click', () => {
+      const note = prompt('Optional decision note (will be sent in email):');
+      updateApplicationStatus(Array.from(selectedAppIds), 'waitlisted', note || '');
+    });
+
+    document.getElementById('bulk-assign-btn')?.addEventListener('click', () => {
+      const reviewerId = (document.getElementById('bulk-assign-select') as HTMLSelectElement).value;
+      if (reviewerId) {
+        assignReviewer(Array.from(selectedAppIds), reviewerId);
+      }
+    });
+
+    document.getElementById('close-modal')?.addEventListener('click', hideModal);
+    document.getElementById('modal-close')?.addEventListener('click', hideModal);
+
+    document.getElementById('add-note-btn')?.addEventListener('click', () => {
+      const noteInput = document.getElementById('new-note-input') as HTMLTextAreaElement;
+      const note = noteInput.value.trim();
+      if (note && currentApplication) {
+        addReviewNote(currentApplication.id, note);
+      }
+    });
+
+    document.getElementById('modal-approve')?.addEventListener('click', async () => {
+      if (currentApplication) {
+        const decisionNote = (document.getElementById('decision-note-input') as HTMLInputElement).value;
+        await updateApplicationStatus([currentApplication.id], 'approved', decisionNote);
+        hideModal();
+      }
+    });
+
+    document.getElementById('modal-reject')?.addEventListener('click', async () => {
+      if (currentApplication) {
+        const decisionNote = (document.getElementById('decision-note-input') as HTMLInputElement).value;
+        await updateApplicationStatus([currentApplication.id], 'rejected', decisionNote);
+        hideModal();
+      }
+    });
+
+    document.getElementById('modal-waitlist')?.addEventListener('click', async () => {
+      if (currentApplication) {
+        const decisionNote = (document.getElementById('decision-note-input') as HTMLInputElement).value;
+        await updateApplicationStatus([currentApplication.id], 'waitlisted', decisionNote);
+        hideModal();
+      }
+    });
+
+    document.getElementById('logout-btn')?.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = '/login';
+    });
+
+    // Initialize
+    initApplicationsPage();
+  </script>
+</BaseLayout>

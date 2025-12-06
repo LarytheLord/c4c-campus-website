@@ -1,0 +1,244 @@
+---
+/**
+ * Student Certificate Gallery
+ * Shows all certificates earned by the student
+ */
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import CertificateCard from '../../components/certificates/CertificateCard';
+
+// Auth check
+const accessToken = Astro.cookies.get('sb-access-token')?.value;
+const refreshToken = Astro.cookies.get('sb-refresh-token')?.value;
+
+if (!accessToken) {
+  return Astro.redirect('/login?redirect=/certificates');
+}
+
+// Fetch certificates from API
+let certificates = [];
+let error = null;
+
+try {
+  const apiUrl = new URL('/api/certificates', Astro.url.origin);
+  const response = await fetch(apiUrl.toString(), {
+    headers: {
+      'Cookie': `sb-access-token=${accessToken}; sb-refresh-token=${refreshToken}`
+    }
+  });
+
+  if (response.ok) {
+    const data = await response.json();
+    certificates = data.certificates || [];
+  } else {
+    error = 'Failed to load certificates';
+  }
+} catch (err) {
+  console.error('Error fetching certificates:', err);
+  error = 'Failed to load certificates';
+}
+
+const pageTitle = 'My Certificates';
+const pageDescription = 'View and download your course completion certificates';
+---
+
+<BaseLayout title={pageTitle} description={pageDescription}>
+  <div class="min-h-screen bg-gray-50 py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <!-- Header -->
+      <div class="mb-8">
+        <div class="flex items-center gap-3 mb-4">
+          <a
+            href="/dashboard"
+            class="text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            <svg
+              class="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width={2}
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+          </a>
+          <h1 class="text-3xl font-bold text-gray-900">My Certificates</h1>
+        </div>
+        <p class="text-gray-600">
+          View, download, and share your course completion certificates
+        </p>
+      </div>
+
+      {error && (
+        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+          <p class="font-medium">{error}</p>
+          <p class="text-sm mt-1">
+            Please try refreshing the page or contact support if the problem persists.
+          </p>
+        </div>
+      )}
+
+      {!error && certificates.length === 0 && (
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+          <div class="inline-block p-6 bg-gray-100 rounded-full mb-6">
+            <svg
+              class="w-16 h-16 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width={2}
+                d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"
+              />
+            </svg>
+          </div>
+          <h2 class="text-2xl font-bold text-gray-900 mb-2">
+            No Certificates Yet
+          </h2>
+          <p class="text-gray-600 mb-6">
+            Complete your first course to earn a certificate!
+          </p>
+          <a
+            href="/courses"
+            class="inline-block bg-green-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-green-700 transition-colors"
+          >
+            Browse Courses
+          </a>
+        </div>
+      )}
+
+      {!error && certificates.length > 0 && (
+        <>
+          <!-- Stats -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div class="flex items-center gap-4">
+                <div class="p-3 bg-green-100 rounded-lg">
+                  <svg
+                    class="w-6 h-6 text-green-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width={2}
+                      d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <p class="text-2xl font-bold text-gray-900">{certificates.length}</p>
+                  <p class="text-sm text-gray-600">Certificates Earned</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div class="flex items-center gap-4">
+                <div class="p-3 bg-blue-100 rounded-lg">
+                  <svg
+                    class="w-6 h-6 text-blue-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width={2}
+                      d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <p class="text-2xl font-bold text-gray-900">
+                    {certificates.reduce((sum, cert) => {
+                      const hours = cert.certificate_data?.hours || 0;
+                      return sum + hours;
+                    }, 0)}
+                  </p>
+                  <p class="text-sm text-gray-600">Total Course Hours</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div class="flex items-center gap-4">
+                <div class="p-3 bg-purple-100 rounded-lg">
+                  <svg
+                    class="w-6 h-6 text-purple-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width={2}
+                      d="M13 10V3L4 14h7v7l9-11h-7z"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <p class="text-2xl font-bold text-gray-900">
+                    {new Date(certificates[0].completion_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                  </p>
+                  <p class="text-sm text-gray-600">Latest Certificate</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Certificates Grid -->
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {certificates.map((certificate) => (
+              <CertificateCard certificate={certificate} client:load />
+            ))}
+          </div>
+        </>
+      )}
+
+      <!-- Help Section -->
+      <div class="mt-12 bg-blue-50 border border-blue-200 rounded-lg p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-3">
+          About Your Certificates
+        </h3>
+        <ul class="space-y-2 text-sm text-gray-700">
+          <li class="flex items-start gap-2">
+            <svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+            <span>Certificates are automatically generated when you complete all lessons in a course</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+            <span>Each certificate includes a unique verification code for authenticity</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+            <span>Share your achievements on LinkedIn or add certificates to your portfolio</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+            <span>Download PDF copies for your records or to share with employers</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</BaseLayout>

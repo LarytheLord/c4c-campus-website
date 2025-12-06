@@ -1,0 +1,867 @@
+---
+/**
+ * Admin Cohort Management Page
+ * Full CRUD capabilities for ALL cohorts in the system
+ * Features:
+ * - View all cohorts (not just admin's own)
+ * - Create new cohorts
+ * - Edit existing cohorts (name, dates, status, max_students)
+ * - Delete cohorts with confirmation
+ * - View cohort details (course info, enrolled students count, schedule, status)
+ * - Manage students in cohorts (add/remove students, view student list with progress)
+ * - Filter cohorts by status (all, upcoming, active, completed, archived)
+ * - Show cohort statistics
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Cohort Management - Admin - C4C Campus" hideHeader={true} hideFooter={true}>
+  <div class="min-h-screen bg-background">
+    <!-- Admin Header -->
+    <div class="sticky top-0 z-50 bg-surface border-b border-border">
+      <div class="container mx-auto px-4 py-4">
+        <div class="flex items-center justify-between gap-4">
+          <div class="flex items-center gap-4 flex-1">
+            <a href="/admin/dashboard" class="flex-shrink-0">
+              <img src="/logo.jpeg" alt="C4C Campus" class="h-10 w-10 rounded-lg" />
+            </a>
+            <div>
+              <h1 class="text-xl sm:text-2xl font-bold">Cohort Management</h1>
+              <p class="text-text-muted text-sm">Manage all cohorts in the system</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <a href="/admin/dashboard" class="btn btn-ghost btn-sm">Dashboard</a>
+            <a href="/admin/users" class="btn btn-ghost btn-sm">Users</a>
+            <a href="/admin/applications" class="btn btn-ghost btn-sm">Applications</a>
+            <button id="logout-btn" class="btn btn-ghost text-sm">
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loading-state" class="container mx-auto px-4 py-12">
+      <div class="text-center">
+        <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+        <p class="mt-4 text-text-muted">Loading cohorts...</p>
+      </div>
+    </div>
+
+    <!-- Access Denied State -->
+    <div id="access-denied" class="hidden container mx-auto px-4 py-12">
+      <div class="max-w-md mx-auto text-center">
+        <div class="card">
+          <h2 class="text-2xl font-bold mb-4">Access Denied</h2>
+          <p class="text-text-muted mb-6">You need admin privileges to access this page.</p>
+          <a href="/dashboard" class="btn btn-primary">
+            Go to Dashboard
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="main-content" class="hidden container mx-auto px-4 py-8">
+      <!-- Stats Overview -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="card">
+          <div class="flex items-center gap-3">
+            <div class="p-3 bg-blue-500/10 rounded-lg">
+              <span class="text-2xl">📚</span>
+            </div>
+            <div>
+              <p class="text-sm text-text-muted">Total Cohorts</p>
+              <p class="text-2xl font-bold" id="stat-total-cohorts">0</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="flex items-center gap-3">
+            <div class="p-3 bg-green-500/10 rounded-lg">
+              <span class="text-2xl">✅</span>
+            </div>
+            <div>
+              <p class="text-sm text-text-muted">Active Cohorts</p>
+              <p class="text-2xl font-bold" id="stat-active-cohorts">0</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="flex items-center gap-3">
+            <div class="p-3 bg-purple-500/10 rounded-lg">
+              <span class="text-2xl">👥</span>
+            </div>
+            <div>
+              <p class="text-sm text-text-muted">Total Students</p>
+              <p class="text-2xl font-bold" id="stat-total-students">0</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="flex items-center gap-3">
+            <div class="p-3 bg-orange-500/10 rounded-lg">
+              <span class="text-2xl">📅</span>
+            </div>
+            <div>
+              <p class="text-sm text-text-muted">Upcoming</p>
+              <p class="text-2xl font-bold" id="stat-upcoming-cohorts">0</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions and Filters -->
+      <div class="card mb-6">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div class="flex items-center gap-3 flex-wrap">
+            <button id="filter-all" class="filter-btn active" data-filter="all">
+              All Cohorts
+            </button>
+            <button id="filter-upcoming" class="filter-btn" data-filter="upcoming">
+              Upcoming
+            </button>
+            <button id="filter-active" class="filter-btn" data-filter="active">
+              Active
+            </button>
+            <button id="filter-completed" class="filter-btn" data-filter="completed">
+              Completed
+            </button>
+            <button id="filter-archived" class="filter-btn" data-filter="archived">
+              Archived
+            </button>
+          </div>
+          <button id="create-cohort-btn" class="btn btn-primary flex items-center gap-2">
+            <span>➕</span>
+            <span>Create Cohort</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Cohorts List -->
+      <div id="cohorts-loading" class="text-center py-12">
+        <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+        <p class="mt-4 text-text-muted">Loading cohorts...</p>
+      </div>
+
+      <div id="cohorts-grid" class="hidden space-y-4">
+        <!-- Cohorts will be inserted here -->
+      </div>
+
+      <div id="cohorts-empty" class="hidden card text-center py-12 border-2 border-dashed border-border">
+        <div class="text-6xl mb-4">👥</div>
+        <h3 class="text-2xl font-bold mb-2">No cohorts found</h3>
+        <p class="text-text-muted mb-6">Create a cohort to get started with time-gated learning.</p>
+        <button class="btn btn-primary btn-lg" onclick="document.getElementById('create-cohort-btn').click()">
+          Create Your First Cohort
+        </button>
+      </div>
+    </div>
+
+    <!-- Create/Edit Cohort Modal -->
+    <div id="cohort-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-xl">
+        <div class="p-6">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-bold" id="cohort-modal-title">Create Cohort</h2>
+            <button id="close-cohort-modal" class="text-text-muted hover:text-text-primary">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+
+          <form id="cohort-form" class="space-y-4">
+            <input type="hidden" id="cohort-id" value="" />
+
+            <div>
+              <label class="block text-sm font-medium mb-2">Course*</label>
+              <select id="cohort-course" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" required>
+                <option value="">Select a course</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2">Cohort Name*</label>
+              <input type="text" id="cohort-name" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" placeholder="e.g., Fall 2025 Cohort" required />
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium mb-2">Start Date*</label>
+                <input type="date" id="cohort-start-date" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" required />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium mb-2">End Date</label>
+                <input type="date" id="cohort-end-date" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium mb-2">Max Students</label>
+                <input type="number" id="cohort-max-students" min="1" value="50" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium mb-2">Status</label>
+                <select id="cohort-status" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white">
+                  <option value="upcoming">Upcoming</option>
+                  <option value="active">Active</option>
+                  <option value="completed">Completed</option>
+                  <option value="archived">Archived</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="flex gap-3 pt-4">
+              <button type="submit" class="btn btn-primary flex-1" id="cohort-submit-btn">
+                Create Cohort
+              </button>
+              <button type="button" id="cancel-cohort-modal" class="btn btn-ghost flex-1">
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Student Management Modal -->
+    <div id="students-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-xl">
+        <div class="p-6">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h2 class="text-2xl font-bold" id="students-modal-title">Manage Students</h2>
+              <p class="text-text-muted text-sm" id="students-modal-subtitle">Loading...</p>
+            </div>
+            <button id="close-students-modal" class="text-text-muted hover:text-text-primary">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Add Student Form -->
+          <div class="card mb-4">
+            <h3 class="text-lg font-bold mb-3">Add Student</h3>
+            <form id="add-student-form" class="flex gap-3">
+              <input type="email" id="student-email" class="flex-1 border border-gray-300 rounded-lg px-4 py-2 bg-white" placeholder="student@example.com" required />
+              <button type="submit" class="btn btn-primary">Add Student</button>
+            </form>
+          </div>
+
+          <!-- Students List -->
+          <div class="card">
+            <h3 class="text-lg font-bold mb-4">Enrolled Students</h3>
+            <div id="students-loading" class="text-center py-8">
+              <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
+              <p class="mt-2 text-text-muted text-sm">Loading students...</p>
+            </div>
+
+            <div id="students-list" class="hidden space-y-2">
+              <!-- Students will be inserted here -->
+            </div>
+
+            <div id="students-empty" class="hidden text-center py-8 text-text-muted">
+              <p>No students enrolled yet</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    import { supabase } from '../../lib/supabase';
+    import { showToast, showConfirm } from '../../lib/notifications';
+
+    let currentUser: any = null;
+    let allCohorts: any[] = [];
+    let filteredCohorts: any[] = [];
+    let courses: any[] = [];
+    let currentFilter = 'all';
+    let editingCohort: any = null;
+    let currentCohortStudents: any = null;
+
+    async function checkAdminAccess() {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        window.location.href = '/login';
+        return false;
+      }
+
+      currentUser = session.user;
+
+      // Check if user has admin role
+      const { data: application } = await supabase
+        .from('applications')
+        .select('role')
+        .eq('user_id', currentUser.id)
+        .single();
+
+      if (!application || application.role !== 'admin') {
+        document.getElementById('loading-state')?.classList.add('hidden');
+        document.getElementById('access-denied')?.classList.remove('hidden');
+        return false;
+      }
+
+      return true;
+    }
+
+    async function loadCourses() {
+      // Load ALL courses in the system
+      const { data, error } = await supabase
+        .from('courses')
+        .select('id, name, slug')
+        .order('name', { ascending: true });
+
+      if (error) {
+        console.error('Error loading courses:', error);
+        return;
+      }
+
+      courses = data || [];
+      populateCourseSelect();
+    }
+
+    function populateCourseSelect() {
+      const select = document.getElementById('cohort-course') as HTMLSelectElement;
+      if (!select) return;
+
+      const options = courses.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+      select.innerHTML = '<option value="">Select a course</option>' + options;
+    }
+
+    async function loadCohorts() {
+      const loading = document.getElementById('cohorts-loading');
+      const grid = document.getElementById('cohorts-grid');
+      const empty = document.getElementById('cohorts-empty');
+
+      loading?.classList.remove('hidden');
+      grid?.classList.add('hidden');
+      empty?.classList.add('hidden');
+
+      // Fetch ALL cohorts in the system with course data and enrollment counts
+      const { data, error } = await supabase
+        .from('cohorts')
+        .select(`
+          *,
+          courses(name, slug),
+          enrollments:enrollments(count)
+        `)
+        .order('created_at', { ascending: false });
+
+      loading?.classList.add('hidden');
+
+      if (error) {
+        console.error('Error loading cohorts:', error);
+        showToast('Failed to load cohorts', 'error');
+        empty?.classList.remove('hidden');
+        return;
+      }
+
+      allCohorts = data || [];
+      applyFilter(currentFilter);
+    }
+
+    function applyFilter(filter: string) {
+      currentFilter = filter;
+
+      // Update filter buttons
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        const btnFilter = (btn as HTMLElement).getAttribute('data-filter');
+        if (btnFilter === filter) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+
+      // Filter cohorts
+      if (filter === 'all') {
+        filteredCohorts = allCohorts;
+      } else {
+        filteredCohorts = allCohorts.filter(c => c.status === filter);
+      }
+
+      renderCohorts();
+      updateStats();
+    }
+
+    function renderCohorts() {
+      const grid = document.getElementById('cohorts-grid');
+      const empty = document.getElementById('cohorts-empty');
+
+      if (filteredCohorts.length === 0) {
+        grid?.classList.add('hidden');
+        empty?.classList.remove('hidden');
+        return;
+      }
+
+      grid!.innerHTML = filteredCohorts.map(cohort => {
+        const enrollmentCount = cohort.enrollments?.[0]?.count || 0;
+        return `
+          <div class="card hover:shadow-lg transition-all duration-300 border-2 hover:border-primary">
+            <div class="flex justify-between items-start mb-4">
+              <div class="flex-1">
+                <h3 class="text-xl font-bold mb-1">${cohort.name}</h3>
+                <p class="text-sm text-text-muted flex items-center gap-1">
+                  <span>📚</span>
+                  ${cohort.courses?.name || 'Unknown Course'}
+                </p>
+              </div>
+              <span class="text-xs px-3 py-1 rounded-full font-semibold ${getCohortStatusColor(cohort.status)}">${cohort.status.toUpperCase()}</span>
+            </div>
+            <div class="bg-surface-hover rounded-lg p-4 mb-4">
+              <div class="grid grid-cols-2 gap-3 text-sm">
+                <div class="flex items-center gap-2">
+                  <span class="text-lg">📅</span>
+                  <div>
+                    <p class="text-xs text-text-muted">Start Date</p>
+                    <p class="font-medium">${formatDate(cohort.start_date)}</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-lg">🏁</span>
+                  <div>
+                    <p class="text-xs text-text-muted">End Date</p>
+                    <p class="font-medium">${cohort.end_date ? formatDate(cohort.end_date) : 'Ongoing'}</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-lg">👥</span>
+                  <div>
+                    <p class="text-xs text-text-muted">Enrolled / Max</p>
+                    <p class="font-medium">${enrollmentCount} / ${cohort.max_students}</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-lg">⚡</span>
+                  <div>
+                    <p class="text-xs text-text-muted">Status</p>
+                    <p class="font-medium capitalize">${cohort.status}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="flex gap-2 flex-wrap">
+              <button class="btn btn-sm btn-primary flex-1 manage-students-btn" data-id="${cohort.id}">
+                👥 Students (${enrollmentCount})
+              </button>
+              <button class="btn btn-sm btn-secondary edit-cohort-btn" data-id="${cohort.id}">
+                ✏️ Edit
+              </button>
+              <button class="btn btn-sm btn-error delete-cohort-btn" data-id="${cohort.id}">
+                🗑️ Delete
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      grid?.classList.remove('hidden');
+      empty?.classList.add('hidden');
+
+      // Add event listeners
+      attachCohortEventListeners();
+    }
+
+    function attachCohortEventListeners() {
+      // Manage students buttons
+      document.querySelectorAll('.manage-students-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = parseInt((btn as HTMLElement).getAttribute('data-id')!);
+          openStudentsModal(id);
+        });
+      });
+
+      // Edit buttons
+      document.querySelectorAll('.edit-cohort-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = parseInt((btn as HTMLElement).getAttribute('data-id')!);
+          editCohort(id);
+        });
+      });
+
+      // Delete buttons
+      document.querySelectorAll('.delete-cohort-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = parseInt((btn as HTMLElement).getAttribute('data-id')!);
+          deleteCohort(id);
+        });
+      });
+    }
+
+    function updateStats() {
+      document.getElementById('stat-total-cohorts')!.textContent = allCohorts.length.toString();
+
+      const activeCohorts = allCohorts.filter(c => c.status === 'active').length;
+      document.getElementById('stat-active-cohorts')!.textContent = activeCohorts.toString();
+
+      const upcomingCohorts = allCohorts.filter(c => c.status === 'upcoming').length;
+      document.getElementById('stat-upcoming-cohorts')!.textContent = upcomingCohorts.toString();
+
+      // Calculate total students across all cohorts
+      const totalStudents = allCohorts.reduce((sum, cohort) => {
+        return sum + (cohort.enrollments?.[0]?.count || 0);
+      }, 0);
+      document.getElementById('stat-total-students')!.textContent = totalStudents.toString();
+    }
+
+    function showCohortModal() {
+      editingCohort = null;
+      document.getElementById('cohort-modal-title')!.textContent = 'Create Cohort';
+      document.getElementById('cohort-submit-btn')!.textContent = 'Create Cohort';
+      (document.getElementById('cohort-form') as HTMLFormElement).reset();
+      (document.getElementById('cohort-id') as HTMLInputElement).value = '';
+      (document.getElementById('cohort-max-students') as HTMLInputElement).value = '50';
+      document.getElementById('cohort-modal')?.classList.remove('hidden');
+    }
+
+    function closeCohortModal() {
+      document.getElementById('cohort-modal')?.classList.add('hidden');
+      editingCohort = null;
+    }
+
+    function editCohort(id: number) {
+      editingCohort = allCohorts.find(c => c.id === id);
+      if (!editingCohort) return;
+
+      document.getElementById('cohort-modal-title')!.textContent = 'Edit Cohort';
+      document.getElementById('cohort-submit-btn')!.textContent = 'Update Cohort';
+
+      (document.getElementById('cohort-id') as HTMLInputElement).value = editingCohort.id.toString();
+      (document.getElementById('cohort-course') as HTMLSelectElement).value = editingCohort.course_id.toString();
+      (document.getElementById('cohort-name') as HTMLInputElement).value = editingCohort.name;
+      (document.getElementById('cohort-start-date') as HTMLInputElement).value = editingCohort.start_date;
+      (document.getElementById('cohort-end-date') as HTMLInputElement).value = editingCohort.end_date || '';
+      (document.getElementById('cohort-max-students') as HTMLInputElement).value = editingCohort.max_students.toString();
+      (document.getElementById('cohort-status') as HTMLSelectElement).value = editingCohort.status;
+
+      document.getElementById('cohort-modal')?.classList.remove('hidden');
+    }
+
+    async function handleCohortSubmit(e: Event) {
+      e.preventDefault();
+
+      const cohortId = (document.getElementById('cohort-id') as HTMLInputElement).value;
+      const cohortData = {
+        course_id: parseInt((document.getElementById('cohort-course') as HTMLSelectElement).value),
+        name: (document.getElementById('cohort-name') as HTMLInputElement).value,
+        start_date: (document.getElementById('cohort-start-date') as HTMLInputElement).value,
+        end_date: (document.getElementById('cohort-end-date') as HTMLInputElement).value || null,
+        max_students: parseInt((document.getElementById('cohort-max-students') as HTMLInputElement).value),
+        status: (document.getElementById('cohort-status') as HTMLSelectElement).value,
+        created_by: editingCohort?.created_by || currentUser.id
+      };
+
+      let result;
+      if (cohortId) {
+        // Update existing cohort
+        result = await supabase
+          .from('cohorts')
+          .update(cohortData)
+          .eq('id', parseInt(cohortId))
+          .select()
+          .single();
+      } else {
+        // Create new cohort
+        result = await supabase
+          .from('cohorts')
+          .insert([cohortData])
+          .select()
+          .single();
+      }
+
+      if (result.error) {
+        showToast('Error saving cohort: ' + result.error.message, 'error');
+        return;
+      }
+
+      showToast(cohortId ? 'Cohort updated successfully!' : 'Cohort created successfully!', 'success');
+      closeCohortModal();
+      await loadCohorts();
+    }
+
+    function deleteCohort(id: number) {
+      const cohort = allCohorts.find(c => c.id === id);
+      if (!cohort) return;
+
+      showConfirm({
+        title: 'Delete Cohort',
+        message: `Are you sure you want to delete "${cohort.name}"? This action cannot be undone.`,
+        confirmText: 'Delete',
+        confirmClass: 'btn-error',
+        onConfirm: async () => {
+          const { error } = await supabase
+            .from('cohorts')
+            .delete()
+            .eq('id', id);
+
+          if (error) {
+            showToast('Error deleting cohort: ' + error.message, 'error');
+            return;
+          }
+
+          showToast('Cohort deleted successfully!', 'success');
+          await loadCohorts();
+        }
+      });
+    }
+
+    async function openStudentsModal(cohortId: number) {
+      currentCohortStudents = allCohorts.find(c => c.id === cohortId);
+      if (!currentCohortStudents) return;
+
+      document.getElementById('students-modal-title')!.textContent = `Students - ${currentCohortStudents.name}`;
+      document.getElementById('students-modal-subtitle')!.textContent = currentCohortStudents.courses?.name || 'Unknown Course';
+      document.getElementById('students-modal')?.classList.remove('hidden');
+
+      await loadStudents(cohortId);
+    }
+
+    function closeStudentsModal() {
+      document.getElementById('students-modal')?.classList.add('hidden');
+      currentCohortStudents = null;
+    }
+
+    async function loadStudents(cohortId: number) {
+      const loading = document.getElementById('students-loading');
+      const list = document.getElementById('students-list');
+      const empty = document.getElementById('students-empty');
+
+      loading?.classList.remove('hidden');
+      list?.classList.add('hidden');
+      empty?.classList.add('hidden');
+
+      const { data, error } = await supabase
+        .from('enrollments')
+        .select(`
+          *,
+          applications!inner(name, email, user_id)
+        `)
+        .eq('cohort_id', cohortId)
+        .order('enrolled_at', { ascending: false });
+
+      loading?.classList.add('hidden');
+
+      if (error) {
+        console.error('Error loading students:', error);
+        showToast('Failed to load students', 'error');
+        empty?.classList.remove('hidden');
+        return;
+      }
+
+      const students = data || [];
+
+      if (students.length === 0) {
+        empty?.classList.remove('hidden');
+        return;
+      }
+
+      list!.innerHTML = students.map(enrollment => {
+        const student = enrollment.applications;
+        return `
+          <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
+            <div class="flex items-center gap-3 flex-1 min-w-0">
+              <div class="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                <span>👤</span>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="font-medium truncate">${student.name}</p>
+                <p class="text-xs text-text-muted truncate">${student.email}</p>
+              </div>
+            </div>
+            <button class="btn btn-sm btn-error remove-student-btn" data-enrollment-id="${enrollment.id}" data-name="${student.name}">
+              Remove
+            </button>
+          </div>
+        `;
+      }).join('');
+
+      list?.classList.remove('hidden');
+
+      // Add event listeners for remove buttons
+      document.querySelectorAll('.remove-student-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const enrollmentId = parseInt((btn as HTMLElement).getAttribute('data-enrollment-id')!);
+          const studentName = (btn as HTMLElement).getAttribute('data-name');
+
+          showConfirm({
+            title: 'Remove Student',
+            message: `Are you sure you want to remove ${studentName} from this cohort?`,
+            confirmText: 'Remove',
+            confirmClass: 'btn-error',
+            onConfirm: async () => {
+              const { error } = await supabase
+                .from('enrollments')
+                .delete()
+                .eq('id', enrollmentId);
+
+              if (error) {
+                showToast('Failed to remove student: ' + error.message, 'error');
+                return;
+              }
+
+              showToast('Student removed successfully!', 'success');
+              await loadStudents(cohortId);
+              await loadCohorts(); // Refresh cohort counts
+            }
+          });
+        });
+      });
+    }
+
+    async function handleAddStudent(e: Event) {
+      e.preventDefault();
+      if (!currentCohortStudents) return;
+
+      const email = (document.getElementById('student-email') as HTMLInputElement).value.trim();
+
+      // Find user by email
+      const { data: userData, error: userError } = await supabase
+        .from('applications')
+        .select('user_id, name')
+        .eq('email', email)
+        .single();
+
+      if (userError || !userData) {
+        showToast('No user found with this email address', 'error');
+        return;
+      }
+
+      // Check if already enrolled
+      const { data: existing } = await supabase
+        .from('enrollments')
+        .select('id')
+        .eq('cohort_id', currentCohortStudents.id)
+        .eq('user_id', userData.user_id)
+        .single();
+
+      if (existing) {
+        showToast('This student is already enrolled in this cohort', 'error');
+        return;
+      }
+
+      // Add enrollment
+      const { error: enrollError } = await supabase
+        .from('enrollments')
+        .insert([{
+          cohort_id: currentCohortStudents.id,
+          user_id: userData.user_id,
+          status: 'active',
+          enrolled_at: new Date().toISOString()
+        }]);
+
+      if (enrollError) {
+        showToast('Failed to add student: ' + enrollError.message, 'error');
+        return;
+      }
+
+      (document.getElementById('student-email') as HTMLInputElement).value = '';
+      showToast(`${userData.name} has been added to the cohort!`, 'success');
+      await loadStudents(currentCohortStudents.id);
+      await loadCohorts(); // Refresh cohort counts
+    }
+
+    function formatDate(dateStr: string): string {
+      return new Date(dateStr).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    }
+
+    function getCohortStatusColor(status: string): string {
+      const colors: Record<string, string> = {
+        'upcoming': 'bg-blue-500/10 text-blue-500',
+        'active': 'bg-green-500/10 text-green-500',
+        'completed': 'bg-gray-500/10 text-gray-500',
+        'archived': 'bg-orange-500/10 text-orange-500'
+      };
+      return colors[status] || 'bg-gray-500/10 text-gray-500';
+    }
+
+    async function init() {
+      const hasAccess = await checkAdminAccess();
+      if (!hasAccess) return;
+
+      await Promise.all([
+        loadCourses(),
+        loadCohorts()
+      ]);
+
+      document.getElementById('loading-state')?.classList.add('hidden');
+      document.getElementById('main-content')?.classList.remove('hidden');
+
+      setupEventListeners();
+    }
+
+    function setupEventListeners() {
+      // Filter buttons
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const filter = (btn as HTMLElement).getAttribute('data-filter')!;
+          applyFilter(filter);
+        });
+      });
+
+      // Create cohort
+      document.getElementById('create-cohort-btn')?.addEventListener('click', showCohortModal);
+      document.getElementById('close-cohort-modal')?.addEventListener('click', closeCohortModal);
+      document.getElementById('cancel-cohort-modal')?.addEventListener('click', closeCohortModal);
+      document.getElementById('cohort-form')?.addEventListener('submit', handleCohortSubmit);
+
+      // Students modal
+      document.getElementById('close-students-modal')?.addEventListener('click', closeStudentsModal);
+      document.getElementById('add-student-form')?.addEventListener('submit', handleAddStudent);
+
+      // Logout
+      document.getElementById('logout-btn')?.addEventListener('click', async () => {
+        await supabase.auth.signOut();
+        window.location.href = '/login';
+      });
+    }
+
+    // Initialize
+    init();
+  </script>
+
+  <style is:global>
+    .filter-btn {
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.2s;
+      border: 1px solid var(--border);
+      background: white;
+      color: var(--text-muted);
+    }
+
+    .filter-btn:hover {
+      background: var(--surface-hover);
+      color: var(--text);
+    }
+
+    .filter-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .filter-btn.active:hover {
+      background: var(--primary);
+      color: white;
+    }
+  </style>
+</BaseLayout>

@@ -1,0 +1,406 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Admin Dashboard - C4C Campus" hideHeader={true} hideFooter={true}>
+  <div class="min-h-screen bg-background">
+    <!-- Admin Header -->
+    <div class="sticky top-0 z-50 bg-surface border-b border-border">
+      <div class="container mx-auto px-4 py-4">
+        <div class="flex items-center justify-between gap-4">
+          <div class="flex items-center gap-4 flex-1">
+            <a href="/admin/dashboard" class="flex-shrink-0">
+              <img src="/logo.jpeg" alt="C4C Campus" class="h-10 w-10 rounded-lg" />
+            </a>
+            <div>
+              <h1 class="text-xl sm:text-2xl font-bold">Admin Dashboard</h1>
+              <p class="text-text-muted text-sm" id="welcome-text">Platform Administration</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <a href="/admin/users" class="btn btn-ghost btn-sm">Users</a>
+            <a href="/admin/cohorts" class="btn btn-ghost btn-sm">Cohorts</a>
+            <a href="/admin/applications" class="btn btn-ghost btn-sm">Applications</a>
+            <a href="/admin/applications-review" class="btn btn-primary btn-sm">Review Queue</a>
+            <a href="/admin/analytics" class="btn btn-ghost btn-sm">Analytics</a>
+            <button id="logout-btn" class="btn btn-ghost text-sm">
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loading-state" class="container mx-auto px-4 py-12">
+      <div class="text-center">
+        <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+        <p class="mt-4 text-text-muted">Loading dashboard...</p>
+      </div>
+    </div>
+
+    <!-- Access Denied State -->
+    <div id="access-denied" class="hidden container mx-auto px-4 py-12">
+      <div class="max-w-md mx-auto text-center">
+        <div class="card">
+          <h2 class="text-2xl font-bold mb-4">Access Denied</h2>
+          <p class="text-text-muted mb-6">You need admin privileges to access this page.</p>
+          <a href="/dashboard" class="btn btn-primary">
+            Go to Dashboard
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dashboard Content -->
+    <div id="dashboard-content" class="hidden">
+      <div class="container mx-auto px-4 py-8">
+        <!-- Overview Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <!-- Total Users -->
+          <div class="card">
+            <div class="flex items-center gap-3">
+              <div class="p-3 bg-blue-500/10 rounded-lg">
+                <span class="text-2xl">👥</span>
+              </div>
+              <div>
+                <p class="text-sm text-text-muted">Total Users</p>
+                <p class="text-2xl font-bold" id="stat-total-users">-</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pending Applications -->
+          <div class="card">
+            <div class="flex items-center gap-3">
+              <div class="p-3 bg-yellow-500/10 rounded-lg">
+                <span class="text-2xl">📋</span>
+              </div>
+              <div>
+                <p class="text-sm text-text-muted">Pending Applications</p>
+                <p class="text-2xl font-bold" id="stat-pending-apps">-</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Total Courses -->
+          <div class="card">
+            <div class="flex items-center gap-3">
+              <div class="p-3 bg-green-500/10 rounded-lg">
+                <span class="text-2xl">📚</span>
+              </div>
+              <div>
+                <p class="text-sm text-text-muted">Total Courses</p>
+                <p class="text-2xl font-bold" id="stat-total-courses">-</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Active Cohorts -->
+          <div class="card">
+            <div class="flex items-center gap-3">
+              <div class="p-3 bg-purple-500/10 rounded-lg">
+                <span class="text-2xl">🎓</span>
+              </div>
+              <div>
+                <p class="text-sm text-text-muted">Active Cohorts</p>
+                <p class="text-2xl font-bold" id="stat-active-cohorts">-</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <!-- Review Queue -->
+          <div class="card">
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-xl font-bold">Your Review Queue</h2>
+              <span class="px-2 py-1 bg-yellow-500/10 text-yellow-500 rounded text-sm font-semibold" id="my-queue-count">0</span>
+            </div>
+            <div id="review-queue-loading" class="text-center py-8">
+              <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
+            </div>
+            <div id="review-queue-list" class="hidden space-y-3">
+              <!-- Review queue will be inserted here -->
+            </div>
+            <div id="review-queue-empty" class="hidden text-center py-8 text-text-muted">
+              <p>No applications assigned to you</p>
+            </div>
+            <a href="/admin/applications-review?reviewer=me" class="btn btn-primary btn-sm mt-4 w-full">Go to Review Queue</a>
+          </div>
+
+          <!-- Recent Applications -->
+          <div class="card">
+            <h2 class="text-xl font-bold mb-4">Recent Applications</h2>
+            <div id="recent-apps-loading" class="text-center py-8">
+              <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
+            </div>
+            <div id="recent-apps-list" class="hidden space-y-3">
+              <!-- Recent applications will be inserted here -->
+            </div>
+            <div id="recent-apps-empty" class="hidden text-center py-8 text-text-muted">
+              <p>No recent applications</p>
+            </div>
+            <a href="/admin/applications" class="btn btn-secondary btn-sm mt-4 w-full">View All Applications</a>
+          </div>
+
+          <!-- System Health -->
+          <div class="card">
+            <h2 class="text-xl font-bold mb-4">System Health</h2>
+            <div class="space-y-4">
+              <div>
+                <div class="flex justify-between items-center mb-2">
+                  <span class="text-sm text-text-muted">Database Status</span>
+                  <span class="text-sm font-semibold text-green-500" id="db-status">Checking...</span>
+                </div>
+                <div class="w-full bg-surface-hover rounded-full h-2">
+                  <div class="bg-green-500 h-2 rounded-full" id="db-health-bar" style="width: 0%"></div>
+                </div>
+              </div>
+
+              <div>
+                <div class="flex justify-between items-center mb-2">
+                  <span class="text-sm text-text-muted">Storage Used</span>
+                  <span class="text-sm font-semibold" id="storage-used">-</span>
+                </div>
+                <div class="w-full bg-surface-hover rounded-full h-2">
+                  <div class="bg-blue-500 h-2 rounded-full" id="storage-bar" style="width: 0%"></div>
+                </div>
+              </div>
+
+              <div>
+                <div class="flex justify-between items-center mb-2">
+                  <span class="text-sm text-text-muted">RLS Policies</span>
+                  <span class="text-sm font-semibold text-green-500" id="rls-status">Active</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card">
+          <h2 class="text-xl font-bold mb-4">Quick Actions</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <a href="/admin/applications-review" class="btn btn-primary">
+              Review Queue
+            </a>
+            <a href="/admin/users" class="btn btn-secondary">
+              Manage Users
+            </a>
+            <a href="/admin/applications" class="btn btn-secondary">
+              All Applications
+            </a>
+            <a href="/admin/analytics" class="btn btn-secondary">
+              View Analytics
+            </a>
+            <button id="refresh-stats-btn" class="btn btn-ghost">
+              Refresh Stats
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    import { supabase } from '../../lib/supabase';
+
+    let currentUser: any = null;
+    let isAdmin = false;
+
+    async function checkAdminAccess() {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        window.location.href = '/login';
+        return false;
+      }
+
+      currentUser = session.user;
+
+      // Check if user has admin role
+      const { data: application } = await supabase
+        .from('applications')
+        .select('role')
+        .eq('user_id', currentUser.id)
+        .single();
+
+      if (!application || application.role !== 'admin') {
+        document.getElementById('loading-state')?.classList.add('hidden');
+        document.getElementById('access-denied')?.classList.remove('hidden');
+        return false;
+      }
+
+      isAdmin = true;
+      return true;
+    }
+
+    async function loadDashboardStats() {
+      try {
+        // Load overview statistics
+        const [usersResult, appsResult, coursesResult, cohortsResult] = await Promise.all([
+          // Total users (count applications)
+          supabase.from('applications').select('id', { count: 'exact', head: true }),
+          // Pending applications
+          supabase.from('applications').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+          // Total courses
+          supabase.from('courses').select('id', { count: 'exact', head: true }),
+          // Active cohorts
+          supabase.from('cohorts').select('id', { count: 'exact', head: true }).eq('status', 'active')
+        ]);
+
+        document.getElementById('stat-total-users')!.textContent = usersResult.count?.toString() || '0';
+        document.getElementById('stat-pending-apps')!.textContent = appsResult.count?.toString() || '0';
+        document.getElementById('stat-total-courses')!.textContent = coursesResult.count?.toString() || '0';
+        document.getElementById('stat-active-cohorts')!.textContent = cohortsResult.count?.toString() || '0';
+
+        // Update system health
+        document.getElementById('db-status')!.textContent = 'Connected';
+        document.getElementById('db-health-bar')!.style.width = '100%';
+        document.getElementById('storage-used')!.textContent = 'N/A';
+        document.getElementById('storage-bar')!.style.width = '0%';
+
+      } catch (error) {
+        console.error('Error loading stats:', error);
+        document.getElementById('db-status')!.textContent = 'Error';
+        document.getElementById('db-status')!.classList.remove('text-green-500');
+        document.getElementById('db-status')!.classList.add('text-red-500');
+      }
+    }
+
+    async function loadReviewQueue() {
+      const loadingEl = document.getElementById('review-queue-loading');
+      const listEl = document.getElementById('review-queue-list');
+      const emptyEl = document.getElementById('review-queue-empty');
+      const countEl = document.getElementById('my-queue-count');
+
+      try {
+        const { data: applications, error } = await supabase
+          .from('applications')
+          .select('id, name, email, program, status, created_at, assignment_date')
+          .eq('assigned_reviewer_id', currentUser.id)
+          .eq('status', 'pending')
+          .order('assignment_date', { ascending: true })
+          .limit(5);
+
+        loadingEl?.classList.add('hidden');
+
+        const count = applications?.length || 0;
+        countEl!.textContent = count.toString();
+
+        if (!applications || applications.length === 0) {
+          emptyEl?.classList.remove('hidden');
+          return;
+        }
+
+        listEl!.innerHTML = applications.map(app => {
+          const daysWaiting = Math.floor((Date.now() - new Date(app.assignment_date).getTime()) / (1000 * 60 * 60 * 24));
+          const urgencyColor = daysWaiting > 3 ? 'text-red-500' : daysWaiting > 1 ? 'text-yellow-500' : 'text-gray-500';
+
+          return `
+            <div class="border border-border rounded-lg p-3 hover:border-primary transition-colors">
+              <a href="/admin/applications-review?highlight=${app.id}" class="block">
+                <div class="flex items-start justify-between">
+                  <div class="flex-1">
+                    <p class="font-semibold">${app.name}</p>
+                    <p class="text-sm text-text-muted">${app.email}</p>
+                    <div class="flex gap-2 mt-1">
+                      <span class="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded">${app.program}</span>
+                      <span class="text-xs ${urgencyColor}">Assigned ${daysWaiting}d ago</span>
+                    </div>
+                  </div>
+                  <span class="text-primary text-sm">Review →</span>
+                </div>
+              </a>
+            </div>
+          `;
+        }).join('');
+
+        listEl?.classList.remove('hidden');
+
+      } catch (error) {
+        console.error('Error loading review queue:', error);
+        loadingEl?.classList.add('hidden');
+        emptyEl?.classList.remove('hidden');
+      }
+    }
+
+    async function loadRecentApplications() {
+      const loadingEl = document.getElementById('recent-apps-loading');
+      const listEl = document.getElementById('recent-apps-list');
+      const emptyEl = document.getElementById('recent-apps-empty');
+
+      try {
+        const { data: applications, error } = await supabase
+          .from('applications')
+          .select('id, name, email, status, created_at')
+          .order('created_at', { ascending: false })
+          .limit(5);
+
+        loadingEl?.classList.add('hidden');
+
+        if (!applications || applications.length === 0) {
+          emptyEl?.classList.remove('hidden');
+          return;
+        }
+
+        listEl!.innerHTML = applications.map(app => {
+          const statusColor = app.status === 'pending' ? 'bg-yellow-500/10 text-yellow-500' :
+                              app.status === 'approved' ? 'bg-green-500/10 text-green-500' :
+                              'bg-red-500/10 text-red-500';
+
+          return `
+            <div class="border border-border rounded-lg p-3">
+              <div class="flex items-start justify-between">
+                <div>
+                  <p class="font-semibold">${app.name}</p>
+                  <p class="text-sm text-text-muted">${app.email}</p>
+                  <p class="text-xs text-text-muted mt-1">${new Date(app.created_at).toLocaleDateString()}</p>
+                </div>
+                <span class="px-2 py-1 rounded text-xs font-medium ${statusColor}">
+                  ${app.status}
+                </span>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        listEl?.classList.remove('hidden');
+
+      } catch (error) {
+        console.error('Error loading recent applications:', error);
+        loadingEl?.classList.add('hidden');
+        emptyEl?.classList.remove('hidden');
+      }
+    }
+
+    async function initDashboard() {
+      const hasAccess = await checkAdminAccess();
+      if (!hasAccess) return;
+
+      document.getElementById('loading-state')?.classList.add('hidden');
+      document.getElementById('dashboard-content')?.classList.remove('hidden');
+
+      await Promise.all([
+        loadDashboardStats(),
+        loadReviewQueue(),
+        loadRecentApplications()
+      ]);
+    }
+
+    // Event listeners
+    document.getElementById('logout-btn')?.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = '/login';
+    });
+
+    document.getElementById('refresh-stats-btn')?.addEventListener('click', async () => {
+      await loadDashboardStats();
+    });
+
+    // Initialize
+    initDashboard();
+  </script>
+</BaseLayout>

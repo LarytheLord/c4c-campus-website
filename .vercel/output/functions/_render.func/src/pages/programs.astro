@@ -1,0 +1,276 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="Programs - C4C Campus"
+  description="Weekend bootcamp, full-time accelerator, and global hackathons. Three ways to learn to engineer compassion - in Bengaluru or remotely from anywhere."
+>
+  <div class="section">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+      <!-- Hero -->
+      <div class="text-center mb-12">
+        <h1 class="text-5xl md:text-6xl font-black mb-6">
+          Our <span class="text-gradient">Programs</span>
+        </h1>
+        <p class="text-xl text-text-muted max-w-3xl mx-auto">
+          Three pathways to learn to engineer compassion and build AI tools for impact
+        </p>
+      </div>
+
+      <!-- Program Selection Cards -->
+      <div class="grid md:grid-cols-3 gap-6 mb-16 max-w-5xl mx-auto">
+        <button id="btn-bootcamp" class="program-btn card border-2 border-primary hover:shadow-xl transition-all text-left cursor-pointer">
+          <div class="text-4xl mb-3">📚</div>
+          <h2 class="text-2xl font-bold mb-2">Weekend Bootcamp</h2>
+          <p class="text-base text-text-muted mb-3">12 weeks, Saturdays, 2.5 hours. No technical skills required.</p>
+          <div class="text-lg font-bold text-primary mb-3">200 graduates/year</div>
+          <div class="text-sm font-bold text-primary">Click for details →</div>
+        </button>
+
+        <button id="btn-hackathons" class="program-btn card border-2 border-info hover:shadow-xl transition-all text-left cursor-pointer">
+          <div class="text-4xl mb-3">⚡</div>
+          <h2 class="text-2xl font-bold mb-2">Global Hackathons</h2>
+          <p class="text-base text-text-muted mb-3">Global events worldwide. All skill levels welcome.</p>
+          <div class="text-lg font-bold text-info mb-3">Year-round</div>
+          <div class="text-sm font-bold text-info">Click for details →</div>
+        </button>
+
+        <button id="btn-accelerator" class="program-btn card border-2 border-accent hover:shadow-xl transition-all text-left cursor-pointer">
+          <div class="text-4xl mb-3">🚀</div>
+          <h2 class="text-2xl font-bold mb-2">Full-Time Accelerator</h2>
+          <p class="text-base text-text-muted mb-3">12 weeks: 8 remote + 2x2 in-person. Take your prototype to production.</p>
+          <div class="text-lg font-bold text-accent mb-3">200 developers/year</div>
+          <div class="text-sm font-bold text-accent">Click for details →</div>
+        </button>
+      </div>
+
+      <!-- Weekend Bootcamp -->
+      <div id="bootcamp" class="program-detail mb-16 max-w-4xl mx-auto hidden">
+        <div class="card border-t-4 border-primary">
+          <div class="text-5xl mb-4">📚</div>
+          <h2 class="text-3xl font-bold mb-4">Weekend Bootcamp</h2>
+          <p class="text-lg text-text-muted mb-6">
+            Learn no-code/low-code AI development over 12 weeks (Saturdays, 2.5 hours each). No technical skills required.
+          </p>
+
+          <div class="grid md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <h3 class="font-bold mb-3">What You'll Learn</h3>
+              <ul class="text-sm text-text-muted space-y-2">
+                <li>→ No-code/low-code workflow automation</li>
+                <li>→ Google Colab for AI projects</li>
+                <li>→ AI-assisted coding basics</li>
+                <li>→ Engineering compassion principles</li>
+                <li>→ Build 2-3 real tools</li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 class="font-bold mb-3">Details</h3>
+              <ul class="text-sm text-text-muted space-y-2">
+                <li>→ <strong>Duration:</strong> 12 weeks, Saturdays</li>
+                <li>→ <strong>Time:</strong> 2.5 hours each session</li>
+                <li>→ <strong>Location:</strong> Bengaluru (in-person) or remote</li>
+                <li>→ <strong>Cost:</strong> <span class="line-through">₹25,000</span> <span class="text-primary font-bold">FREE</span> for signups before Nov 15</li>
+                <li>→ <strong>Graduates/year:</strong> 200</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="bg-surface p-4 rounded-lg mb-6">
+            <p class="text-sm text-text-muted mb-3">
+              <strong>Who it's for:</strong> Anyone interested in building compassionate AI.
+              No technical skills required - just curiosity and commitment.
+            </p>
+            <p class="text-sm text-text-muted">
+              <strong>Full scholarships available</strong> for Scheduled Castes (SCs), Other Backward Classes (OBCs), Economically Weaker Sections (EWS), Denotified Tribes (DNTs), and the Transgender community.
+            </p>
+          </div>
+
+          <a href="/apply#bootcamp" class="btn btn-primary btn-lg">Apply to Bootcamp</a>
+        </div>
+      </div>
+
+      <!-- Full-Time Accelerator -->
+      <div id="incubator" class="program-detail mb-16 max-w-4xl mx-auto hidden">
+        <div class="card border-t-4 border-accent">
+          <div class="text-5xl mb-4">🚀</div>
+          <h2 class="text-3xl font-bold mb-4">Full-Time Accelerator</h2>
+          <p class="text-lg text-text-muted mb-6">
+            Already have a prototype? Get 12 weeks of intensive support to take it to production with mentorship, deployment support, and connections to organizations who need your tool.
+          </p>
+
+          <div class="grid md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <h3 class="font-bold mb-3">What You'll Get</h3>
+              <ul class="text-sm text-text-muted space-y-2">
+                <li>→ Code review & architecture guidance</li>
+                <li>→ Production deployment support</li>
+                <li>→ Technical mentorship from Open Paws & Electric Sheep</li>
+                <li>→ Connections to orgs who need your tool</li>
+                <li>→ Ongoing support after program</li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 class="font-bold mb-3">Details</h3>
+              <ul class="text-sm text-text-muted space-y-2">
+                <li>→ <strong>Duration:</strong> 12 weeks (8 weeks remote + 2x2 weeks in-person)</li>
+                <li>→ <strong>Location:</strong> Remote + in-person sessions in Bengaluru</li>
+                <li>→ <strong>We provide:</strong> Living costs and accommodation covered for the duration</li>
+                <li>→ <strong>Developers/year:</strong> 200</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="bg-surface p-4 rounded-lg mb-6">
+            <p class="text-sm text-text-muted">
+              <strong>Who it's for:</strong> Developers with an existing prototype or MVP. Must have technical background and a clear idea of the tool you're building. Priority to bootcamp graduates and hackathon winners.
+            </p>
+          </div>
+
+          <a href="/apply#incubator" class="btn btn-accent btn-lg">Apply to Accelerator</a>
+        </div>
+      </div>
+
+      <!-- Global Hackathons -->
+      <div id="hackathons" class="program-detail mb-16 max-w-4xl mx-auto hidden">
+        <div class="card border-t-4 border-info">
+          <div class="text-5xl mb-4">⚡</div>
+          <h2 class="text-3xl font-bold mb-4">Global Hackathons</h2>
+          <p class="text-lg text-text-muted mb-6">
+            Year-round community events around the world. Build tools, demo at movement events, and connect with developers globally.
+          </p>
+
+          <div class="grid md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <h3 class="font-bold mb-3">What Happens</h3>
+              <ul class="text-sm text-text-muted space-y-2">
+                <li>→ 1-month activation period</li>
+                <li>→ Form teams and build</li>
+                <li>→ Demo at movement events</li>
+                <li>→ Get feedback from orgs</li>
+                <li>→ Top teams → accelerator</li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 class="font-bold mb-3">Details</h3>
+              <ul class="text-sm text-text-muted space-y-2">
+                <li>→ <strong>Schedule:</strong> Year-round global events</li>
+                <li>→ <strong>Previous locations:</strong> London, Silicon Valley, Washington DC, Berlin, Mumbai</li>
+                <li>→ <strong>Cost:</strong> Free</li>
+                <li>→ <strong>Participants:</strong> Open to all</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="bg-surface p-4 rounded-lg mb-6">
+            <p class="text-sm text-text-muted">
+              <strong>Who it's for:</strong> Anyone! Bootcamp graduates, accelerator alumni, or
+              new participants. All skill levels welcome. Join us at our global events.
+            </p>
+          </div>
+
+          <a href="/apply#hackathon" class="btn btn-info btn-lg">Register for Next Hackathon</a>
+        </div>
+      </div>
+
+      <!-- CTA -->
+      <div class="text-center card bg-gradient-to-br from-primary/10 to-accent/10 border-2 border-primary max-w-3xl mx-auto">
+        <h2 class="text-2xl font-bold mb-4">Ready to Start?</h2>
+        <p class="text-text-muted mb-6">
+          Choose the program that fits your schedule and experience level
+        </p>
+        <a href="/apply" class="btn btn-primary btn-lg">Apply Now</a>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .program-btn.active-program {
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+      transform: scale(1.02) !important;
+    }
+
+    #btn-bootcamp.active-program {
+      background: linear-gradient(to bottom right, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.05)) !important;
+      border-color: rgb(59, 130, 246) !important;
+      border-width: 3px !important;
+    }
+
+    #btn-hackathons.active-program {
+      background: linear-gradient(to bottom right, rgba(34, 211, 238, 0.15), rgba(34, 211, 238, 0.05)) !important;
+      border-color: rgb(34, 211, 238) !important;
+      border-width: 3px !important;
+    }
+
+    #btn-accelerator.active-program {
+      background: linear-gradient(to bottom right, rgba(251, 146, 60, 0.15), rgba(251, 146, 60, 0.05)) !important;
+      border-color: rgb(251, 146, 60) !important;
+      border-width: 3px !important;
+    }
+  </style>
+
+  <script>
+    // Program selection functionality
+    const programBtns = document.querySelectorAll('.program-btn');
+    const programDetails = document.querySelectorAll('.program-detail');
+
+    function showProgram(programId: string, shouldScroll = true) {
+      // Hide all program details
+      programDetails.forEach(detail => detail.classList.add('hidden'));
+
+      // Remove active state from all buttons
+      programBtns.forEach(btn => {
+        btn.classList.remove('active-program');
+      });
+
+      // Show selected program
+      const selectedProgram = document.getElementById(programId);
+      if (selectedProgram) {
+        selectedProgram.classList.remove('hidden');
+        if (shouldScroll) {
+          // Scroll with offset to account for sticky header (64px + 16px padding)
+          const headerOffset = 80;
+          const elementPosition = selectedProgram.getBoundingClientRect().top;
+          const offsetPosition = elementPosition + window.scrollY - headerOffset;
+
+          window.scrollTo({
+            top: offsetPosition,
+            behavior: 'smooth'
+          });
+        }
+      }
+
+      // Highlight selected button - handle incubator/accelerator alias
+      const buttonId = programId === 'incubator' ? 'btn-accelerator' : `btn-${programId}`;
+      const selectedBtn = document.getElementById(buttonId);
+      if (selectedBtn) {
+        selectedBtn.classList.add('active-program');
+      }
+    }
+
+    // Add click handlers
+    document.getElementById('btn-bootcamp')?.addEventListener('click', () => showProgram('bootcamp'));
+    document.getElementById('btn-hackathons')?.addEventListener('click', () => showProgram('hackathons'));
+    document.getElementById('btn-accelerator')?.addEventListener('click', () => showProgram('incubator'));
+
+    // Check if there's a hash in the URL and show that program
+    const hash = window.location.hash.substring(1); // Remove the #
+    const programMap: Record<string, string> = {
+      'bootcamp': 'bootcamp',
+      'hackathons': 'hackathons',
+      'incubator': 'incubator',
+      'accelerator': 'incubator'
+    };
+
+    if (hash && programMap[hash]) {
+      showProgram(programMap[hash], true);
+    } else {
+      // Show first program by default without scrolling
+      showProgram('bootcamp', false);
+    }
+  </script>
+</BaseLayout>

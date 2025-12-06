@@ -1,0 +1,1199 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Teacher Dashboard - C4C Campus" hideHeader={true} hideFooter={true}>
+  <div class="min-h-screen bg-background">
+    <!-- Teacher Header -->
+    <div class="sticky top-0 z-50 bg-white border-b border-border">
+      <div class="container mx-auto px-4 py-4">
+        <div class="flex items-center justify-between gap-4">
+          <div class="flex items-center gap-4 flex-1">
+            <a href="/teacher/courses" class="flex-shrink-0">
+              <img src="/logo.jpeg" alt="C4C Campus" class="h-10 w-10 rounded-lg" />
+            </a>
+            <div>
+              <h1 class="text-xl sm:text-2xl font-bold">Teacher Dashboard</h1>
+              <p class="text-text-muted text-sm" id="welcome-text">Welcome back!</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <!-- Navigation Links -->
+            <button id="quick-cohorts-btn" class="btn btn-secondary btn-sm">
+              👥 Cohorts
+            </button>
+            <a href="/teacher/progress" class="btn btn-primary btn-sm">
+              📊 Progress Dashboard
+            </a>
+            <a href="/courses" class="hidden sm:block btn btn-ghost btn-sm">Browse Courses</a>
+            <button id="logout-btn" class="btn btn-ghost text-sm">
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loading-state" class="container mx-auto px-4 py-12">
+      <div class="text-center">
+        <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+        <p class="mt-4 text-text-muted">Loading dashboard...</p>
+      </div>
+    </div>
+
+    <!-- Access Denied -->
+    <div id="access-denied" class="hidden container mx-auto px-4 py-12">
+      <div class="max-w-md mx-auto text-center">
+        <div class="card">
+          <h2 class="text-2xl font-bold mb-4">Access Denied</h2>
+          <p class="text-text-muted mb-6">You need teacher or admin privileges to access this page.</p>
+          <a href="/dashboard" class="btn btn-primary">
+            Go to Dashboard
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Teacher Content -->
+    <div id="teacher-content" class="hidden container mx-auto px-4 py-8">
+      <!-- Breadcrumbs -->
+      <nav class="mb-6 text-sm text-text-muted">
+        <a href="/dashboard" class="hover:text-primary transition-colors">Dashboard</a>
+        <span class="mx-2">/</span>
+        <span id="breadcrumb-current">My Courses</span>
+      </nav>
+
+      <!-- Stats Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="card">
+          <div class="flex items-center gap-3">
+            <div class="p-3 bg-primary/10 rounded-lg">
+              <span class="text-2xl">📚</span>
+            </div>
+            <div>
+              <p class="text-sm text-text-muted">My Courses</p>
+              <p class="text-2xl font-bold" id="stat-courses">0</p>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="flex items-center gap-3">
+            <div class="p-3 bg-green-500/10 rounded-lg">
+              <span class="text-2xl">✅</span>
+            </div>
+            <div>
+              <p class="text-sm text-text-muted">Published</p>
+              <p class="text-2xl font-bold" id="stat-published">0</p>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="flex items-center gap-3">
+            <div class="p-3 bg-blue-500/10 rounded-lg">
+              <span class="text-2xl">👥</span>
+            </div>
+            <div>
+              <p class="text-sm text-text-muted">Total Students</p>
+              <p class="text-2xl font-bold" id="stat-students">0</p>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="flex items-center gap-3">
+            <div class="p-3 bg-orange-500/10 rounded-lg">
+              <span class="text-2xl">📝</span>
+            </div>
+            <div>
+              <p class="text-sm text-text-muted">Drafts</p>
+              <p class="text-2xl font-bold" id="stat-drafts">0</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Navigation -->
+      <div class="mb-6">
+        <div class="border-b border-border">
+          <nav class="-mb-px flex gap-6 overflow-x-auto">
+            <button
+              id="tab-courses"
+              class="tab-button active py-4 px-1 border-b-2 border-primary font-medium text-primary whitespace-nowrap"
+              data-tab="courses"
+            >
+              My Courses
+            </button>
+            <button
+              id="tab-edit"
+              class="tab-button hidden py-4 px-1 border-b-2 border-transparent font-medium text-text-muted hover:text-text hover:border-gray-300 transition-colors whitespace-nowrap"
+              data-tab="edit"
+            >
+              Edit Course
+            </button>
+            <button
+              id="tab-cohorts"
+              class="tab-button py-4 px-1 border-b-2 border-transparent font-medium text-text-muted hover:text-text hover:border-gray-300 transition-colors whitespace-nowrap"
+              data-tab="cohorts"
+            >
+              Cohort Management
+            </button>
+          </nav>
+        </div>
+      </div>
+
+      <!-- Tab Content: My Courses -->
+      <div id="content-courses" class="tab-content">
+        <!-- Action Button -->
+        <div class="mb-6 flex justify-between items-center">
+          <h2 class="text-2xl font-bold">My Courses</h2>
+          <button id="create-course-btn" class="btn btn-primary">
+            Create New Course
+          </button>
+        </div>
+
+        <!-- Courses List -->
+        <div id="courses-loading" class="text-center py-12">
+          <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+          <p class="mt-4 text-text-muted">Loading courses...</p>
+        </div>
+
+        <div id="courses-grid" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <!-- Courses will be inserted here -->
+        </div>
+
+        <div id="courses-empty" class="hidden text-center py-12">
+          <div class="text-6xl mb-4">📚</div>
+          <h3 class="text-xl font-semibold mb-2">No courses yet</h3>
+          <p class="text-text-muted mb-4">Create your first course to get started!</p>
+          <button class="btn btn-primary" onclick="document.getElementById('create-course-btn').click()">
+            Create Your First Course
+          </button>
+        </div>
+      </div>
+
+      <!-- Tab Content: Edit Course -->
+      <div id="content-edit" class="tab-content hidden">
+        <div class="mb-6 flex justify-between items-center">
+          <div>
+            <h2 class="text-2xl font-bold" id="edit-course-title">Course Builder</h2>
+            <p class="text-text-muted text-sm">Build and organize your course content</p>
+          </div>
+          <button id="back-to-courses-btn" class="btn btn-ghost">
+            Back to Courses
+          </button>
+        </div>
+
+        <!-- Course Editor -->
+        <div class="card mb-6">
+          <h3 class="text-lg font-bold mb-4">Course Information</h3>
+          <form id="course-form" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium mb-2">Course Name*</label>
+              <input type="text" id="course-name" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" required />
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2">Description</label>
+              <textarea id="course-description" rows="3" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white"></textarea>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium mb-2">Track*</label>
+                <select id="course-track" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" required>
+                  <option value="">Select track</option>
+                  <option value="animal-advocacy">Animal Advocacy</option>
+                  <option value="climate">Climate</option>
+                  <option value="ai-safety">AI Safety</option>
+                  <option value="general">General</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium mb-2">Difficulty*</label>
+                <select id="course-difficulty" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" required>
+                  <option value="">Select difficulty</option>
+                  <option value="beginner">Beginner</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium mb-2">Estimated Hours</label>
+                <input type="number" id="course-hours" min="1" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium mb-2">URL Slug*</label>
+                <input type="text" id="course-slug" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" placeholder="e.g., intro-to-automation" required />
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <input type="checkbox" id="course-published" class="w-4 h-4" />
+              <label for="course-published" class="text-sm">Publish course (make visible to students)</label>
+            </div>
+
+            <div class="flex gap-3 pt-4">
+              <button type="submit" class="btn btn-primary">
+                Save Course
+              </button>
+              <button type="button" id="delete-course-btn" class="btn btn-error hidden">
+                Delete Course
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Modules Section -->
+        <div class="card">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold">Course Modules</h3>
+            <button id="add-module-btn" class="btn btn-secondary btn-sm">
+              Add Module
+            </button>
+          </div>
+          <div id="modules-list" class="space-y-4">
+            <p class="text-text-muted text-center py-8">No modules yet. Add your first module to start building content.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content: Cohort Management -->
+      <div id="content-cohorts" class="tab-content hidden">
+        <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h2 class="text-2xl font-bold">Cohort Management</h2>
+            <p class="text-text-muted text-sm">Create and manage time-gated learning cohorts</p>
+          </div>
+          <button id="create-cohort-btn" class="btn btn-primary flex items-center gap-2 shadow-lg hover:shadow-xl transition-shadow">
+            <span class="text-lg">➕</span>
+            <span>Create New Cohort</span>
+          </button>
+        </div>
+
+        <!-- Course Selection for Cohorts -->
+        <div class="card mb-6">
+          <label class="block text-sm font-medium mb-2">Select Course</label>
+          <select id="cohort-course-filter" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white">
+            <option value="">All Courses</option>
+          </select>
+        </div>
+
+        <!-- Cohorts List -->
+        <div id="cohorts-loading" class="text-center py-12">
+          <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+          <p class="mt-4 text-text-muted">Loading cohorts...</p>
+        </div>
+
+        <div id="cohorts-grid" class="hidden space-y-4">
+          <!-- Cohorts will be inserted here -->
+        </div>
+
+        <div id="cohorts-empty" class="hidden card text-center py-12 border-2 border-dashed border-border">
+          <div class="text-6xl mb-4">👥</div>
+          <h3 class="text-2xl font-bold mb-2">No cohorts yet</h3>
+          <p class="text-text-muted mb-6 max-w-md mx-auto">Create a cohort to enable time-gated learning for your students. Cohorts help you organize students and control when course content becomes available.</p>
+          <button class="btn btn-primary btn-lg shadow-lg hover:shadow-xl transition-shadow flex items-center gap-2 mx-auto" onclick="document.getElementById('create-cohort-btn').click()">
+            <span class="text-lg">➕</span>
+            <span>Create Your First Cohort</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create/Edit Course Modal -->
+    <div id="course-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-xl">
+        <div class="p-6">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-bold" id="modal-title">Create Course</h2>
+            <button id="close-modal" class="text-text-muted hover:text-text-primary">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+
+          <form id="quick-course-form" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium mb-2">Course Name*</label>
+              <input type="text" id="modal-course-name" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" required />
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2">Description</label>
+              <textarea id="modal-course-description" rows="3" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white"></textarea>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium mb-2">Track*</label>
+                <select id="modal-course-track" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" required>
+                  <option value="">Select track</option>
+                  <option value="animal-advocacy">Animal Advocacy</option>
+                  <option value="climate">Climate</option>
+                  <option value="ai-safety">AI Safety</option>
+                  <option value="general">General</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium mb-2">Difficulty*</label>
+                <select id="modal-course-difficulty" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" required>
+                  <option value="">Select difficulty</option>
+                  <option value="beginner">Beginner</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="flex gap-3 pt-4">
+              <button type="submit" class="btn btn-primary flex-1">
+                Create Course
+              </button>
+              <button type="button" id="cancel-modal" class="btn btn-ghost flex-1">
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notification Modal -->
+    <div id="notification-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-lg max-w-md w-full shadow-2xl animate-fade-in">
+        <div class="p-6">
+          <div class="flex items-start gap-4">
+            <div id="notification-icon" class="flex-shrink-0 text-4xl"></div>
+            <div class="flex-1">
+              <h3 id="notification-title" class="text-xl font-bold mb-2"></h3>
+              <p id="notification-message" class="text-text-muted"></p>
+            </div>
+          </div>
+          <div id="notification-actions" class="mt-6 flex gap-3"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input Modal -->
+    <div id="input-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-lg max-w-md w-full shadow-2xl animate-fade-in">
+        <div class="p-6">
+          <h3 id="input-title" class="text-xl font-bold mb-4"></h3>
+          <input type="text" id="input-field" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white mb-4" />
+          <div class="flex gap-3">
+            <button id="input-submit" class="btn btn-primary flex-1">Submit</button>
+            <button id="input-cancel" class="btn btn-ghost flex-1">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create Cohort Modal -->
+    <div id="cohort-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-xl">
+        <div class="p-6">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-bold">Create Cohort</h2>
+            <button id="close-cohort-modal" class="text-text-muted hover:text-text-primary">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+
+          <form id="cohort-form" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium mb-2">Course*</label>
+              <select id="cohort-course" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" required>
+                <option value="">Select a course</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2">Cohort Name*</label>
+              <input type="text" id="cohort-name" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" placeholder="e.g., Fall 2025 Cohort" required />
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium mb-2">Start Date*</label>
+                <input type="date" id="cohort-start-date" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" required />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium mb-2">End Date</label>
+                <input type="date" id="cohort-end-date" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" />
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2">Max Students</label>
+              <input type="number" id="cohort-max-students" min="1" value="50" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" />
+            </div>
+
+            <div class="flex gap-3 pt-4">
+              <button type="submit" class="btn btn-primary flex-1">
+                Create Cohort
+              </button>
+              <button type="button" id="cancel-cohort-modal" class="btn btn-ghost flex-1">
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    import { createClient } from '@supabase/supabase-js';
+
+    const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+    const supabase = createClient(supabaseUrl!, supabaseAnonKey!);
+
+    let currentUser: any = null;
+    let courses: any[] = [];
+    let cohorts: any[] = [];
+    let editingCourse: any = null;
+    let activeTab = 'courses';
+
+    // Modal helper functions
+    function showNotification(title: string, message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info', actions?: { label: string, onClick: () => void, primary?: boolean }[]) {
+      const modal = document.getElementById('notification-modal');
+      const icon = document.getElementById('notification-icon');
+      const titleEl = document.getElementById('notification-title');
+      const messageEl = document.getElementById('notification-message');
+      const actionsEl = document.getElementById('notification-actions');
+
+      const icons = {
+        success: '✅',
+        error: '❌',
+        info: 'ℹ️',
+        warning: '⚠️'
+      };
+
+      if (icon) icon.textContent = icons[type];
+      if (titleEl) titleEl.textContent = title;
+      if (messageEl) messageEl.textContent = message;
+
+      if (actionsEl) {
+        if (actions && actions.length > 0) {
+          actionsEl.innerHTML = actions.map(action =>
+            `<button class="${action.primary ? 'btn btn-primary' : 'btn btn-ghost'} flex-1 modal-action-btn">${action.label}</button>`
+          ).join('');
+
+          actionsEl.querySelectorAll('.modal-action-btn').forEach((btn, index) => {
+            btn.addEventListener('click', () => {
+              modal?.classList.add('hidden');
+              actions[index].onClick();
+            });
+          });
+        } else {
+          actionsEl.innerHTML = '<button class="btn btn-primary flex-1 modal-close-btn">OK</button>';
+          actionsEl.querySelector('.modal-close-btn')?.addEventListener('click', () => {
+            modal?.classList.add('hidden');
+          });
+        }
+      }
+
+      modal?.classList.remove('hidden');
+    }
+
+    function showConfirm(title: string, message: string, onConfirm: () => void, onCancel?: () => void) {
+      showNotification(title, message, 'warning', [
+        { label: 'Cancel', onClick: onCancel || (() => {}), primary: false },
+        { label: 'Confirm', onClick: onConfirm, primary: true }
+      ]);
+    }
+
+    function showPrompt(title: string, onSubmit: (value: string) => void) {
+      const modal = document.getElementById('input-modal');
+      const titleEl = document.getElementById('input-title');
+      const inputField = document.getElementById('input-field') as HTMLInputElement;
+      const submitBtn = document.getElementById('input-submit');
+      const cancelBtn = document.getElementById('input-cancel');
+
+      if (titleEl) titleEl.textContent = title;
+      if (inputField) inputField.value = '';
+
+      const handleSubmit = () => {
+        const value = inputField?.value.trim();
+        if (value) {
+          modal?.classList.add('hidden');
+          onSubmit(value);
+        }
+      };
+
+      const handleCancel = () => {
+        modal?.classList.add('hidden');
+      };
+
+      submitBtn?.replaceWith(submitBtn.cloneNode(true));
+      cancelBtn?.replaceWith(cancelBtn.cloneNode(true));
+
+      document.getElementById('input-submit')?.addEventListener('click', handleSubmit);
+      document.getElementById('input-cancel')?.addEventListener('click', handleCancel);
+
+      inputField?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleSubmit();
+      });
+
+      modal?.classList.remove('hidden');
+      inputField?.focus();
+    }
+
+    async function init() {
+      // Check authentication
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        window.location.href = '/login';
+        return;
+      }
+
+      currentUser = user;
+
+      // Load user application and verify role
+      const { data: application } = await supabase
+        .from('applications')
+        .select('name, role')
+        .eq('user_id', user.id)
+        .single();
+
+      // Check if user has teacher or admin role
+      if (!application?.role || (application.role !== 'teacher' && application.role !== 'admin')) {
+        document.getElementById('loading-state')?.classList.add('hidden');
+        document.getElementById('access-denied')?.classList.remove('hidden');
+        return;
+      }
+
+      if (application?.name) {
+        const firstName = application.name.split(' ')[0];
+        const welcomeText = document.getElementById('welcome-text');
+        if (welcomeText) {
+          welcomeText.textContent = `Welcome back, ${firstName}!`;
+        }
+      }
+
+      // Load courses and cohorts
+      await loadCourses();
+      await loadCohorts();
+
+      // Show content
+      document.getElementById('loading-state')?.classList.add('hidden');
+      document.getElementById('teacher-content')?.classList.remove('hidden');
+
+      setupEventListeners();
+    }
+
+    async function loadCourses() {
+      const loading = document.getElementById('courses-loading');
+      const grid = document.getElementById('courses-grid');
+      const empty = document.getElementById('courses-empty');
+
+      loading?.classList.remove('hidden');
+      grid?.classList.add('hidden');
+      empty?.classList.add('hidden');
+
+      // Fetch courses created by this teacher
+      const { data, error } = await supabase
+        .from('courses')
+        .select('*')
+        .eq('created_by', currentUser.id)
+        .order('created_at', { ascending: false });
+
+      loading?.classList.add('hidden');
+
+      if (error) {
+        console.error('Error loading courses:', error);
+        empty?.classList.remove('hidden');
+        return;
+      }
+
+      courses = data || [];
+
+      if (courses.length === 0) {
+        empty?.classList.remove('hidden');
+        updateStats(courses);
+        return;
+      }
+
+      // Render courses
+      grid!.innerHTML = courses.map(course => `
+        <div class="card hover:shadow-lg transition-shadow">
+          <div class="flex justify-between items-start mb-3">
+            <h3 class="text-lg font-bold">${course.title}</h3>
+            ${!course.is_published ? '<span class="text-xs px-2 py-1 bg-orange-500/10 text-orange-500 rounded">Draft</span>' : '<span class="text-xs px-2 py-1 bg-green-500/10 text-green-500 rounded">Published</span>'}
+          </div>
+          <p class="text-sm text-text-muted mb-3 line-clamp-2">${course.description || 'No description'}</p>
+          <div class="flex items-center gap-2 text-xs text-text-muted mb-4">
+            <span class="px-2 py-1 bg-primary/10 rounded">${formatTrack(course.track)}</span>
+            <span class="px-2 py-1 bg-primary/10 rounded">${formatDifficulty(course.difficulty)}</span>
+            ${course.default_duration_weeks ? `<span>${course.default_duration_weeks} weeks</span>` : ''}
+          </div>
+          <div class="flex gap-2">
+            <button class="btn btn-sm btn-primary flex-1 edit-course-tab" data-id="${course.id}">Edit</button>
+            <a href="/courses/${course.slug}" class="btn btn-sm btn-secondary">View</a>
+          </div>
+        </div>
+      `).join('');
+
+      grid?.classList.remove('hidden');
+      updateStats(courses);
+
+      // Populate course selects
+      populateCourseSelects();
+
+      // Add event listeners for edit buttons
+      grid?.querySelectorAll('.edit-course-tab').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const id = (btn as HTMLElement).getAttribute('data-id');
+          editCourseInTab(parseInt(id!));
+        });
+      });
+    }
+
+    async function loadCohorts() {
+      const loading = document.getElementById('cohorts-loading');
+      const grid = document.getElementById('cohorts-grid');
+      const empty = document.getElementById('cohorts-empty');
+
+      loading?.classList.remove('hidden');
+      grid?.classList.add('hidden');
+      empty?.classList.add('hidden');
+
+      // Fetch cohorts for teacher's courses
+      const courseIds = courses.map(c => c.id);
+
+      if (courseIds.length === 0) {
+        loading?.classList.add('hidden');
+        empty?.classList.remove('hidden');
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('cohorts')
+        .select('*, courses(name, slug)')
+        .in('course_id', courseIds)
+        .order('created_at', { ascending: false });
+
+      loading?.classList.add('hidden');
+
+      if (error) {
+        console.error('Error loading cohorts:', error);
+        empty?.classList.remove('hidden');
+        return;
+      }
+
+      cohorts = data || [];
+
+      if (cohorts.length === 0) {
+        empty?.classList.remove('hidden');
+        return;
+      }
+
+      // Render cohorts
+      grid!.innerHTML = cohorts.map(cohort => `
+        <div class="card hover:shadow-lg transition-all duration-300 border-2 hover:border-primary">
+          <div class="flex justify-between items-start mb-4">
+            <div class="flex-1">
+              <h3 class="text-xl font-bold mb-1">${cohort.name}</h3>
+              <p class="text-sm text-text-muted flex items-center gap-1">
+                <span>📚</span>
+                ${cohort.courses?.name || 'Unknown Course'}
+              </p>
+            </div>
+            <span class="text-xs px-3 py-1 rounded-full font-semibold ${getCohortStatusColor(cohort.status)}">${cohort.status.toUpperCase()}</span>
+          </div>
+          <div class="bg-surface-hover rounded-lg p-4 mb-4">
+            <div class="grid grid-cols-2 gap-3 text-sm">
+              <div class="flex items-center gap-2">
+                <span class="text-lg">📅</span>
+                <div>
+                  <p class="text-xs text-text-muted">Start Date</p>
+                  <p class="font-medium">${formatDate(cohort.start_date)}</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-lg">🏁</span>
+                <div>
+                  <p class="text-xs text-text-muted">End Date</p>
+                  <p class="font-medium">${cohort.end_date ? formatDate(cohort.end_date) : 'Ongoing'}</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-lg">👥</span>
+                <div>
+                  <p class="text-xs text-text-muted">Max Students</p>
+                  <p class="font-medium">${cohort.max_students}</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-lg">⚡</span>
+                <div>
+                  <p class="text-xs text-text-muted">Status</p>
+                  <p class="font-medium capitalize">${cohort.status}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <a href="/teacher/cohorts/${cohort.id}" class="btn btn-sm btn-primary flex-1 font-semibold">
+              Manage Cohort →
+            </a>
+            <button class="btn btn-sm btn-ghost delete-cohort hover:bg-red-50 hover:text-red-600" data-id="${cohort.id}">
+              🗑️ Delete
+            </button>
+          </div>
+        </div>
+      `).join('');
+
+      grid?.classList.remove('hidden');
+
+      // Add event listeners for delete buttons
+      grid?.querySelectorAll('.delete-cohort').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const id = (btn as HTMLElement).getAttribute('data-id');
+          showConfirm('Delete Cohort', 'Are you sure you want to delete this cohort?', async () => {
+            await deleteCohort(parseInt(id!));
+          });
+        });
+      });
+    }
+
+    function updateStats(courses: any[]) {
+      const published = courses.filter(c => c.published).length;
+      const drafts = courses.filter(c => !c.published).length;
+
+      document.getElementById('stat-courses')!.textContent = courses.length.toString();
+      document.getElementById('stat-published')!.textContent = published.toString();
+      document.getElementById('stat-drafts')!.textContent = drafts.toString();
+      // TODO: Load actual student count from enrollments
+      document.getElementById('stat-students')!.textContent = '0';
+    }
+
+    function setupEventListeners() {
+      // Tab switching
+      document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const tab = (btn as HTMLElement).getAttribute('data-tab');
+          if (tab) switchTab(tab);
+        });
+      });
+
+      // Create course button
+      document.getElementById('create-course-btn')?.addEventListener('click', showCourseModal);
+
+      // Modal close
+      document.getElementById('close-modal')?.addEventListener('click', closeCourseModal);
+      document.getElementById('cancel-modal')?.addEventListener('click', closeCourseModal);
+
+      // Quick course form
+      document.getElementById('quick-course-form')?.addEventListener('submit', handleQuickCourseSubmit);
+
+      // Full course form
+      document.getElementById('course-form')?.addEventListener('submit', handleCourseSubmit);
+
+      // Back to courses
+      document.getElementById('back-to-courses-btn')?.addEventListener('click', () => switchTab('courses'));
+
+      // Create cohort
+      document.getElementById('create-cohort-btn')?.addEventListener('click', showCohortModal);
+      document.getElementById('close-cohort-modal')?.addEventListener('click', closeCohortModal);
+      document.getElementById('cancel-cohort-modal')?.addEventListener('click', closeCohortModal);
+      document.getElementById('cohort-form')?.addEventListener('submit', handleCohortSubmit);
+
+      // Auto-generate slug
+      document.getElementById('course-name')?.addEventListener('input', (e) => {
+        const name = (e.target as HTMLInputElement).value;
+        const slugInput = document.getElementById('course-slug') as HTMLInputElement;
+        if (!editingCourse && slugInput) {
+          slugInput.value = generateSlug(name);
+        }
+      });
+
+      // Add Module button
+      document.getElementById('add-module-btn')?.addEventListener('click', async () => {
+        if (!editingCourse) return;
+
+        showPrompt('Enter module name:', async (moduleName) => {
+          const moduleOrder = document.querySelectorAll('#modules-list .module-item').length + 1;
+
+          const { data, error } = await supabase
+            .from('modules')
+            .insert([{
+              course_id: editingCourse.id,
+              name: moduleName,
+              order_index: moduleOrder
+            }])
+            .select()
+            .single();
+
+          if (error) {
+            showNotification('Error', 'Error creating module: ' + error.message, 'error');
+            return;
+          }
+
+          showNotification('Success', 'Module added successfully!', 'success');
+          loadModules(editingCourse.id);
+        });
+      });
+
+      // Delete Course button
+      document.getElementById('delete-course-btn')?.addEventListener('click', async () => {
+        if (!editingCourse) return;
+
+        showConfirm(
+          'Delete Course',
+          `Are you sure you want to delete "${editingCourse.name}"? This action cannot be undone.`,
+          async () => {
+            const { error } = await supabase
+              .from('courses')
+              .delete()
+              .eq('id', editingCourse.id);
+
+            if (error) {
+              showNotification('Error', 'Error deleting course: ' + error.message, 'error');
+              return;
+            }
+
+            showNotification('Success', 'Course deleted successfully!', 'success');
+            editingCourse = null;
+            document.getElementById('tab-edit')?.classList.add('hidden');
+            await loadCourses();
+            switchTab('courses');
+          }
+        );
+      });
+
+      // Quick Cohorts Button
+      document.getElementById('quick-cohorts-btn')?.addEventListener('click', () => {
+        switchTab('cohorts');
+      });
+
+      // Logout
+      document.getElementById('logout-btn')?.addEventListener('click', async () => {
+        await supabase.auth.signOut();
+        window.location.href = '/login';
+      });
+    }
+
+    function switchTab(tab: string) {
+      activeTab = tab;
+
+      // Update breadcrumb
+      const breadcrumb = document.getElementById('breadcrumb-current');
+      if (breadcrumb) {
+        if (tab === 'courses') breadcrumb.textContent = 'My Courses';
+        else if (tab === 'edit') breadcrumb.textContent = 'Edit Course';
+        else if (tab === 'cohorts') breadcrumb.textContent = 'Cohort Management';
+      }
+
+      // Update tab buttons
+      document.querySelectorAll('.tab-button').forEach(btn => {
+        const btnTab = (btn as HTMLElement).getAttribute('data-tab');
+        if (btnTab === tab) {
+          btn.classList.add('active', 'border-primary', 'text-primary');
+          btn.classList.remove('border-transparent', 'text-text-muted');
+        } else {
+          btn.classList.remove('active', 'border-primary', 'text-primary');
+          btn.classList.add('border-transparent', 'text-text-muted');
+        }
+      });
+
+      // Show/hide content
+      document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.add('hidden');
+      });
+      document.getElementById(`content-${tab}`)?.classList.remove('hidden');
+    }
+
+    function editCourseInTab(courseId: number) {
+      editingCourse = courses.find(c => c.id === courseId);
+      if (!editingCourse) return;
+
+      // Show edit tab
+      document.getElementById('tab-edit')?.classList.remove('hidden');
+
+      // Populate form
+      (document.getElementById('course-name') as HTMLInputElement).value = editingCourse.name;
+      (document.getElementById('course-description') as HTMLTextAreaElement).value = editingCourse.description || '';
+      (document.getElementById('course-track') as HTMLSelectElement).value = editingCourse.track;
+      (document.getElementById('course-difficulty') as HTMLSelectElement).value = editingCourse.difficulty;
+      (document.getElementById('course-hours') as HTMLInputElement).value = editingCourse.estimated_hours || '';
+      (document.getElementById('course-slug') as HTMLInputElement).value = editingCourse.slug;
+      (document.getElementById('course-published') as HTMLInputElement).checked = editingCourse.published;
+
+      // Update title
+      document.getElementById('edit-course-title')!.textContent = `Edit: ${editingCourse.name}`;
+
+      // Show delete button
+      document.getElementById('delete-course-btn')?.classList.remove('hidden');
+
+      // Load modules
+      loadModules(courseId);
+
+      // Switch to edit tab
+      switchTab('edit');
+    }
+
+    async function loadModules(courseId: number) {
+      const modulesList = document.getElementById('modules-list');
+      if (!modulesList) return;
+
+      const { data: modules, error } = await supabase
+        .from('modules')
+        .select('*')
+        .eq('course_id', courseId)
+        .order('order_index', { ascending: true });
+
+      if (error) {
+        console.error('Error loading modules:', error);
+        modulesList.innerHTML = '<p class="text-text-muted text-center py-8">Error loading modules</p>';
+        return;
+      }
+
+      if (!modules || modules.length === 0) {
+        modulesList.innerHTML = '<p class="text-text-muted text-center py-8">No modules yet. Add your first module to start building content.</p>';
+        return;
+      }
+
+      modulesList.innerHTML = modules.map(module => `
+        <div class="module-item border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3 flex-1">
+              <span class="text-2xl">📚</span>
+              <div>
+                <h4 class="font-semibold">${module.title}</h4>
+                <p class="text-sm text-text-muted">Order: ${module.order_index}</p>
+              </div>
+            </div>
+            <button class="btn btn-sm btn-error delete-module" data-id="${module.id}">Delete</button>
+          </div>
+        </div>
+      `).join('');
+
+      // Add event listeners for delete buttons
+      modulesList.querySelectorAll('.delete-module').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const moduleId = (btn as HTMLElement).getAttribute('data-id');
+          if (!moduleId) return;
+
+          showConfirm('Delete Module', 'Are you sure you want to delete this module?', async () => {
+            const { error } = await supabase
+              .from('modules')
+              .delete()
+              .eq('id', parseInt(moduleId));
+
+            if (error) {
+              showNotification('Error', 'Error deleting module: ' + error.message, 'error');
+              return;
+            }
+
+            loadModules(courseId);
+          });
+        });
+      });
+    }
+
+    function showCourseModal() {
+      const modal = document.getElementById('course-modal');
+      const form = document.getElementById('quick-course-form') as HTMLFormElement;
+      form.reset();
+      modal?.classList.remove('hidden');
+    }
+
+    function closeCourseModal() {
+      document.getElementById('course-modal')?.classList.add('hidden');
+    }
+
+    async function handleQuickCourseSubmit(e: Event) {
+      e.preventDefault();
+
+      const courseData = {
+        name: (document.getElementById('modal-course-name') as HTMLInputElement).value,
+        description: (document.getElementById('modal-course-description') as HTMLTextAreaElement).value,
+        track: (document.getElementById('modal-course-track') as HTMLSelectElement).value,
+        difficulty: (document.getElementById('modal-course-difficulty') as HTMLSelectElement).value,
+        slug: generateSlug((document.getElementById('modal-course-name') as HTMLInputElement).value),
+        published: false,
+        created_by: currentUser.id
+      };
+
+      const { data, error } = await supabase
+        .from('courses')
+        .insert([courseData])
+        .select()
+        .single();
+
+      if (error) {
+        showNotification('Error', 'Error creating course: ' + error.message, 'error');
+        return;
+      }
+
+      closeCourseModal();
+      showNotification('Success', 'Course created successfully!', 'success');
+      await loadCourses();
+
+      // Switch to edit tab for the new course
+      if (data) {
+        editCourseInTab(data.id);
+      }
+    }
+
+    async function handleCourseSubmit(e: Event) {
+      e.preventDefault();
+
+      const courseData = {
+        name: (document.getElementById('course-name') as HTMLInputElement).value,
+        description: (document.getElementById('course-description') as HTMLTextAreaElement).value,
+        track: (document.getElementById('course-track') as HTMLSelectElement).value,
+        difficulty: (document.getElementById('course-difficulty') as HTMLSelectElement).value,
+        estimated_hours: parseInt((document.getElementById('course-hours') as HTMLInputElement).value) || null,
+        slug: (document.getElementById('course-slug') as HTMLInputElement).value,
+        published: (document.getElementById('course-published') as HTMLInputElement).checked,
+      };
+
+      if (editingCourse) {
+        const { error } = await supabase
+          .from('courses')
+          .update(courseData)
+          .eq('id', editingCourse.id);
+
+        if (error) {
+          showNotification('Error', 'Error updating course: ' + error.message, 'error');
+          return;
+        }
+
+        showNotification('Success', 'Course updated successfully!', 'success');
+      }
+
+      await loadCourses();
+    }
+
+    function showCohortModal() {
+      const modal = document.getElementById('cohort-modal');
+      const form = document.getElementById('cohort-form') as HTMLFormElement;
+      form.reset();
+      modal?.classList.remove('hidden');
+    }
+
+    function closeCohortModal() {
+      document.getElementById('cohort-modal')?.classList.add('hidden');
+    }
+
+    async function handleCohortSubmit(e: Event) {
+      e.preventDefault();
+
+      const cohortData = {
+        course_id: parseInt((document.getElementById('cohort-course') as HTMLSelectElement).value),
+        name: (document.getElementById('cohort-name') as HTMLInputElement).value,
+        start_date: (document.getElementById('cohort-start-date') as HTMLInputElement).value,
+        end_date: (document.getElementById('cohort-end-date') as HTMLInputElement).value || null,
+        max_students: parseInt((document.getElementById('cohort-max-students') as HTMLInputElement).value),
+        created_by: currentUser.id
+      };
+
+      const { error } = await supabase
+        .from('cohorts')
+        .insert([cohortData]);
+
+      if (error) {
+        showNotification('Error', 'Error creating cohort: ' + error.message, 'error');
+        return;
+      }
+
+      closeCohortModal();
+      await loadCohorts();
+      showNotification('Success', 'Cohort created successfully!', 'success');
+    }
+
+    async function deleteCohort(id: number) {
+      const { error } = await supabase
+        .from('cohorts')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        showNotification('Error', 'Error deleting cohort: ' + error.message, 'error');
+        return;
+      }
+
+      showNotification('Success', 'Cohort deleted successfully!', 'success');
+      await loadCohorts();
+    }
+
+    function populateCourseSelects() {
+      const selects = [
+        document.getElementById('cohort-course'),
+        document.getElementById('cohort-course-filter')
+      ];
+
+      selects.forEach(select => {
+        if (!select) return;
+
+        const currentValue = (select as HTMLSelectElement).value;
+        const options = courses.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+
+        if (select.id === 'cohort-course') {
+          select.innerHTML = '<option value="">Select a course</option>' + options;
+        } else {
+          select.innerHTML = '<option value="">All Courses</option>' + options;
+        }
+
+        if (currentValue) {
+          (select as HTMLSelectElement).value = currentValue;
+        }
+      });
+    }
+
+    function generateSlug(name: string): string {
+      return name.toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+    }
+
+    function formatTrack(track: string): string {
+      const map: Record<string, string> = {
+        'animal-advocacy': 'Animal Advocacy',
+        'climate': 'Climate',
+        'ai-safety': 'AI Safety',
+        'general': 'General'
+      };
+      return map[track] || track;
+    }
+
+    function formatDifficulty(difficulty: string): string {
+      return difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
+    }
+
+    function formatDate(dateStr: string): string {
+      return new Date(dateStr).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    }
+
+    function getCohortStatusColor(status: string): string {
+      const colors: Record<string, string> = {
+        'upcoming': 'bg-blue-500/10 text-blue-500',
+        'active': 'bg-green-500/10 text-green-500',
+        'completed': 'bg-gray-500/10 text-gray-500',
+        'archived': 'bg-orange-500/10 text-orange-500'
+      };
+      return colors[status] || 'bg-gray-500/10 text-gray-500';
+    }
+
+    // Initialize
+    init();
+  </script>
+</BaseLayout>
