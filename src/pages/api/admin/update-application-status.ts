@@ -4,12 +4,57 @@ import { Resend } from 'resend';
 
 export const prerender = false;
 
-const supabaseAdmin = createClient(
-  import.meta.env.PUBLIC_SUPABASE_URL,
-  import.meta.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
+const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
 const resend = new Resend(import.meta.env.RESEND_API_KEY);
+
+async function verifyAdminAccess(request: Request) {
+  const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
+
+  // Try to get access token from cookies (Supabase auth cookie format)
+  const cookies = request.headers.get('cookie') || '';
+  const authCookieMatch = cookies.match(/sb-[^=]+-auth-token=([^;]+)/);
+
+  let accessToken: string | null = null;
+
+  if (authCookieMatch) {
+    try {
+      const decoded = decodeURIComponent(authCookieMatch[1]);
+      let tokenData;
+      try {
+        tokenData = JSON.parse(decoded);
+      } catch {
+        tokenData = JSON.parse(atob(decoded));
+      }
+      accessToken = tokenData.access_token || tokenData[0];
+    } catch (e) {
+      console.error('Failed to parse auth cookie', e);
+    }
+  }
+
+  if (!accessToken) {
+    return { authorized: false, error: 'Unauthorized', status: 401 };
+  }
+
+  // Verify the token and get user
+  const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken);
+  if (authError || !user) {
+    return { authorized: false, error: 'Unauthorized', status: 401 };
+  }
+
+  // Check if user is admin
+  const { data: application } = await supabase
+    .from('applications')
+    .select('role')
+    .eq('user_id', user.id)
+    .single();
+
+  if (!application || application.role !== 'admin') {
+    return { authorized: false, error: 'Forbidden: Admin access required', status: 403 };
+  }
+
+  return { authorized: true, user, supabase };
+}
 
 function generateEmailTemplate(heading: string, bodyContent: string, ctaButton?: { text: string; url: string }) {
   return `<!DOCTYPE html>
@@ -71,6 +116,16 @@ function generateEmailTemplate(heading: string, bodyContent: string, ctaButton?:
 
 export const POST: APIRoute = async ({ request }) => {
   try {
+    // Verify admin access
+    const authResult = await verifyAdminAccess(request);
+    if (!authResult.authorized) {
+      return new Response(
+        JSON.stringify({ error: authResult.error }),
+        { status: authResult.status, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabaseAdmin = authResult.supabase!;
     const { application_ids, status, decision_note, send_email } = await request.json();
 
     if (!application_ids || !Array.isArray(application_ids) || application_ids.length === 0) {

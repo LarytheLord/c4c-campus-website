@@ -125,7 +125,14 @@ export const onRequest = defineMiddleware(async (context, next) => {
         role: application?.role || 'none'
       });
 
-      return redirect('/dashboard?error=unauthorized');
+      // Redirect to appropriate dashboard based on role
+      if (application?.role === 'teacher') {
+        return redirect('/teacher/courses?error=unauthorized');
+      } else if (application?.role === 'student') {
+        return redirect('/dashboard?error=unauthorized');
+      } else {
+        return redirect('/login?error=unauthorized');
+      }
     }
 
     // User is admin - allow access
@@ -153,7 +160,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
         role: application?.role || 'none'
       });
 
-      return redirect('/dashboard?error=unauthorized');
+      // Redirect students to student dashboard, others to login
+      if (application?.role === 'student') {
+        return redirect('/dashboard?error=unauthorized');
+      } else {
+        return redirect('/login?error=unauthorized');
+      }
     }
 
     logger.info('Teacher access granted', { email: user.email, pathname, role: application.role });

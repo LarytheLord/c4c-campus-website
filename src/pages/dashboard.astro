@@ -172,24 +172,12 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       if (application) {
         userApplication = application;
 
-        // Check if user has student role - deny access to teachers/admins
-        if (application.role && (application.role === 'teacher' || application.role === 'admin')) {
-          document.getElementById('loading-state')?.classList.add('hidden');
-          document.getElementById('not-logged-in')?.classList.remove('hidden');
-          const notLoggedInDiv = document.getElementById('not-logged-in');
-          if (notLoggedInDiv) {
-            notLoggedInDiv.innerHTML = `
-              <div class="max-w-md mx-auto text-center">
-                <div class="card">
-                  <h2 class="text-2xl font-bold mb-4">Access Denied</h2>
-                  <p class="text-text-muted mb-6">This dashboard is only accessible to students. Teachers and administrators should use the teacher dashboard.</p>
-                  <a href="/teacher/courses" class="btn btn-primary">
-                    Go to Teacher Dashboard
-                  </a>
-                </div>
-              </div>
-            `;
-          }
+        // Check if user has student role - redirect teachers/admins to their dashboards
+        if (application.role === 'admin') {
+          window.location.href = '/admin/dashboard';
+          return;
+        } else if (application.role === 'teacher') {
+          window.location.href = '/teacher/courses';
           return;
         }
 

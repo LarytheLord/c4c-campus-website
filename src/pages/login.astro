@@ -85,6 +85,40 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   <script>
     import { supabase } from '../lib/supabase';
 
+    // Check if user is already logged in and redirect appropriately
+    async function checkExistingSession() {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session) {
+        // User is already logged in, redirect based on role
+        const { data: application } = await supabase
+          .from('applications')
+          .select('status, role')
+          .eq('user_id', session.user.id)
+          .single();
+
+        if (application?.status === 'approved') {
+          switch (application.role) {
+            case 'admin':
+              window.location.href = '/admin/dashboard';
+              break;
+            case 'teacher':
+              window.location.href = '/teacher/courses';
+              break;
+            case 'student':
+            default:
+              window.location.href = '/dashboard';
+              break;
+          }
+        } else {
+          window.location.href = '/application-status';
+        }
+      }
+    }
+
+    // Check on page load
+    checkExistingSession();
+
     document.getElementById('login-form')?.addEventListener('submit', async (e) => {
       e.preventDefault();
 
