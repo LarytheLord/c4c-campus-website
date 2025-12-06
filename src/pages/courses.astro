@@ -105,18 +105,18 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
   .tab-btn {
     padding: 0.75rem 1rem;
     font-weight: 500;
-    color: var(--text-muted);
+    color: hsl(0 0% 45%);
     border-bottom: 2px solid transparent;
     transition: all 0.2s;
   }
 
   .tab-btn:hover {
-    color: var(--text-primary);
+    color: hsl(0 0% 10%);
   }
 
   .tab-btn.active {
-    color: var(--primary);
-    border-bottom-color: var(--primary);
+    color: hsl(300 100% 35%);
+    border-bottom-color: hsl(300 100% 35%);
   }
 
   .filter-chip {
@@ -125,19 +125,19 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
     border-radius: 9999px;
     border: 1px solid var(--border);
     background: var(--surface);
-    color: var(--text-muted);
+    color: hsl(0 0% 45%);
     transition: all 0.2s;
   }
 
   .filter-chip:hover {
-    background: var(--surface-hover);
-    border-color: var(--primary);
+    background: hsl(300 20% 95%);
+    border-color: hsl(300 100% 35%);
   }
 
   .filter-chip.active {
-    background: #FF00FF; /* Electric Magenta - theme primary */
+    background: hsl(300 100% 35%);
     color: white !important;
-    border-color: #FF00FF;
+    border-color: hsl(300 100% 35%);
   }
 
   .course-card-wrapper {
