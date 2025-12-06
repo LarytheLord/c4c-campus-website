@@ -73,22 +73,6 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 
       <!-- Recent Activity -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <!-- Review Queue -->
-        <div class="card">
-          <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-bold">Your Review Queue</h2>
-            <span class="px-2 py-1 bg-yellow-500/10 text-yellow-500 rounded text-sm font-semibold" id="my-queue-count">0</span>
-          </div>
-          <div id="review-queue-loading" class="text-center py-8">
-            <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
-          </div>
-          <div id="review-queue-list" class="hidden space-y-3"></div>
-          <div id="review-queue-empty" class="hidden text-center py-8 text-text-muted">
-            <p>No applications assigned to you</p>
-          </div>
-          <a href="/admin/applications-review?reviewer=me" class="btn btn-primary btn-sm mt-4 w-full">Go to Review Queue</a>
-        </div>
-
         <!-- Recent Applications -->
         <div class="card">
           <h2 class="text-xl font-bold mb-4">Recent Applications</h2>
@@ -176,50 +160,6 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       }
     }
 
-    async function loadReviewQueue() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      currentUser = session.user;
-      const loadingEl = document.getElementById('review-queue-loading');
-      const listEl = document.getElementById('review-queue-list');
-      const emptyEl = document.getElementById('review-queue-empty');
-      const countEl = document.getElementById('my-queue-count');
-
-      try {
-        const { data: applications } = await supabase
-          .from('applications')
-          .select('id, name, email, program, created_at')
-          .eq('assigned_reviewer_id', currentUser.id)
-          .eq('status', 'pending')
-          .order('created_at', { ascending: true })
-          .limit(5);
-
-        loadingEl?.classList.add('hidden');
-        countEl!.textContent = (applications?.length || 0).toString();
-
-        if (!applications || applications.length === 0) {
-          emptyEl?.classList.remove('hidden');
-          return;
-        }
-
-        listEl!.innerHTML = applications.map(app => `
-          <div class="border border-border rounded-lg p-3 hover:border-primary transition-colors">
-            <a href="/admin/applications-review?highlight=${app.id}" class="block">
-              <p class="font-semibold">${app.name}</p>
-              <p class="text-sm text-text-muted">${app.email}</p>
-              <span class="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded">${app.program}</span>
-            </a>
-          </div>
-        `).join('');
-        listEl?.classList.remove('hidden');
-      } catch (error) {
-        console.error('Error loading review queue:', error);
-        loadingEl?.classList.add('hidden');
-        emptyEl?.classList.remove('hidden');
-      }
-    }
-
     async function loadRecentApplications() {
       const loadingEl = document.getElementById('recent-apps-loading');
       const listEl = document.getElementById('recent-apps-list');
@@ -269,7 +209,6 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 
       await Promise.all([
         loadDashboardStats(),
-        loadReviewQueue(),
         loadRecentApplications()
       ]);
     }

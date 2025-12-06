@@ -171,9 +171,9 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
                 <label class="block text-sm font-medium mb-2">Track*</label>
                 <select id="course-track" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" required>
                   <option value="">Select track</option>
-                  <option value="animal-advocacy">Animal Advocacy</option>
+                  <option value="animal_advocacy">Animal Advocacy</option>
                   <option value="climate">Climate</option>
-                  <option value="ai-safety">AI Safety</option>
+                  <option value="ai_safety">AI Safety</option>
                   <option value="general">General</option>
                 </select>
               </div>
@@ -191,7 +191,7 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium mb-2">Estimated Hours</label>
+                <label class="block text-sm font-medium mb-2">Duration (weeks)</label>
                 <input type="number" id="course-hours" min="1" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" />
               </div>
 
@@ -303,9 +303,9 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
                 <label class="block text-sm font-medium mb-2">Track*</label>
                 <select id="modal-course-track" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" required>
                   <option value="">Select track</option>
-                  <option value="animal-advocacy">Animal Advocacy</option>
+                  <option value="animal_advocacy">Animal Advocacy</option>
                   <option value="climate">Climate</option>
-                  <option value="ai-safety">AI Safety</option>
+                  <option value="ai_safety">AI Safety</option>
                   <option value="general">General</option>
                 </select>
               </div>
@@ -650,7 +650,7 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
 
       const { data, error } = await supabase
         .from('cohorts')
-        .select('*, courses(name, slug)')
+        .select('*, courses(title, slug)')
         .in('course_id', courseIds)
         .order('created_at', { ascending: false });
 
@@ -677,7 +677,7 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
               <h3 class="text-xl font-bold mb-1">${cohort.name}</h3>
               <p class="text-sm text-text-muted flex items-center gap-1">
                 <span>📚</span>
-                ${cohort.courses?.name || 'Unknown Course'}
+                ${cohort.courses?.title || 'Unknown Course'}
               </p>
             </div>
             <span class="text-xs px-3 py-1 rounded-full font-semibold ${getCohortStatusColor(cohort.status)}">${cohort.status.toUpperCase()}</span>
@@ -739,8 +739,8 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
     }
 
     function updateStats(courses: any[]) {
-      const published = courses.filter(c => c.published).length;
-      const drafts = courses.filter(c => !c.published).length;
+      const published = courses.filter(c => c.is_published).length;
+      const drafts = courses.filter(c => !c.is_published).length;
 
       document.getElementById('stat-courses')!.textContent = courses.length.toString();
       document.getElementById('stat-published')!.textContent = published.toString();
@@ -800,7 +800,7 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
             .from('modules')
             .insert([{
               course_id: editingCourse.id,
-              name: moduleName,
+              title: moduleName,
               order_index: moduleOrder
             }])
             .select()
@@ -822,7 +822,7 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
 
         showConfirm(
           'Delete Course',
-          `Are you sure you want to delete "${editingCourse.name}"? This action cannot be undone.`,
+          `Are you sure you want to delete "${editingCourse.title}"? This action cannot be undone.`,
           async () => {
             const { error } = await supabase
               .from('courses')
@@ -893,16 +893,16 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
       document.getElementById('tab-edit')?.classList.remove('hidden');
 
       // Populate form
-      (document.getElementById('course-name') as HTMLInputElement).value = editingCourse.name;
+      (document.getElementById('course-name') as HTMLInputElement).value = editingCourse.title;
       (document.getElementById('course-description') as HTMLTextAreaElement).value = editingCourse.description || '';
       (document.getElementById('course-track') as HTMLSelectElement).value = editingCourse.track;
       (document.getElementById('course-difficulty') as HTMLSelectElement).value = editingCourse.difficulty;
-      (document.getElementById('course-hours') as HTMLInputElement).value = editingCourse.estimated_hours || '';
+      (document.getElementById('course-hours') as HTMLInputElement).value = editingCourse.default_duration_weeks || '';
       (document.getElementById('course-slug') as HTMLInputElement).value = editingCourse.slug;
-      (document.getElementById('course-published') as HTMLInputElement).checked = editingCourse.published;
+      (document.getElementById('course-published') as HTMLInputElement).checked = editingCourse.is_published;
 
       // Update title
-      document.getElementById('edit-course-title')!.textContent = `Edit: ${editingCourse.name}`;
+      document.getElementById('edit-course-title')!.textContent = `Edit: ${editingCourse.title}`;
 
       // Show delete button
       document.getElementById('delete-course-btn')?.classList.remove('hidden');
@@ -988,12 +988,12 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
       e.preventDefault();
 
       const courseData = {
-        name: (document.getElementById('modal-course-name') as HTMLInputElement).value,
+        title: (document.getElementById('modal-course-name') as HTMLInputElement).value,
         description: (document.getElementById('modal-course-description') as HTMLTextAreaElement).value,
         track: (document.getElementById('modal-course-track') as HTMLSelectElement).value,
         difficulty: (document.getElementById('modal-course-difficulty') as HTMLSelectElement).value,
         slug: generateSlug((document.getElementById('modal-course-name') as HTMLInputElement).value),
-        published: false,
+        is_published: false,
         created_by: currentUser.id
       };
 
@@ -1022,13 +1022,13 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
       e.preventDefault();
 
       const courseData = {
-        name: (document.getElementById('course-name') as HTMLInputElement).value,
+        title: (document.getElementById('course-name') as HTMLInputElement).value,
         description: (document.getElementById('course-description') as HTMLTextAreaElement).value,
         track: (document.getElementById('course-track') as HTMLSelectElement).value,
         difficulty: (document.getElementById('course-difficulty') as HTMLSelectElement).value,
-        estimated_hours: parseInt((document.getElementById('course-hours') as HTMLInputElement).value) || null,
+        default_duration_weeks: parseInt((document.getElementById('course-hours') as HTMLInputElement).value) || null,
         slug: (document.getElementById('course-slug') as HTMLInputElement).value,
-        published: (document.getElementById('course-published') as HTMLInputElement).checked,
+        is_published: (document.getElementById('course-published') as HTMLInputElement).checked,
       };
 
       if (editingCourse) {
@@ -1110,7 +1110,7 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
         if (!select) return;
 
         const currentValue = (select as HTMLSelectElement).value;
-        const options = courses.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        const options = courses.map(c => `<option value="${c.id}">${c.title}</option>`).join('');
 
         if (select.id === 'cohort-course') {
           select.innerHTML = '<option value="">Select a course</option>' + options;
@@ -1132,9 +1132,9 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
 
     function formatTrack(track: string): string {
       const map: Record<string, string> = {
-        'animal-advocacy': 'Animal Advocacy',
+        'animal_advocacy': 'Animal Advocacy',
         'climate': 'Climate',
-        'ai-safety': 'AI Safety',
+        'ai_safety': 'AI Safety',
         'general': 'General'
       };
       return map[track] || track;
