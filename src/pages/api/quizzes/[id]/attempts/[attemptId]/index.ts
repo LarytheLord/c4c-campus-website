@@ -42,12 +42,13 @@ export const GET: APIRoute = async ({ request, params }) => {
       );
     }
 
-    const quizId = parseInt(params.id!);
-    const attemptId = parseInt(params.attemptId!);
+    // Quiz and attempt IDs are UUIDs - treat as strings, not numbers
+    const quizId = params.id;
+    const attemptId = params.attemptId;
 
-    if (isNaN(quizId) || isNaN(attemptId)) {
+    if (!quizId || !attemptId) {
       return new Response(
-        JSON.stringify({ error: 'Invalid quiz or attempt ID' }),
+        JSON.stringify({ error: 'Quiz ID and attempt ID are required' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
@@ -91,6 +92,7 @@ export const GET: APIRoute = async ({ request, params }) => {
     }
 
     const course = (quiz as any).lessons?.modules?.courses;
+    const courseId = course?.id;
     const isTeacher = course?.created_by === user.id;
     const isOwner = attempt.user_id === user.id;
 
@@ -99,6 +101,24 @@ export const GET: APIRoute = async ({ request, params }) => {
         JSON.stringify({ error: 'Access denied' }),
         { status: 403, headers: { 'Content-Type': 'application/json' } }
       );
+    }
+
+    // For non-teacher users (students), verify they are still enrolled in the course
+    if (!isTeacher && isOwner && courseId) {
+      const { data: enrollment } = await supabase
+        .from('enrollments')
+        .select('id, status')
+        .eq('user_id', user.id)
+        .eq('course_id', courseId)
+        .eq('status', 'active')
+        .single();
+
+      if (!enrollment) {
+        return new Response(
+          JSON.stringify({ error: 'Access denied - not enrolled in this course' }),
+          { status: 403, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     // Get questions

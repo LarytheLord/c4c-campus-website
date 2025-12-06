@@ -37,11 +37,11 @@ describe('Cohort Enrollment Integration Tests', () => {
   beforeEach(async () => {
     // Create test course
     const { data: course } = await supabaseAdmin.from('courses').insert({
-      name: 'Enrollment Test Course',
+      title: 'Enrollment Test Course',
       slug: 'enrollment-test-' + Date.now(),
       track: 'animal-advocacy',
       difficulty: 'beginner',
-      published: true,
+      is_published: true,
       created_by: teacherClient.userId,
     }).select().single();
     testCourseId = course.id;
@@ -305,6 +305,61 @@ describe('Cohort Enrollment Integration Tests', () => {
       // Assert
       expect(response.status).toBe(201);
     });
+
+    test('should prevent over-enrollment under concurrent requests', async () => {
+      // Arrange - Create cohort with max 1 student to trigger race condition
+      const { data: limitedCohort } = await supabaseAdmin.from('cohorts').insert({
+        course_id: testCourseId,
+        name: 'Concurrency Test Cohort',
+        start_date: '2025-03-01',
+        max_students: 1,
+        status: 'active',
+        created_by: teacherClient.userId,
+      }).select().single();
+
+      // Get sessions for both students
+      const { data: { session: session1 } } = await student1Client.client.auth.getSession();
+      const { data: { session: session2 } } = await student2Client.client.auth.getSession();
+
+      // Act - Issue concurrent enrollment requests
+      const [response1, response2] = await Promise.all([
+        fetch('http://localhost:4321/api/enroll-cohort', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session1!.access_token}`
+          },
+          body: JSON.stringify({ cohortId: limitedCohort.id })
+        }),
+        fetch('http://localhost:4321/api/enroll-cohort', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session2!.access_token}`
+          },
+          body: JSON.stringify({ cohortId: limitedCohort.id })
+        }),
+      ]);
+
+      // Assert - Exactly one should succeed, one should fail
+      const statuses = [response1.status, response2.status].sort();
+
+      // Verify enrollment count never exceeds max_students
+      const { data: enrollments } = await supabaseAdmin
+        .from('cohort_enrollments')
+        .select('*')
+        .eq('cohort_id', limitedCohort.id)
+        .in('status', ['active', 'paused']);
+
+      expect(enrollments!.length).toBeLessThanOrEqual(1);
+
+      // One request should succeed (201), one should fail (409)
+      const successCount = [response1.status, response2.status].filter(s => s === 201).length;
+      const failCount = [response1.status, response2.status].filter(s => s === 409).length;
+
+      expect(successCount).toBe(1);
+      expect(failCount).toBe(1);
+    });
   });
 
   describe('Cohort Status Validation', () => {
@@ -415,10 +470,10 @@ describe('Cohort Enrollment Integration Tests', () => {
     test('should reject enrollment when course is unpublished', async () => {
       // Arrange - Create unpublished course and cohort
       const { data: unpublishedCourse } = await supabaseAdmin.from('courses').insert({
-        name: 'Unpublished Course',
+        title: 'Unpublished Course',
         slug: 'unpublished-' + Date.now(),
         track: 'general',
-        published: false,
+        is_published: false,
         created_by: teacherClient.userId,
       }).select().single();
 

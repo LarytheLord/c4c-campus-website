@@ -9,7 +9,7 @@ import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
 import { rateLimit, RateLimitPresets } from '@/lib/rate-limiter';
 import { validateRequest, sanitizeHTML, type ValidationRule } from '@/lib/security';
-import { validateQuiz } from '@/lib/quiz-grading';
+import { validateQuiz, checkQuizAvailability } from '@/lib/quiz-grading';
 import type { UpdateQuizRequest } from '@/types/quiz';
 
 export const prerender = false;
@@ -47,10 +47,11 @@ export const GET: APIRoute = async ({ request, params }) => {
       );
     }
 
-    const quizId = parseInt(params.id!);
-    if (isNaN(quizId)) {
+    // Quiz IDs are UUIDs - treat as strings, not numbers
+    const quizId = params.id;
+    if (!quizId) {
       return new Response(
-        JSON.stringify({ error: 'Invalid quiz ID' }),
+        JSON.stringify({ error: 'Quiz ID is required' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
@@ -151,11 +152,9 @@ export const GET: APIRoute = async ({ request, params }) => {
       userAttempts = attempts || [];
     }
 
-    // Check if user can attempt
+    // Use centralized availability check
     const submittedAttempts = userAttempts?.filter(a => a.submitted_at !== null).length || 0;
-    const canAttempt =
-      quiz.is_published &&
-      (quiz.max_attempts === 0 || submittedAttempts < quiz.max_attempts);
+    const availability = checkQuizAvailability(quiz, submittedAttempts);
 
     return new Response(
       JSON.stringify({
@@ -163,11 +162,11 @@ export const GET: APIRoute = async ({ request, params }) => {
         quiz,
         questions: questionsForResponse,
         userAttempts,
-        canAttempt,
-        attemptsRemaining:
-          quiz.max_attempts > 0
-            ? Math.max(0, quiz.max_attempts - submittedAttempts)
-            : null,
+        canAttempt: availability.canAttempt,
+        attemptsRemaining: availability.attemptsRemaining,
+        isAvailable: availability.available,
+        availabilityReason: availability.reason,
+        availabilityReasonCode: availability.reasonCode,
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
@@ -210,10 +209,11 @@ export const PUT: APIRoute = async ({ request, params }) => {
       );
     }
 
-    const quizId = parseInt(params.id!);
-    if (isNaN(quizId)) {
+    // Quiz IDs are UUIDs - treat as strings, not numbers
+    const quizId = params.id;
+    if (!quizId) {
       return new Response(
-        JSON.stringify({ error: 'Invalid quiz ID' }),
+        JSON.stringify({ error: 'Quiz ID is required' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
@@ -264,7 +264,7 @@ export const PUT: APIRoute = async ({ request, params }) => {
       updates.instructions = body.instructions ? sanitizeHTML(body.instructions) : null;
     }
     if (body.timeLimit !== undefined) {
-      updates.time_limit = body.timeLimit;
+      updates.time_limit_minutes = body.timeLimit; // Use correct schema column name
     }
     if (body.passingScore !== undefined) {
       updates.passing_score = body.passingScore;
@@ -359,10 +359,11 @@ export const DELETE: APIRoute = async ({ request, params }) => {
       );
     }
 
-    const quizId = parseInt(params.id!);
-    if (isNaN(quizId)) {
+    // Quiz IDs are UUIDs - treat as strings, not numbers
+    const quizId = params.id;
+    if (!quizId) {
       return new Response(
-        JSON.stringify({ error: 'Invalid quiz ID' }),
+        JSON.stringify({ error: 'Quiz ID is required' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }

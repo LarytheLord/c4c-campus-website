@@ -6,6 +6,11 @@
  * - Lesson access validation
  * - Date formatting utilities
  * - Teacher overrides
+ *
+ * Date Semantics:
+ * - All date comparisons use date-only values (YYYY-MM-DD)
+ * - unlock_date and lock_date are stored as DATE type in the database
+ * - cohort_id is a UUID string (not number) per schema.sql
  */
 
 import { describe, test, expect, vi, beforeEach } from 'vitest';
@@ -35,6 +40,11 @@ const createMockSupabase = () => ({
   }))
 });
 
+// Test cohort ID as UUID string (per schema.sql)
+const TEST_COHORT_ID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+const TEST_MODULE_ID = 1;
+const TEST_USER_ID = 'user-123-uuid';
+
 describe('Time-Gating Utility Functions', () => {
   let mockSupabase: any;
 
@@ -49,7 +59,7 @@ describe('Time-Gating Utility Functions', () => {
 
   describe('isModuleUnlocked()', () => {
     test('should return unlocked for teacher override', async () => {
-      const result = await isModuleUnlocked(1, 100, mockSupabase, true);
+      const result = await isModuleUnlocked(TEST_MODULE_ID, TEST_COHORT_ID, mockSupabase, true);
 
       expect(result.isUnlocked).toBe(true);
       expect(result.reason).toBe('teacher_override');
@@ -59,19 +69,19 @@ describe('Time-Gating Utility Functions', () => {
 
     test('should throw error if moduleId is missing', async () => {
       await expect(
-        isModuleUnlocked(null as any, 100, mockSupabase)
+        isModuleUnlocked(null as any, TEST_COHORT_ID, mockSupabase)
       ).rejects.toThrow('moduleId and cohortId are required');
     });
 
     test('should throw error if cohortId is missing', async () => {
       await expect(
-        isModuleUnlocked(1, null as any, mockSupabase)
+        isModuleUnlocked(TEST_MODULE_ID, null as any, mockSupabase)
       ).rejects.toThrow('moduleId and cohortId are required');
     });
 
     test('should throw error if supabase client is missing', async () => {
       await expect(
-        isModuleUnlocked(1, 100, null as any)
+        isModuleUnlocked(TEST_MODULE_ID, TEST_COHORT_ID, null as any)
       ).rejects.toThrow('Supabase client is required');
     });
 
@@ -87,13 +97,13 @@ describe('Time-Gating Utility Functions', () => {
         })
       });
 
-      const result = await isModuleUnlocked(1, 100, mockSupabase, false);
+      const result = await isModuleUnlocked(TEST_MODULE_ID, TEST_COHORT_ID, mockSupabase, false);
 
       expect(result.isUnlocked).toBe(true);
       expect(result.reason).toBe('not_scheduled');
     });
 
-    test('should return unlocked if today >= unlock_date and no lock_date', async () => {
+    test('should return unlocked if today >= unlock_date and no lock_date (date-only comparison)', async () => {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
 
@@ -113,13 +123,13 @@ describe('Time-Gating Utility Functions', () => {
         })
       });
 
-      const result = await isModuleUnlocked(1, 100, mockSupabase, false);
+      const result = await isModuleUnlocked(TEST_MODULE_ID, TEST_COHORT_ID, mockSupabase, false);
 
       expect(result.isUnlocked).toBe(true);
       expect(result.reason).toBe('unlocked');
     });
 
-    test('should return locked if today < unlock_date', async () => {
+    test('should return locked if today < unlock_date (date-only comparison)', async () => {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
 
@@ -139,7 +149,7 @@ describe('Time-Gating Utility Functions', () => {
         })
       });
 
-      const result = await isModuleUnlocked(1, 100, mockSupabase, false);
+      const result = await isModuleUnlocked(TEST_MODULE_ID, TEST_COHORT_ID, mockSupabase, false);
 
       expect(result.isUnlocked).toBe(false);
       expect(result.reason).toBe('locked');
@@ -167,13 +177,13 @@ describe('Time-Gating Utility Functions', () => {
         })
       });
 
-      const result = await isModuleUnlocked(1, 100, mockSupabase, false);
+      const result = await isModuleUnlocked(TEST_MODULE_ID, TEST_COHORT_ID, mockSupabase, false);
 
       expect(result.isUnlocked).toBe(true);
       expect(result.reason).toBe('unlocked');
     });
 
-    test('should return locked if today >= lock_date', async () => {
+    test('should return locked if today >= lock_date (date-only comparison)', async () => {
       const twoDaysAgo = new Date();
       twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
       const yesterday = new Date();
@@ -195,13 +205,13 @@ describe('Time-Gating Utility Functions', () => {
         })
       });
 
-      const result = await isModuleUnlocked(1, 100, mockSupabase, false);
+      const result = await isModuleUnlocked(TEST_MODULE_ID, TEST_COHORT_ID, mockSupabase, false);
 
       expect(result.isUnlocked).toBe(false);
       expect(result.reason).toBe('locked');
     });
 
-    test('should handle edge case: unlock_date is today', async () => {
+    test('should handle edge case: unlock_date is today (should be unlocked)', async () => {
       const today = new Date();
 
       mockSupabase.from.mockReturnValue({
@@ -220,7 +230,7 @@ describe('Time-Gating Utility Functions', () => {
         })
       });
 
-      const result = await isModuleUnlocked(1, 100, mockSupabase, false);
+      const result = await isModuleUnlocked(TEST_MODULE_ID, TEST_COHORT_ID, mockSupabase, false);
 
       expect(result.isUnlocked).toBe(true);
       expect(result.reason).toBe('unlocked');
@@ -250,7 +260,7 @@ describe('Time-Gating Utility Functions', () => {
         })
       });
 
-      const result = await getUnlockDate(1, 100, mockSupabase);
+      const result = await getUnlockDate(TEST_MODULE_ID, TEST_COHORT_ID, mockSupabase);
 
       expect(result).toBeInstanceOf(Date);
       expect(result?.toISOString().split('T')[0]).toBe('2025-03-15');
@@ -270,27 +280,53 @@ describe('Time-Gating Utility Functions', () => {
         })
       });
 
-      const result = await getUnlockDate(1, 100, mockSupabase);
+      const result = await getUnlockDate(TEST_MODULE_ID, TEST_COHORT_ID, mockSupabase);
 
       expect(result).toBeNull();
     });
 
     test('should throw error if moduleId is missing', async () => {
       await expect(
-        getUnlockDate(null as any, 100, mockSupabase)
+        getUnlockDate(null as any, TEST_COHORT_ID, mockSupabase)
       ).rejects.toThrow('moduleId and cohortId are required');
     });
 
     test('should throw error if cohortId is missing', async () => {
       await expect(
-        getUnlockDate(1, null as any, mockSupabase)
+        getUnlockDate(TEST_MODULE_ID, null as any, mockSupabase)
       ).rejects.toThrow('moduleId and cohortId are required');
     });
 
     test('should throw error if supabase client is missing', async () => {
       await expect(
-        getUnlockDate(1, 100, null as any)
+        getUnlockDate(TEST_MODULE_ID, TEST_COHORT_ID, null as any)
       ).rejects.toThrow('Supabase client is required');
+    });
+
+    test('should return date normalized to UTC midnight (consistent with isModuleUnlocked)', async () => {
+      // This test ensures getUnlockDate normalizes dates the same way isModuleUnlocked does
+      const dateString = '2025-06-15';
+
+      mockSupabase.from.mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({
+                data: { unlock_date: dateString },
+                error: null
+              })
+            })
+          })
+        })
+      });
+
+      const result = await getUnlockDate(TEST_MODULE_ID, TEST_COHORT_ID, mockSupabase);
+
+      // Should be normalized to UTC midnight
+      expect(result).toBeInstanceOf(Date);
+      expect(result?.toISOString()).toBe('2025-06-15T00:00:00.000Z');
+      // Calendar date should match regardless of local timezone
+      expect(result?.toISOString().split('T')[0]).toBe(dateString);
     });
   });
 
@@ -300,7 +336,7 @@ describe('Time-Gating Utility Functions', () => {
 
   describe('canAccessLesson()', () => {
     test('should return accessible for teacher override', async () => {
-      const result = await canAccessLesson(1, 'user-123', mockSupabase, true);
+      const result = await canAccessLesson(TEST_MODULE_ID, TEST_USER_ID, mockSupabase, true);
 
       expect(result.canAccess).toBe(true);
       expect(result.moduleUnlocked).toBe(true);
@@ -310,19 +346,19 @@ describe('Time-Gating Utility Functions', () => {
 
     test('should throw error if lessonId is missing', async () => {
       await expect(
-        canAccessLesson(null as any, 'user-123', mockSupabase)
+        canAccessLesson(null as any, TEST_USER_ID, mockSupabase)
       ).rejects.toThrow('lessonId and userId are required');
     });
 
     test('should throw error if userId is missing', async () => {
       await expect(
-        canAccessLesson(1, null as any, mockSupabase)
+        canAccessLesson(TEST_MODULE_ID, null as any, mockSupabase)
       ).rejects.toThrow('lessonId and userId are required');
     });
 
     test('should throw error if supabase client is missing', async () => {
       await expect(
-        canAccessLesson(1, 'user-123', null as any)
+        canAccessLesson(TEST_MODULE_ID, TEST_USER_ID, null as any)
       ).rejects.toThrow('Supabase client is required');
     });
 
@@ -338,7 +374,7 @@ describe('Time-Gating Utility Functions', () => {
         })
       });
 
-      const result = await canAccessLesson(1, 'user-123', mockSupabase, false);
+      const result = await canAccessLesson(TEST_MODULE_ID, TEST_USER_ID, mockSupabase, false);
 
       expect(result.canAccess).toBe(false);
       expect(result.isEnrolled).toBe(false);
@@ -376,7 +412,7 @@ describe('Time-Gating Utility Functions', () => {
         })
       });
 
-      const result = await canAccessLesson(1, 'user-123', mockSupabase, false);
+      const result = await canAccessLesson(TEST_MODULE_ID, TEST_USER_ID, mockSupabase, false);
 
       expect(result.canAccess).toBe(false);
       expect(result.isEnrolled).toBe(false);
@@ -390,7 +426,7 @@ describe('Time-Gating Utility Functions', () => {
 
   describe('getCohortModuleStatuses()', () => {
     test('should return empty map for teacher override', async () => {
-      const result = await getCohortModuleStatuses(100, mockSupabase, true);
+      const result = await getCohortModuleStatuses(TEST_COHORT_ID, mockSupabase, true);
 
       expect(result).toBeInstanceOf(Map);
       expect(result.size).toBe(0);
@@ -404,7 +440,7 @@ describe('Time-Gating Utility Functions', () => {
 
     test('should throw error if supabase client is missing', async () => {
       await expect(
-        getCohortModuleStatuses(100, null as any)
+        getCohortModuleStatuses(TEST_COHORT_ID, null as any)
       ).rejects.toThrow('Supabase client is required');
     });
 
@@ -418,13 +454,13 @@ describe('Time-Gating Utility Functions', () => {
         })
       });
 
-      const result = await getCohortModuleStatuses(100, mockSupabase, false);
+      const result = await getCohortModuleStatuses(TEST_COHORT_ID, mockSupabase, false);
 
       expect(result).toBeInstanceOf(Map);
       expect(result.size).toBe(0);
     });
 
-    test('should return map of module statuses', async () => {
+    test('should return map of module statuses with date-only comparison', async () => {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
       const tomorrow = new Date();
@@ -450,7 +486,7 @@ describe('Time-Gating Utility Functions', () => {
         })
       });
 
-      const result = await getCohortModuleStatuses(100, mockSupabase, false);
+      const result = await getCohortModuleStatuses(TEST_COHORT_ID, mockSupabase, false);
 
       expect(result).toBeInstanceOf(Map);
       expect(result.size).toBe(2);

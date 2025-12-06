@@ -47,7 +47,7 @@ export const POST: APIRoute = async ({ request, params }) => {
 
     // Validate input
     const validationRules: ValidationRule[] = [
-      { field: 'submission_id', required: true, type: 'number', min: 1 },
+      { field: 'submission_id', required: true, type: 'string' },
       { field: 'score', required: true, type: 'number', min: 0 },
       { field: 'feedback', required: false, type: 'string', maxLength: 5000 }
     ];
@@ -70,8 +70,8 @@ export const POST: APIRoute = async ({ request, params }) => {
           lessons(
             id, name,
             modules(
-              id, name,
-              courses(id, name, created_by)
+              id, title,
+              courses(id, title, created_by)
             )
           )
         ),
@@ -135,7 +135,7 @@ export const POST: APIRoute = async ({ request, params }) => {
         studentName: studentProfile.full_name || 'Student',
         studentEmail: studentProfile.email,
         assignmentTitle: assignment.title,
-        courseName: assignment.lessons?.modules?.courses?.name || 'Course',
+        courseName: assignment.lessons?.modules?.courses?.title || 'Course',
         grade: updatedSubmission.score,
         maxPoints: assignment.max_points,
         feedback: body.feedback,

@@ -50,11 +50,11 @@ describe('Discussion API Integration Tests', () => {
 
     // Create test course
     const { data: course } = await supabaseAdmin.from('courses').insert({
-      name: 'Discussion API Test Course',
+      title: 'Discussion API Test Course',
       slug: 'discussion-api-test-' + Date.now(),
       track: 'animal-advocacy',
       difficulty: 'beginner',
-      published: true,
+      is_published: true,
       created_by: teacherClient.userId,
     }).select().single();
     testCourseId = course.id;
@@ -70,11 +70,10 @@ describe('Discussion API Integration Tests', () => {
     // Create test lesson
     const { data: lesson } = await supabaseAdmin.from('lessons').insert({
       module_id: testModuleId,
-      name: 'Discussion Test Lesson',
+      title: 'Discussion Test Lesson',
       slug: 'discussion-test-lesson',
-      video_path: 'videos/test.mp4',
-      video_duration_seconds: 300,
-      video_size_bytes: 1000000,
+      video_url: 'videos/test.mp4',
+      duration_minutes: 5,
       order_index: 1,
     }).select().single();
     testLessonId = lesson.id;
@@ -964,9 +963,9 @@ describe('Discussion API Integration Tests', () => {
       // Arrange - Create lesson 2
       const { data: lesson2 } = await supabaseAdmin.from('lessons').insert({
         module_id: testModuleId,
-        name: 'Lesson 2',
+        title: 'Lesson 2',
         slug: 'lesson-2-' + Date.now(),
-        video_path: 'videos/test2.mp4',
+        video_url: 'videos/test2.mp4',
         order_index: 2,
       }).select().single();
 

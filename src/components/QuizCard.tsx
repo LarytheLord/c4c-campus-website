@@ -8,9 +8,9 @@ import { useState, useEffect } from 'react';
 import type { QuizWithDetails, QuizAttempt } from '@/types/quiz';
 
 interface QuizCardProps {
-  quizId: number;
-  lessonId: number;
-  onStart?: (quizId: number) => void;
+  quizId: string; // UUID
+  lessonId: string; // UUID
+  onStart?: (quizId: string) => void;
 }
 
 export function QuizCard({ quizId, lessonId, onStart }: QuizCardProps) {
@@ -111,18 +111,19 @@ export function QuizCard({ quizId, lessonId, onStart }: QuizCardProps) {
 
   const bestAttempt = attempts.length > 0
     ? attempts.reduce((best, current) =>
-        current.score > best.score ? current : best
+        (current.score ?? 0) > (best.score ?? 0) ? current : best
       )
     : null;
 
-  const canAttempt = quiz.max_attempts === 0 || attempts.length < quiz.max_attempts;
+  // Use server-provided availability fields if present, otherwise fall back to client calculation
+  const canAttempt = quiz.canAttempt ?? (quiz.max_attempts === 0 || attempts.length < quiz.max_attempts);
   const hasIncompleteAttempt = attempts.some(a => !a.submitted_at);
 
-  // Check availability
+  // Use server-provided isAvailable, fall back to local check for display only
   const now = new Date();
-  const isAvailable = quiz.is_published &&
+  const isAvailable = (quiz as any).isAvailable ?? (quiz.is_published &&
     (!quiz.available_from || new Date(quiz.available_from) <= now) &&
-    (!quiz.available_until || new Date(quiz.available_until) >= now);
+    (!quiz.available_until || new Date(quiz.available_until) >= now));
 
   return (
     <div className="card bg-primary/5 border-primary">
@@ -141,12 +142,12 @@ export function QuizCard({ quizId, lessonId, onStart }: QuizCardProps) {
           )}
 
           <div className="flex flex-wrap gap-4 text-sm mb-4">
-            {quiz.time_limit && (
+            {quiz.time_limit_minutes && (
               <div className="flex items-center gap-2">
                 <svg className="w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span>{quiz.time_limit} minutes</span>
+                <span>{quiz.time_limit_minutes} minutes</span>
               </div>
             )}
 

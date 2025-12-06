@@ -1,10 +1,18 @@
 /**
  * Time-Gating Utilities
- * 
+ *
  * Logic for controlling access to content based on cohort schedules.
+ *
+ * Date Semantics:
+ * - unlock_date and lock_date are stored as DATE (YYYY-MM-DD) in the database
+ * - All comparisons are done using date-only values (no time component)
+ * - Dates are normalized to UTC midnight for consistent comparison
+ * - A module is unlocked when today's date >= unlock_date (date-only comparison)
+ * - A module is locked when today's date >= lock_date (date-only comparison)
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { CohortSchedule } from '@/types';
 
 export type ModuleUnlockStatus = {
   isUnlocked: boolean;
@@ -21,11 +29,34 @@ export type LessonAccessStatus = {
 };
 
 /**
+ * Normalizes a date to UTC midnight for date-only comparison.
+ * This ensures consistent comparison between database DATE values (YYYY-MM-DD)
+ * and JavaScript Date objects regardless of local timezone.
+ *
+ * @param date - Date object or ISO date string (YYYY-MM-DD)
+ * @returns Date object normalized to UTC midnight
+ */
+function toDateOnly(date: Date | string): Date {
+  const dateStr = typeof date === 'string' ? date : date.toISOString().split('T')[0];
+  return new Date(dateStr + 'T00:00:00.000Z');
+}
+
+/**
+ * Gets today's date normalized to UTC midnight for date-only comparison.
+ * @returns Today's date as UTC midnight
+ */
+function getTodayDateOnly(): Date {
+  return toDateOnly(new Date().toISOString().split('T')[0]);
+}
+
+/**
  * Checks if a module is unlocked for a specific cohort.
+ * @param moduleId - UUID string matching schema.sql modules.id
+ * @param cohortId - UUID string matching schema.sql cohorts.id
  */
 export async function isModuleUnlocked(
-  moduleId: number,
-  cohortId: number,
+  moduleId: string, // UUID - must be string to match schema.sql modules.id
+  cohortId: string, // UUID - must be string to match schema.sql cohorts.id
   supabase: SupabaseClient,
   teacherOverride: boolean = false
 ): Promise<ModuleUnlockStatus> {
@@ -63,30 +94,12 @@ export async function isModuleUnlocked(
     };
   }
 
-  const now = new Date();
-  const unlockDate = new Date(data.unlock_date);
-  const lockDate = data.lock_date ? new Date(data.lock_date) : null;
+  // Use date-only comparison for consistent semantics with database DATE type
+  const todayDate = getTodayDateOnly();
+  const unlockDate = toDateOnly(data.unlock_date);
+  const lockDate = data.lock_date ? toDateOnly(data.lock_date) : null;
 
-  // Reset time components for date-only comparison if needed, 
-  // but usually ISO strings from DB are treated as UTC or local midnight.
-  // Let's assume strict comparison based on test expectations.
-  // Test: today < unlock_date -> locked
-  // Test: today >= unlock_date -> unlocked
-  
-  // We need to compare just the dates to match "today" logic usually
-  // But let's stick to standard Date comparison first.
-  // Actually, test uses: yesterday.toISOString().split('T')[0]
-  // So the DB stores YYYY-MM-DD.
-  // When we create new Date('YYYY-MM-DD'), it's UTC midnight.
-  // new Date() is current time.
-  
-  // Let's normalize 'now' to UTC midnight for fair comparison with YYYY-MM-DD
-  const todayStr = now.toISOString().split('T')[0];
-  const todayDate = new Date(todayStr);
-  
-  // Actually, let's just compare strings or timestamps of the date part.
-  // The test sets up "yesterday" and "tomorrow".
-  
+  // Module is locked if today < unlock_date
   if (todayDate < unlockDate) {
     return {
       isUnlocked: false,
@@ -96,6 +109,7 @@ export async function isModuleUnlocked(
     };
   }
 
+  // Module is re-locked if today >= lock_date
   if (lockDate && todayDate >= lockDate) {
     return {
       isUnlocked: false,
@@ -115,10 +129,18 @@ export async function isModuleUnlocked(
 
 /**
  * Gets the unlock date for a module in a cohort.
+ *
+ * The returned Date is normalized to UTC midnight using toDateOnly(),
+ * ensuring consistency with isModuleUnlocked() date comparisons.
+ * This is a date-only value representing the calendar date, not a wall-clock time.
+ *
+ * @param moduleId - UUID string matching schema.sql modules.id
+ * @param cohortId - UUID string matching schema.sql cohorts.id
+ * @returns Date normalized to UTC midnight, or null if no schedule exists
  */
 export async function getUnlockDate(
-  moduleId: number,
-  cohortId: number,
+  moduleId: string, // UUID - must be string to match schema.sql modules.id
+  cohortId: string, // UUID - must be string to match schema.sql cohorts.id
   supabase: SupabaseClient
 ): Promise<Date | null> {
   if (!moduleId || !cohortId) {
@@ -139,14 +161,18 @@ export async function getUnlockDate(
     return null;
   }
 
-  return new Date(data.unlock_date);
+  // Normalize to UTC midnight for consistency with isModuleUnlocked()
+  // This ensures the returned date is treated as a date-only value
+  return toDateOnly(data.unlock_date);
 }
 
 /**
  * Checks if a user can access a specific lesson.
+ * @param lessonId - UUID string matching schema.sql lessons.id
+ * @param userId - UUID string matching the user's ID
  */
 export async function canAccessLesson(
-  lessonId: number,
+  lessonId: string, // UUID - must be string to match schema.sql lessons.id
   userId: string,
   supabase: SupabaseClient,
   teacherOverride: boolean = false
@@ -259,12 +285,13 @@ export async function canAccessLesson(
 
 /**
  * Gets the status of all modules for a cohort.
+ * @param cohortId - UUID string matching schema.sql cohorts.id
  */
 export async function getCohortModuleStatuses(
-  cohortId: number,
+  cohortId: string, // UUID - must be string to match schema.sql cohorts.id
   supabase: SupabaseClient,
   teacherOverride: boolean = false
-): Promise<Map<number, ModuleUnlockStatus>> {
+): Promise<Map<string, ModuleUnlockStatus>> {
   if (!cohortId) {
     throw new Error('cohortId is required');
   }
@@ -272,7 +299,7 @@ export async function getCohortModuleStatuses(
     throw new Error('Supabase client is required');
   }
 
-  const statuses = new Map<number, ModuleUnlockStatus>();
+  const statuses = new Map<string, ModuleUnlockStatus>();
 
   if (teacherOverride) {
     return statuses;
@@ -287,24 +314,26 @@ export async function getCohortModuleStatuses(
     return statuses;
   }
 
-  const now = new Date();
-  const todayStr = now.toISOString().split('T')[0];
-  const todayDate = new Date(todayStr);
+  // Use date-only comparison for consistent semantics with database DATE type
+  const todayDate = getTodayDateOnly();
 
-  data.forEach((schedule: any) => {
-    const unlockDate = new Date(schedule.unlock_date);
-    const lockDate = schedule.lock_date ? new Date(schedule.lock_date) : null;
+  (data as CohortSchedule[]).forEach((schedule) => {
+    const unlockDate = toDateOnly(schedule.unlock_date);
+    const lockDate = schedule.lock_date ? toDateOnly(schedule.lock_date) : null;
     let isUnlocked = true;
     let reason: ModuleUnlockStatus['reason'] = 'unlocked';
 
+    // Module is locked if today < unlock_date
     if (todayDate < unlockDate) {
       isUnlocked = false;
       reason = 'locked';
     } else if (lockDate && todayDate >= lockDate) {
+      // Module is re-locked if today >= lock_date
       isUnlocked = false;
       reason = 'locked';
     }
 
+    // module_id is a UUID string per schema.sql
     statuses.set(schedule.module_id, {
       isUnlocked,
       unlockDate,
@@ -329,18 +358,18 @@ export function formatUnlockDate(date: Date | null): string {
 }
 
 /**
- * Calculates days until unlock.
+ * Calculates days until unlock using date-only semantics.
+ * Returns positive days for future dates, negative for past dates, 0 for today.
  */
 export function getDaysUntilUnlock(date: Date | null): number {
   if (!date) return 0;
-  
-  const now = new Date();
-  // Normalize to midnight for day calculation
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  
+
+  // Use date-only comparison for consistency with isModuleUnlocked
+  const today = getTodayDateOnly();
+  const target = toDateOnly(date);
+
   const diffTime = target.getTime() - today.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-  
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
   return diffDays;
 }

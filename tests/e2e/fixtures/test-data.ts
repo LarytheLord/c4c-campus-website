@@ -4,16 +4,16 @@
  */
 
 export interface TestCourse {
-  name: string;
+  title: string;
   slug: string;
   description: string;
   track: 'animal-advocacy' | 'climate' | 'ai-safety' | 'general';
   difficulty: 'beginner' | 'intermediate' | 'advanced';
-  estimated_hours: number;
+  default_duration_weeks: number;
 }
 
 export interface TestLesson {
-  name: string;
+  title: string;
   description: string;
   video_url?: string;
   duration_minutes: number;
@@ -33,20 +33,20 @@ export interface TestApplication {
  */
 export const TEST_COURSES: TestCourse[] = [
   {
-    name: 'E2E Test Course - Automation Basics',
+    title: 'E2E Test Course - Automation Basics',
     slug: 'e2e-automation-basics',
     description: 'Learn the fundamentals of workflow automation for animal advocacy',
     track: 'animal-advocacy',
     difficulty: 'beginner',
-    estimated_hours: 5,
+    default_duration_weeks: 1,
   },
   {
-    name: 'E2E Test Course - Advanced Climate Tech',
+    title: 'E2E Test Course - Advanced Climate Tech',
     slug: 'e2e-climate-tech-advanced',
     description: 'Advanced techniques for climate technology and advocacy',
     track: 'climate',
     difficulty: 'advanced',
-    estimated_hours: 10,
+    default_duration_weeks: 3,
   },
 ];
 
@@ -55,19 +55,19 @@ export const TEST_COURSES: TestCourse[] = [
  */
 export const TEST_LESSONS: TestLesson[] = [
   {
-    name: 'Introduction to Automation',
+    title: 'Introduction to Automation',
     description: 'Understanding automation fundamentals',
     duration_minutes: 15,
     order_index: 0,
   },
   {
-    name: 'Building Your First Workflow',
+    title: 'Building Your First Workflow',
     description: 'Create a simple automation workflow',
     duration_minutes: 20,
     order_index: 1,
   },
   {
-    name: 'Advanced Techniques',
+    title: 'Advanced Techniques',
     description: 'Learn advanced automation patterns',
     duration_minutes: 25,
     order_index: 2,

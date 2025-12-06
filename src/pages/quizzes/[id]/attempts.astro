@@ -111,11 +111,11 @@ export const prerender = false;
   let canRetake = false;
 
   async function init() {
-    // Get quiz ID from URL
+    // Get quiz ID from URL - these are UUIDs (strings)
     const pathParts = window.location.pathname.split('/');
-    const quizId = parseInt(pathParts[2]);
+    const quizId = pathParts[2];
 
-    if (isNaN(quizId)) {
+    if (!quizId) {
       showToast('Invalid quiz ID', 'error');
       return;
     }
@@ -139,7 +139,7 @@ export const prerender = false;
     }
   }
 
-  async function loadAttempts(quizId: number, token: string) {
+  async function loadAttempts(quizId: string, token: string) {
     // Load quiz and attempts
     const response = await fetch(`/api/quizzes/${quizId}`, {
       headers: { 'Authorization': `Bearer ${token}` },
@@ -151,11 +151,10 @@ export const prerender = false;
 
     const data = await response.json();
     quiz = data.quiz;
-    attempts = data.attempts || [];
+    attempts = data.userAttempts || data.attempts || [];
 
-    // Check if can retake
-    const submittedAttempts = attempts.filter(a => a.submitted_at).length;
-    canRetake = quiz.max_attempts === 0 || submittedAttempts < quiz.max_attempts;
+    // Use server-provided canAttempt for consistency
+    canRetake = data.canAttempt ?? false;
 
     // Update header
     document.getElementById('quiz-title')!.textContent = quiz.title;
@@ -170,12 +169,12 @@ export const prerender = false;
     // Calculate best score
     const completedAttempts = attempts.filter(a => a.submitted_at);
     const bestScore = completedAttempts.length > 0
-      ? Math.max(...completedAttempts.map(a => a.score))
+      ? Math.max(...completedAttempts.map(a => a.score ?? 0))
       : 0;
 
     const bestScoreEl = document.getElementById('best-score')!;
     bestScoreEl.textContent = completedAttempts.length > 0 ? `${bestScore}%` : 'N/A';
-    if (bestScore >= quiz.passing_score) {
+    if (quiz && bestScore >= quiz.passing_score) {
       bestScoreEl.classList.add('text-success');
     } else if (completedAttempts.length > 0) {
       bestScoreEl.classList.add('text-error');
@@ -260,7 +259,7 @@ export const prerender = false;
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <span>${formatTime(attempt.time_spent_seconds)}</span>
+                  <span>${formatTime(attempt.time_taken_seconds)}</span>
                 </div>
                 <div class="flex items-center gap-2">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

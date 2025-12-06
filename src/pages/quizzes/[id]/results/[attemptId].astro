@@ -80,12 +80,12 @@ export const prerender = false;
   let canRetake = false;
 
   async function init() {
-    // Get quiz ID and attempt ID from URL
+    // Get quiz ID and attempt ID from URL - these are UUIDs (strings)
     const pathParts = window.location.pathname.split('/');
-    const quizId = parseInt(pathParts[2]);
-    const attemptId = parseInt(pathParts[4]);
+    const quizId = pathParts[2];
+    const attemptId = pathParts[4];
 
-    if (isNaN(quizId) || isNaN(attemptId)) {
+    if (!quizId || !attemptId) {
       showToast('Invalid quiz or attempt ID', 'error');
       return;
     }
@@ -109,7 +109,7 @@ export const prerender = false;
     }
   }
 
-  async function loadResults(quizId: number, attemptId: number, token: string) {
+  async function loadResults(quizId: string, attemptId: string, token: string) {
     // Load quiz details
     const quizResponse = await fetch(`/api/quizzes/${quizId}`, {
       headers: { 'Authorization': `Bearer ${token}` },
@@ -122,9 +122,8 @@ export const prerender = false;
     const quizData = await quizResponse.json();
     quiz = quizData.quiz;
 
-    // Check if can retake
-    const submittedAttempts = quizData.attempts?.filter((a: any) => a.submitted_at).length || 0;
-    canRetake = quiz.max_attempts === 0 || submittedAttempts < quiz.max_attempts;
+    // Use server-provided canAttempt for consistency
+    canRetake = quizData.canAttempt ?? false;
 
     // Load attempt results
     const attemptResponse = await fetch(`/api/quizzes/${quizId}/attempts/${attemptId}`, {

@@ -124,6 +124,79 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SET search_path = '';
 
+-- Function to enroll user in cohort with atomic capacity check
+-- Returns the enrollment record on success, or raises an exception on failure
+--
+-- Error Codes (for API error handling):
+--   P0002 / COHORT_NOT_FOUND     - Cohort does not exist
+--   P0003 / COHORT_NOT_OPEN      - Cohort is not accepting enrollments (status not upcoming/active)
+--   P0004 / COHORT_FULL          - Cohort has reached max_students capacity
+--   23505 / ALREADY_ENROLLED     - User is already enrolled in this cohort
+--
+CREATE OR REPLACE FUNCTION public.enroll_in_cohort(
+  p_cohort_id UUID,
+  p_user_id UUID
+)
+RETURNS public.cohort_enrollments AS $$
+DECLARE
+  v_cohort public.cohorts;
+  v_current_count INTEGER;
+  v_enrollment public.cohort_enrollments;
+BEGIN
+  -- Lock the cohort row to prevent concurrent enrollments
+  SELECT * INTO v_cohort
+  FROM public.cohorts
+  WHERE id = p_cohort_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'COHORT_NOT_FOUND: Cohort does not exist'
+      USING ERRCODE = 'P0002';
+  END IF;
+
+  -- Check cohort status
+  IF v_cohort.status NOT IN ('upcoming', 'active') THEN
+    RAISE EXCEPTION 'COHORT_NOT_OPEN: Cohort is not accepting enrollments (status: %)', v_cohort.status
+      USING ERRCODE = 'P0003';
+  END IF;
+
+  -- Check for existing enrollment
+  IF EXISTS (
+    SELECT 1 FROM public.cohort_enrollments
+    WHERE cohort_id = p_cohort_id AND user_id = p_user_id
+  ) THEN
+    RAISE EXCEPTION 'ALREADY_ENROLLED: User is already enrolled in this cohort'
+      USING ERRCODE = '23505';
+  END IF;
+
+  -- Check capacity if max_students is set
+  IF v_cohort.max_students IS NOT NULL THEN
+    SELECT COUNT(*) INTO v_current_count
+    FROM public.cohort_enrollments
+    WHERE cohort_id = p_cohort_id
+      AND status IN ('active', 'paused');
+
+    IF v_current_count >= v_cohort.max_students THEN
+      RAISE EXCEPTION 'COHORT_FULL: Cohort has reached capacity (% of % spots)', v_current_count, v_cohort.max_students
+        USING ERRCODE = 'P0004';
+    END IF;
+  END IF;
+
+  -- Create the enrollment
+  INSERT INTO public.cohort_enrollments (cohort_id, user_id, status, completed_lessons, progress)
+  VALUES (
+    p_cohort_id,
+    p_user_id,
+    'active',
+    0,
+    '{"completed_lessons": 0, "completed_modules": 0, "percentage": 0}'::jsonb
+  )
+  RETURNING * INTO v_enrollment;
+
+  RETURN v_enrollment;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
+
 -- Function to approve application
 CREATE OR REPLACE FUNCTION public.approve_application(application_id UUID)
 RETURNS VOID AS $$
@@ -159,6 +232,241 @@ BEGIN
   WHERE id = application_id;
 END;
 $$ LANGUAGE plpgsql SET search_path = '';
+
+-- Function to check if user can submit to an assignment
+-- Returns TRUE if submission is allowed, FALSE otherwise
+--
+-- This is a pure check function (returns boolean, not exceptions).
+-- API handlers should use this to gate submissions, then provide user-friendly
+-- error messages based on which rule failed.
+--
+-- Rules checked (in order):
+--   1. Assignment must exist and be published
+--   2. If past due_date and allow_late_submissions=false, deny
+--   3. First submission is always allowed (if above pass)
+--   4. Resubmission requires allow_resubmission=true
+--   5. Cannot exceed max_submissions limit
+--
+CREATE OR REPLACE FUNCTION public.can_user_submit(
+  assignment_id_param UUID,
+  user_id_param UUID
+)
+RETURNS BOOLEAN AS $$
+DECLARE
+  v_assignment RECORD;
+  v_submission_count INTEGER;
+BEGIN
+  -- Get assignment details
+  SELECT
+    is_published,
+    due_date,
+    allow_late_submissions,
+    allow_resubmission,
+    max_submissions
+  INTO v_assignment
+  FROM public.assignments
+  WHERE id = assignment_id_param;
+
+  -- Assignment must exist and be published
+  IF NOT FOUND OR NOT v_assignment.is_published THEN
+    RETURN FALSE;
+  END IF;
+
+  -- Check due date if not allowing late submissions
+  IF v_assignment.due_date IS NOT NULL
+     AND v_assignment.due_date < NOW()
+     AND NOT v_assignment.allow_late_submissions THEN
+    RETURN FALSE;
+  END IF;
+
+  -- Count existing submissions
+  SELECT COUNT(*) INTO v_submission_count
+  FROM public.assignment_submissions
+  WHERE assignment_id = assignment_id_param
+    AND user_id = user_id_param;
+
+  -- If no submissions yet, allow
+  IF v_submission_count = 0 THEN
+    RETURN TRUE;
+  END IF;
+
+  -- If resubmission not allowed, deny
+  IF NOT COALESCE(v_assignment.allow_resubmission, FALSE) THEN
+    RETURN FALSE;
+  END IF;
+
+  -- Check max submissions limit
+  IF v_assignment.max_submissions IS NOT NULL
+     AND v_submission_count >= v_assignment.max_submissions THEN
+    RETURN FALSE;
+  END IF;
+
+  RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
+
+-- Function to atomically create assignment submission
+-- Combines permission check, submission_number calculation, and insert in one transaction
+--
+-- This function prevents race conditions in concurrent submissions by:
+-- 1. Locking the assignment row to serialize submission attempts
+-- 2. Verifying submission permission using can_user_submit logic
+-- 3. Calculating the next submission_number atomically
+-- 4. Inserting the submission record
+--
+-- Error Codes (for API error handling):
+--   P0002 / ASSIGNMENT_NOT_FOUND     - Assignment does not exist
+--   P0003 / ASSIGNMENT_NOT_PUBLISHED - Assignment is not published
+--   P0004 / SUBMISSIONS_CLOSED       - Past due date and late submissions not allowed
+--   P0005 / RESUBMISSION_NOT_ALLOWED - Resubmissions are disabled and user already submitted
+--   P0006 / MAX_SUBMISSIONS_REACHED  - User has reached the maximum submission limit
+--
+-- Parameters:
+--   p_assignment_id  - UUID of the assignment
+--   p_user_id        - UUID of the submitting user
+--   p_file_url       - Storage path to the uploaded file
+--   p_file_name      - Original filename
+--   p_file_size_bytes - File size in bytes
+--   p_file_type      - File extension/type
+--
+-- Returns: The created assignment_submissions row
+--
+CREATE OR REPLACE FUNCTION public.create_assignment_submission(
+  p_assignment_id UUID,
+  p_user_id UUID,
+  p_file_url TEXT,
+  p_file_name TEXT,
+  p_file_size_bytes BIGINT,
+  p_file_type TEXT
+)
+RETURNS public.assignment_submissions AS $$
+DECLARE
+  v_assignment RECORD;
+  v_submission_count INTEGER;
+  v_next_submission_number INTEGER;
+  v_is_late BOOLEAN;
+  v_submission public.assignment_submissions;
+BEGIN
+  -- Lock the assignment row to serialize concurrent submissions
+  SELECT
+    id,
+    is_published,
+    due_date,
+    allow_late_submissions,
+    allow_resubmission,
+    max_submissions
+  INTO v_assignment
+  FROM public.assignments
+  WHERE id = p_assignment_id
+  FOR UPDATE;
+
+  -- Check assignment exists
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'ASSIGNMENT_NOT_FOUND: Assignment does not exist'
+      USING ERRCODE = 'P0002';
+  END IF;
+
+  -- Check assignment is published
+  IF NOT v_assignment.is_published THEN
+    RAISE EXCEPTION 'ASSIGNMENT_NOT_PUBLISHED: Assignment is not published'
+      USING ERRCODE = 'P0003';
+  END IF;
+
+  -- Determine if submission is late
+  v_is_late := v_assignment.due_date IS NOT NULL AND v_assignment.due_date < NOW();
+
+  -- Check due date if not allowing late submissions
+  IF v_is_late AND NOT COALESCE(v_assignment.allow_late_submissions, TRUE) THEN
+    RAISE EXCEPTION 'SUBMISSIONS_CLOSED: Submissions are closed for this assignment'
+      USING ERRCODE = 'P0004';
+  END IF;
+
+  -- Count existing submissions and calculate next number atomically
+  SELECT COUNT(*), COALESCE(MAX(submission_number), 0) + 1
+  INTO v_submission_count, v_next_submission_number
+  FROM public.assignment_submissions
+  WHERE assignment_id = p_assignment_id
+    AND user_id = p_user_id;
+
+  -- Check resubmission rules
+  IF v_submission_count > 0 THEN
+    IF NOT COALESCE(v_assignment.allow_resubmission, FALSE) THEN
+      RAISE EXCEPTION 'RESUBMISSION_NOT_ALLOWED: Resubmissions are not allowed for this assignment'
+        USING ERRCODE = 'P0005';
+    END IF;
+
+    -- Check max submissions limit
+    IF v_assignment.max_submissions IS NOT NULL
+       AND v_submission_count >= v_assignment.max_submissions THEN
+      RAISE EXCEPTION 'MAX_SUBMISSIONS_REACHED: Maximum submission limit (%) reached', v_assignment.max_submissions
+        USING ERRCODE = 'P0006';
+    END IF;
+  END IF;
+
+  -- Create the submission
+  INSERT INTO public.assignment_submissions (
+    assignment_id,
+    user_id,
+    file_url,
+    file_name,
+    file_size_bytes,
+    file_type,
+    submission_number,
+    submitted_at,
+    is_late,
+    status
+  )
+  VALUES (
+    p_assignment_id,
+    p_user_id,
+    p_file_url,
+    p_file_name,
+    p_file_size_bytes,
+    p_file_type,
+    v_next_submission_number,
+    NOW(),
+    v_is_late,
+    'submitted'
+  )
+  RETURNING * INTO v_submission;
+
+  RETURN v_submission;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
+
+-- Function to get assignment statistics
+-- Returns aggregate statistics for all submissions to an assignment
+--
+-- This function returns a single row with submission statistics.
+-- If the assignment has no submissions, all counts will be 0 and average_score will be NULL.
+--
+-- Return columns:
+--   total_submissions   - Total number of submissions
+--   graded_submissions  - Submissions with status='graded'
+--   average_score       - Mean score across graded submissions (NULL if none graded)
+--   late_submissions    - Submissions with is_late=true
+--   on_time_submissions - Submissions with is_late=false or NULL
+--
+CREATE OR REPLACE FUNCTION public.get_assignment_stats(assignment_id_param UUID)
+RETURNS TABLE(
+  total_submissions BIGINT,
+  graded_submissions BIGINT,
+  average_score NUMERIC,
+  late_submissions BIGINT,
+  on_time_submissions BIGINT
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    COUNT(*)::BIGINT as total_submissions,
+    COUNT(*) FILTER (WHERE status = 'graded')::BIGINT as graded_submissions,
+    ROUND(AVG(score)::NUMERIC, 2) as average_score,
+    COUNT(*) FILTER (WHERE is_late = TRUE)::BIGINT as late_submissions,
+    COUNT(*) FILTER (WHERE is_late = FALSE OR is_late IS NULL)::BIGINT as on_time_submissions
+  FROM public.assignment_submissions
+  WHERE assignment_id = assignment_id_param;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
 
 -- Trigger function to log application approval
 CREATE OR REPLACE FUNCTION public.log_application_approval()
@@ -426,8 +734,10 @@ CREATE TABLE IF NOT EXISTS lesson_progress (
   lesson_id BIGINT REFERENCES lessons(id) ON DELETE CASCADE,
   cohort_id UUID REFERENCES cohorts(id) ON DELETE SET NULL,
   completed BOOLEAN DEFAULT FALSE,
+  completed_at TIMESTAMPTZ, -- Timestamp when lesson was marked complete
   video_position_seconds INTEGER DEFAULT 0,
   time_spent_seconds INTEGER DEFAULT 0,
+  watch_count INTEGER DEFAULT 1, -- Number of times lesson was watched/revisited
   last_accessed_at TIMESTAMPTZ DEFAULT NOW(),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(user_id, lesson_id)
@@ -560,13 +870,17 @@ CREATE TABLE IF NOT EXISTS quiz_attempts (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   quiz_id UUID REFERENCES quizzes(id) ON DELETE CASCADE,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  cohort_id UUID REFERENCES cohorts(id) ON DELETE SET NULL,
   attempt_number INTEGER NOT NULL,
   started_at TIMESTAMPTZ DEFAULT NOW(),
   submitted_at TIMESTAMPTZ,
   time_taken_seconds INTEGER,
   score DECIMAL(5,2) CHECK (score BETWEEN 0 AND 100),
+  total_points INTEGER,
+  points_earned INTEGER,
   passed BOOLEAN,
-  answers JSONB,
+  answers_json JSONB DEFAULT '[]',
+  grading_status TEXT DEFAULT 'pending' CHECK (grading_status IN ('pending', 'auto_graded', 'needs_review')),
   graded_by UUID REFERENCES auth.users(id),
   graded_at TIMESTAMPTZ,
   UNIQUE(quiz_id, user_id, attempt_number)
@@ -574,6 +888,7 @@ CREATE TABLE IF NOT EXISTS quiz_attempts (
 
 CREATE INDEX IF NOT EXISTS idx_quiz_attempts_quiz ON quiz_attempts(quiz_id);
 CREATE INDEX IF NOT EXISTS idx_quiz_attempts_user ON quiz_attempts(user_id);
+CREATE INDEX IF NOT EXISTS idx_quiz_attempts_cohort ON quiz_attempts(cohort_id);
 
 -- ============================================================================
 -- ASSESSMENTS - ASSIGNMENTS
@@ -592,6 +907,8 @@ CREATE TABLE IF NOT EXISTS assignments (
   due_date TIMESTAMPTZ,
   allow_late_submissions BOOLEAN DEFAULT TRUE,
   late_penalty_percent INTEGER DEFAULT 0 CHECK (late_penalty_percent BETWEEN 0 AND 100),
+  allow_resubmission BOOLEAN DEFAULT FALSE,
+  max_submissions INTEGER DEFAULT 1 CHECK (max_submissions > 0),
   max_file_size_mb INTEGER DEFAULT 10,
   allowed_file_types TEXT[] DEFAULT ARRAY['pdf','docx','txt','zip'],
   is_published BOOLEAN DEFAULT FALSE,
@@ -623,7 +940,12 @@ CREATE TABLE IF NOT EXISTS assignment_submissions (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   assignment_id UUID REFERENCES assignments(id) ON DELETE CASCADE,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  submission_number INTEGER DEFAULT 1 CHECK (submission_number > 0),
   submission_text TEXT,
+  file_url TEXT,
+  file_name TEXT,
+  file_size_bytes BIGINT,
+  file_type TEXT,
   file_urls TEXT[],
   submitted_at TIMESTAMPTZ DEFAULT NOW(),
   is_late BOOLEAN DEFAULT FALSE,
@@ -634,7 +956,8 @@ CREATE TABLE IF NOT EXISTS assignment_submissions (
   graded_at TIMESTAMPTZ,
   rubric_scores JSONB,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(assignment_id, user_id, submission_number)
 );
 
 CREATE INDEX IF NOT EXISTS idx_submissions_assignment ON assignment_submissions(assignment_id);
@@ -1040,7 +1363,43 @@ CREATE POLICY "Teachers manage own cohorts" ON cohorts FOR ALL USING (
 -- Cohort enrollments policies
 CREATE POLICY "Users view own cohort enrollments" ON cohort_enrollments FOR SELECT USING ((select auth.uid()) = user_id);
 CREATE POLICY "Users create own cohort enrollments" ON cohort_enrollments FOR INSERT WITH CHECK ((select auth.uid()) = user_id);
+CREATE POLICY "Users update own cohort enrollments" ON cohort_enrollments FOR UPDATE USING ((select auth.uid()) = user_id);
 CREATE POLICY "Teachers view cohort students" ON cohort_enrollments FOR SELECT USING (
+  cohort_id IN (
+    SELECT c.id FROM cohorts c
+    JOIN courses co ON c.course_id = co.id
+    WHERE co.created_by = (select auth.uid())
+  )
+);
+CREATE POLICY "Teachers enroll students in own cohorts" ON cohort_enrollments FOR INSERT WITH CHECK (
+  cohort_id IN (
+    SELECT c.id FROM cohorts c
+    JOIN courses co ON c.course_id = co.id
+    WHERE co.created_by = (select auth.uid())
+  )
+);
+CREATE POLICY "Teachers update cohort enrollments" ON cohort_enrollments FOR UPDATE USING (
+  cohort_id IN (
+    SELECT c.id FROM cohorts c
+    JOIN courses co ON c.course_id = co.id
+    WHERE co.created_by = (select auth.uid())
+  )
+);
+CREATE POLICY "Teachers delete cohort enrollments" ON cohort_enrollments FOR DELETE USING (
+  cohort_id IN (
+    SELECT c.id FROM cohorts c
+    JOIN courses co ON c.course_id = co.id
+    WHERE co.created_by = (select auth.uid())
+  )
+);
+
+-- Cohort schedules policies
+-- Students can view schedules for cohorts they are enrolled in
+CREATE POLICY "Students view enrolled cohort schedules" ON cohort_schedules FOR SELECT USING (
+  cohort_id IN (SELECT cohort_id FROM cohort_enrollments WHERE user_id = (select auth.uid()))
+);
+-- Teachers can manage schedules for their own courses' cohorts
+CREATE POLICY "Teachers manage own cohort schedules" ON cohort_schedules FOR ALL USING (
   cohort_id IN (
     SELECT c.id FROM cohorts c
     JOIN courses co ON c.course_id = co.id
@@ -1136,6 +1495,242 @@ CREATE POLICY "Admins view all analytics" ON analytics_events FOR SELECT USING (
 
 -- Auth logs policies (service role only)
 CREATE POLICY "Service role manages auth logs" ON auth_logs FOR ALL USING ((select auth.jwt()) ->> 'role' = 'service_role');
+
+-- ============================================================================
+-- QUIZ QUESTIONS POLICIES
+-- ============================================================================
+-- Quiz questions contain correct answers and should only be accessible to:
+-- 1. Teachers/admins who own the quiz's course
+-- 2. NOT directly accessible by students (they get questions through quiz attempt APIs)
+
+-- Teachers can manage questions for their own courses
+CREATE POLICY "Teachers manage quiz questions" ON quiz_questions FOR ALL USING (
+  quiz_id IN (
+    SELECT q.id FROM quizzes q
+    JOIN courses c ON q.course_id = c.id
+    WHERE c.created_by = (select auth.uid())
+  )
+);
+
+-- Admins can manage all quiz questions
+CREATE POLICY "Admins manage all quiz questions" ON quiz_questions FOR ALL USING (
+  is_admin((select auth.uid()))
+);
+
+-- ============================================================================
+-- ASSIGNMENT RUBRICS POLICIES
+-- ============================================================================
+-- Rubrics are teacher/admin only - students should not see grading criteria directly
+
+-- Teachers can manage rubrics for their own courses' assignments
+CREATE POLICY "Teachers manage assignment rubrics" ON assignment_rubrics FOR ALL USING (
+  assignment_id IN (
+    SELECT a.id FROM assignments a
+    JOIN courses c ON a.course_id = c.id
+    WHERE c.created_by = (select auth.uid())
+  )
+);
+
+-- Admins can manage all rubrics
+CREATE POLICY "Admins manage all rubrics" ON assignment_rubrics FOR ALL USING (
+  is_admin((select auth.uid()))
+);
+
+-- ============================================================================
+-- LESSON DISCUSSIONS POLICIES
+-- ============================================================================
+-- Students can participate in discussions for lessons they're enrolled in
+-- Teachers can moderate discussions in their courses
+
+-- Users can view discussions in their enrolled courses
+CREATE POLICY "Users view lesson discussions" ON lesson_discussions FOR SELECT USING (
+  -- User is enrolled in the cohort OR is the course teacher/admin
+  cohort_id IN (
+    SELECT ce.cohort_id FROM cohort_enrollments ce
+    WHERE ce.user_id = (select auth.uid()) AND ce.status IN ('active', 'completed')
+  )
+  OR
+  lesson_id IN (
+    SELECT l.id FROM lessons l
+    JOIN modules m ON l.module_id = m.id
+    JOIN courses c ON m.course_id = c.id
+    WHERE c.created_by = (select auth.uid())
+  )
+  OR is_admin((select auth.uid()))
+);
+
+-- Users can create discussions in their enrolled cohorts
+CREATE POLICY "Users create lesson discussions" ON lesson_discussions FOR INSERT WITH CHECK (
+  (select auth.uid()) = user_id
+  AND (
+    cohort_id IN (
+      SELECT ce.cohort_id FROM cohort_enrollments ce
+      WHERE ce.user_id = (select auth.uid()) AND ce.status = 'active'
+    )
+    OR lesson_id IN (
+      SELECT l.id FROM lessons l
+      JOIN modules m ON l.module_id = m.id
+      JOIN courses c ON m.course_id = c.id
+      WHERE c.created_by = (select auth.uid())
+    )
+  )
+);
+
+-- Users can update their own discussions
+CREATE POLICY "Users update own discussions" ON lesson_discussions FOR UPDATE USING (
+  (select auth.uid()) = user_id
+);
+
+-- Teachers can update/delete discussions in their courses (moderation)
+CREATE POLICY "Teachers moderate lesson discussions" ON lesson_discussions FOR UPDATE USING (
+  lesson_id IN (
+    SELECT l.id FROM lessons l
+    JOIN modules m ON l.module_id = m.id
+    JOIN courses c ON m.course_id = c.id
+    WHERE c.created_by = (select auth.uid())
+  )
+);
+
+CREATE POLICY "Teachers delete lesson discussions" ON lesson_discussions FOR DELETE USING (
+  lesson_id IN (
+    SELECT l.id FROM lessons l
+    JOIN modules m ON l.module_id = m.id
+    JOIN courses c ON m.course_id = c.id
+    WHERE c.created_by = (select auth.uid())
+  )
+  OR (select auth.uid()) = user_id
+);
+
+-- Admins can manage all discussions
+CREATE POLICY "Admins manage lesson discussions" ON lesson_discussions FOR ALL USING (
+  is_admin((select auth.uid()))
+);
+
+-- ============================================================================
+-- COURSE FORUMS POLICIES
+-- ============================================================================
+-- Forums for general course discussions by cohort
+
+-- Users can view forum posts in their enrolled courses/cohorts
+CREATE POLICY "Users view forum posts" ON course_forums FOR SELECT USING (
+  -- User is enrolled in the cohort
+  cohort_id IN (
+    SELECT ce.cohort_id FROM cohort_enrollments ce
+    WHERE ce.user_id = (select auth.uid()) AND ce.status IN ('active', 'completed')
+  )
+  OR
+  -- User is the course teacher
+  course_id IN (
+    SELECT id FROM courses WHERE created_by = (select auth.uid())
+  )
+  OR is_admin((select auth.uid()))
+);
+
+-- Users can create forum posts in their enrolled cohorts
+CREATE POLICY "Users create forum posts" ON course_forums FOR INSERT WITH CHECK (
+  (select auth.uid()) = user_id
+  AND (
+    cohort_id IN (
+      SELECT ce.cohort_id FROM cohort_enrollments ce
+      WHERE ce.user_id = (select auth.uid()) AND ce.status = 'active'
+    )
+    OR course_id IN (
+      SELECT id FROM courses WHERE created_by = (select auth.uid())
+    )
+  )
+);
+
+-- Users can update their own forum posts (unless locked)
+CREATE POLICY "Users update own forum posts" ON course_forums FOR UPDATE USING (
+  (select auth.uid()) = user_id AND is_locked = FALSE
+);
+
+-- Teachers can update/lock forum posts in their courses (moderation)
+CREATE POLICY "Teachers moderate forum posts" ON course_forums FOR UPDATE USING (
+  course_id IN (
+    SELECT id FROM courses WHERE created_by = (select auth.uid())
+  )
+);
+
+CREATE POLICY "Teachers delete forum posts" ON course_forums FOR DELETE USING (
+  course_id IN (
+    SELECT id FROM courses WHERE created_by = (select auth.uid())
+  )
+  OR (select auth.uid()) = user_id
+);
+
+-- Admins can manage all forum posts
+CREATE POLICY "Admins manage forum posts" ON course_forums FOR ALL USING (
+  is_admin((select auth.uid()))
+);
+
+-- ============================================================================
+-- FORUM REPLIES POLICIES
+-- ============================================================================
+-- Replies to forum posts follow similar rules
+
+-- Users can view replies in forums they can access
+CREATE POLICY "Users view forum replies" ON forum_replies FOR SELECT USING (
+  forum_post_id IN (
+    SELECT cf.id FROM course_forums cf
+    WHERE cf.cohort_id IN (
+      SELECT ce.cohort_id FROM cohort_enrollments ce
+      WHERE ce.user_id = (select auth.uid()) AND ce.status IN ('active', 'completed')
+    )
+    OR cf.course_id IN (
+      SELECT id FROM courses WHERE created_by = (select auth.uid())
+    )
+  )
+  OR is_admin((select auth.uid()))
+);
+
+-- Users can create replies in forums they can access (and post is not locked)
+CREATE POLICY "Users create forum replies" ON forum_replies FOR INSERT WITH CHECK (
+  (select auth.uid()) = user_id
+  AND forum_post_id IN (
+    SELECT cf.id FROM course_forums cf
+    WHERE cf.is_locked = FALSE
+    AND (
+      cf.cohort_id IN (
+        SELECT ce.cohort_id FROM cohort_enrollments ce
+        WHERE ce.user_id = (select auth.uid()) AND ce.status = 'active'
+      )
+      OR cf.course_id IN (
+        SELECT id FROM courses WHERE created_by = (select auth.uid())
+      )
+    )
+  )
+);
+
+-- Users can update their own replies
+CREATE POLICY "Users update own forum replies" ON forum_replies FOR UPDATE USING (
+  (select auth.uid()) = user_id
+);
+
+-- Teachers can moderate replies in their courses
+CREATE POLICY "Teachers moderate forum replies" ON forum_replies FOR UPDATE USING (
+  forum_post_id IN (
+    SELECT cf.id FROM course_forums cf
+    WHERE cf.course_id IN (
+      SELECT id FROM courses WHERE created_by = (select auth.uid())
+    )
+  )
+);
+
+CREATE POLICY "Teachers delete forum replies" ON forum_replies FOR DELETE USING (
+  forum_post_id IN (
+    SELECT cf.id FROM course_forums cf
+    WHERE cf.course_id IN (
+      SELECT id FROM courses WHERE created_by = (select auth.uid())
+    )
+  )
+  OR (select auth.uid()) = user_id
+);
+
+-- Admins can manage all forum replies
+CREATE POLICY "Admins manage forum replies" ON forum_replies FOR ALL USING (
+  is_admin((select auth.uid()))
+);
 
 -- ============================================================================
 -- FULL-TEXT SEARCH INDEXES

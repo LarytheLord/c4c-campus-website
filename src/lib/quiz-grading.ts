@@ -11,14 +11,18 @@ export interface QuizValidationResult {
 export interface AvailabilityResult {
   available: boolean;
   reason?: string;
+  reasonCode?: 'not_published' | 'not_yet_available' | 'deadline_passed' | 'max_attempts_reached' | 'not_enrolled';
+  attemptsRemaining: number | null; // null means unlimited
+  canAttempt: boolean;
 }
 
 export interface GradingResult {
   answers: Array<{
     question_id: string;
     answer: unknown;
-    is_correct: boolean;
+    is_correct: boolean | null;
     points_earned: number;
+    feedback: string | null; // Always include feedback field for consistency
   }>;
   score: number;
   pointsEarned: number;
@@ -39,13 +43,23 @@ export interface Quiz {
   randomize_questions?: boolean;
 }
 
+/**
+ * Question option structure - must match QuestionOption in types/quiz.ts
+ */
+export interface QuestionOptionForGrading {
+  id: string; // Option identifier (e.g., "a", "b", "c", "d" or UUID)
+  text: string;
+  is_correct?: boolean; // Used by grading logic to identify correct answers
+}
+
 export interface Question {
   id: string;
   question_type: 'multiple_choice' | 'true_false' | 'multiple_select' | 'short_answer' | 'essay';
   question_text: string;
   points: number;
-  options?: Array<{ text: string; is_correct: boolean }>;
-  correct_answer?: string | boolean;
+  options?: QuestionOptionForGrading[];
+  correct_answer?: string | boolean; // For short_answer/true_false questions
+  correct_answers?: string[]; // For multiple acceptable answers (short_answer)
 }
 
 export interface QuizAttempt {
@@ -109,25 +123,36 @@ export function validateQuiz(quizData: Partial<Quiz>): QuizValidationResult {
  * Check if a student can start a quiz attempt
  * @param quiz - Quiz configuration
  * @param submittedAttemptsCount - Number of attempts already submitted
- * @returns Availability result
+ * @returns Availability result with canAttempt and attemptsRemaining
  */
 export function checkQuizAvailability(
   quiz: Quiz,
   submittedAttemptsCount: number
 ): AvailabilityResult {
+  // Calculate attempts remaining - 0 means unlimited
+  const attemptsRemaining = quiz.max_attempts === 0
+    ? null
+    : Math.max(0, quiz.max_attempts - submittedAttemptsCount);
+
   // Check if quiz is published
   if (!quiz.is_published) {
     return {
       available: false,
       reason: 'This quiz is not yet available',
+      reasonCode: 'not_published',
+      attemptsRemaining,
+      canAttempt: false,
     };
   }
 
-  // Check max attempts
+  // Check max attempts (0 means unlimited)
   if (quiz.max_attempts > 0 && submittedAttemptsCount >= quiz.max_attempts) {
     return {
       available: false,
       reason: `You have reached the maximum number of attempts (${quiz.max_attempts})`,
+      reasonCode: 'max_attempts_reached',
+      attemptsRemaining: 0,
+      canAttempt: false,
     };
   }
 
@@ -140,6 +165,9 @@ export function checkQuizAvailability(
       return {
         available: false,
         reason: `This quiz will be available starting ${from.toLocaleDateString()}`,
+        reasonCode: 'not_yet_available',
+        attemptsRemaining,
+        canAttempt: false,
       };
     }
   }
@@ -150,11 +178,18 @@ export function checkQuizAvailability(
       return {
         available: false,
         reason: 'This quiz is no longer available',
+        reasonCode: 'deadline_passed',
+        attemptsRemaining,
+        canAttempt: false,
       };
     }
   }
 
-  return { available: true };
+  return {
+    available: true,
+    attemptsRemaining,
+    canAttempt: true,
+  };
 }
 
 /**
@@ -213,34 +248,65 @@ export function isAttemptExpired(attempt: QuizAttempt, quiz: Quiz): boolean {
 }
 
 /**
+ * Student answer input - can be array or record format.
+ *
+ * IMPORTANT: The array format is the canonical PUBLIC interface documented in
+ * src/types/quiz.ts (StudentAnswer, SaveAnswersRequest, SubmitQuizAttemptRequest).
+ * External clients and API handlers should ONLY use the array format:
+ *   [{ questionId: "uuid-1", answer: "option-a" }, ...]
+ *
+ * The record format ({ [questionId]: answer, ... }) is provided for INTERNAL
+ * convenience only and should not be used directly by external clients.
+ * API handlers should normalize incoming requests to the array format before
+ * calling grading functions.
+ */
+export type StudentAnswerInput =
+  | Array<{ questionId: string; answer: string | string[] }>
+  | Record<string, unknown>;
+
+/**
  * Auto-grade a quiz attempt
  * @param questions - Quiz questions with correct answers
- * @param studentAnswers - Student's submitted answers
+ * @param studentAnswers - Student's submitted answers (array or record format)
  * @param quiz - Quiz configuration
  * @returns Grading result
  */
 export function autoGradeQuizAttempt(
   questions: Question[],
-  studentAnswers: Record<string, unknown>,
+  studentAnswers: StudentAnswerInput,
   quiz: Quiz
 ): GradingResult {
+  // Convert array format to record format for consistent processing
+  let answersMap: Record<string, unknown>;
+  if (Array.isArray(studentAnswers)) {
+    answersMap = {};
+    for (const ans of studentAnswers) {
+      answersMap[String(ans.questionId)] = ans.answer;
+    }
+  } else {
+    answersMap = studentAnswers;
+  }
+
   let totalPoints = 0;
   let pointsEarned = 0;
   let needsReview = false;
 
   const gradedAnswers = questions.map((question) => {
     totalPoints += question.points;
-    const studentAnswer = studentAnswers[question.id];
+    const studentAnswer = answersMap[String(question.id)];
 
     let isCorrect = false;
     let points = 0;
 
     switch (question.question_type) {
       case 'multiple_choice': {
-        // Compare selected option
+        // Compare selected option by ID (not index)
         if (question.options) {
-          const correctOption = question.options.findIndex(opt => opt.is_correct);
-          isCorrect = studentAnswer === correctOption || studentAnswer === String(correctOption);
+          const correctOption = question.options.find(opt => opt.is_correct);
+          if (correctOption) {
+            // Student answer should be the option ID
+            isCorrect = studentAnswer === correctOption.id;
+          }
         }
         break;
       }
@@ -254,25 +320,36 @@ export function autoGradeQuizAttempt(
       }
 
       case 'multiple_select': {
-        // Compare arrays - all correct selections, no incorrect
+        // Compare arrays by option IDs - all correct selections, no incorrect
         if (Array.isArray(studentAnswer) && question.options) {
-          const correctIndices = question.options
-            .map((opt, idx) => opt.is_correct ? idx : -1)
-            .filter(idx => idx !== -1);
-          const studentIndices = (studentAnswer as (number | string)[])
-            .map(a => typeof a === 'string' ? parseInt(a, 10) : a)
+          const correctIds = question.options
+            .filter(opt => opt.is_correct)
+            .map(opt => opt.id)
+            .sort();
+          const studentIds = (studentAnswer as string[])
+            .map(String)
             .sort();
 
-          isCorrect = correctIndices.length === studentIndices.length &&
-            correctIndices.every((idx, i) => idx === studentIndices[i]);
+          isCorrect = correctIds.length === studentIds.length &&
+            correctIds.every((id, i) => id === studentIds[i]);
         }
         break;
       }
 
       case 'short_answer': {
-        // Case-insensitive exact match
-        if (typeof studentAnswer === 'string' && typeof question.correct_answer === 'string') {
-          isCorrect = studentAnswer.trim().toLowerCase() === question.correct_answer.trim().toLowerCase();
+        // Case-insensitive exact match - support multiple acceptable answers
+        if (typeof studentAnswer === 'string') {
+          const normalizedAnswer = studentAnswer.trim().toLowerCase();
+
+          // Check against correct_answers array if present
+          if (question.correct_answers && Array.isArray(question.correct_answers)) {
+            isCorrect = question.correct_answers.some(
+              ca => ca.trim().toLowerCase() === normalizedAnswer
+            );
+          } else if (typeof question.correct_answer === 'string') {
+            // Fall back to single correct_answer
+            isCorrect = normalizedAnswer === question.correct_answer.trim().toLowerCase();
+          }
         }
         break;
       }
@@ -293,8 +370,9 @@ export function autoGradeQuizAttempt(
     return {
       question_id: question.id,
       answer: studentAnswer,
-      is_correct: isCorrect,
+      is_correct: question.question_type === 'essay' ? null : isCorrect, // null for essay (needs review)
       points_earned: points,
+      feedback: null, // Default to null, teachers can add feedback later
     };
   });
 

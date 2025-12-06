@@ -168,7 +168,7 @@ export const prerender = false;
   let quiz: Quiz | null = null;
   let attempt: any = null;
   let questions: QuizQuestionForStudent[] = [];
-  let answers: Map<number, string | string[]> = new Map();
+  let answers: Map<string, string | string[]> = new Map();
   let currentQuestionIndex = 0;
   let timerInterval: number | null = null;
   let hasStarted = false;
@@ -185,13 +185,13 @@ export const prerender = false;
   });
 
   async function init() {
-    // Get quiz ID and attempt ID from URL
+    // Get quiz ID and attempt ID from URL - these are UUIDs (strings)
     const pathParts = window.location.pathname.split('/');
-    const quizId = parseInt(pathParts[2]);
+    const quizId = pathParts[2];
     const urlParams = new URLSearchParams(window.location.search);
     const attemptId = urlParams.get('attemptId');
 
-    if (isNaN(quizId)) {
+    if (!quizId) {
       showToast('Invalid quiz ID', 'error');
       return;
     }
@@ -205,8 +205,8 @@ export const prerender = false;
 
     try {
       if (attemptId) {
-        // Continue existing attempt
-        await loadExistingAttempt(quizId, parseInt(attemptId), session.access_token);
+        // Continue existing attempt - attemptId is already a string (UUID)
+        await loadExistingAttempt(quizId, attemptId, session.access_token);
       } else {
         // Start new attempt
         await startNewAttempt(quizId, session.access_token);
@@ -220,7 +220,7 @@ export const prerender = false;
     }
   }
 
-  async function startNewAttempt(quizId: number, token: string) {
+  async function startNewAttempt(quizId: string, token: string) {
     const response = await fetch(`/api/quizzes/${quizId}/start`, {
       method: 'POST',
       headers: {
@@ -249,7 +249,7 @@ export const prerender = false;
     document.getElementById('loading-state')?.classList.add('hidden');
   }
 
-  async function loadExistingAttempt(quizId: number, attemptId: number, token: string) {
+  async function loadExistingAttempt(quizId: string, attemptId: string, token: string) {
     // Load quiz and attempt data
     const [quizResponse, attemptResponse] = await Promise.all([
       fetch(`/api/quizzes/${quizId}`, {
@@ -290,8 +290,8 @@ export const prerender = false;
     document.getElementById('passing-score-text')!.textContent = `Passing score: ${quiz.passing_score}%`;
     document.getElementById('questions-count-text')!.textContent = `${questions.length} questions`;
 
-    if (quiz.time_limit) {
-      document.getElementById('time-limit-text')!.textContent = `Time limit: ${quiz.time_limit} minutes`;
+    if (quiz.time_limit_minutes) {
+      document.getElementById('time-limit-text')!.textContent = `Time limit: ${quiz.time_limit_minutes} minutes`;
     } else {
       document.getElementById('time-limit-info')?.classList.add('hidden');
     }
@@ -314,7 +314,7 @@ export const prerender = false;
     preventNavigation = true;
 
     // Start timer if needed
-    if (quiz?.time_limit) {
+    if (quiz?.time_limit_minutes) {
       startTimer();
     }
 
@@ -336,7 +336,7 @@ export const prerender = false;
         root.render(
           QuizTimer({
             startedAt: attempt.startedAt,
-            timeLimit: quiz!.time_limit,
+            timeLimitMinutes: quiz!.time_limit_minutes,
             onTimeUp: handleTimeUp,
           })
         );

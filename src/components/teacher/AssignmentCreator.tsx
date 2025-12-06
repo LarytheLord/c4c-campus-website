@@ -332,8 +332,8 @@ export default function AssignmentCreator({
               <input
                 type="checkbox"
                 id="published"
-                checked={formData.published}
-                onChange={(e) => setFormData({ ...formData, published: e.target.checked })}
+                checked={formData.is_published}
+                onChange={(e) => setFormData({ ...formData, is_published: e.target.checked })}
                 className="w-4 h-4 text-blue-500 border-gray-300 rounded focus:ring-blue-500"
               />
               <label htmlFor="published" className="ml-2 text-sm font-medium">

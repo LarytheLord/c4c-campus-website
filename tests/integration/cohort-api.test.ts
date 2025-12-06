@@ -49,11 +49,11 @@ describe('Cohort API Integration Tests', () => {
 
     // Create test course with multiple modules
     const { data: course } = await supabaseAdmin.from('courses').insert({
-      name: 'Cohort API Test Course',
+      title: 'Cohort API Test Course',
       slug: 'cohort-api-test-' + Date.now(),
       track: 'animal-advocacy',
       difficulty: 'beginner',
-      published: true,
+      is_published: true,
       is_cohort_based: true,
       enrollment_type: 'cohort_only',
       created_by: teacherClient.userId,
@@ -65,7 +65,7 @@ describe('Cohort API Integration Tests', () => {
     for (let i = 1; i <= 4; i++) {
       const { data: module } = await supabaseAdmin.from('modules').insert({
         course_id: testCourseId,
-        name: `Cohort API Test Module ${i}`,
+        title: `Cohort API Test Module ${i}`,
         order_index: i,
       }).select().single();
       testModuleIds.push(module.id);
@@ -188,10 +188,10 @@ describe('Cohort API Integration Tests', () => {
 
     test('should allow same cohort name for different courses', async () => {
       const { data: course2 } = await supabaseAdmin.from('courses').insert({
-        name: 'Second Test Course',
+        title: 'Second Test Course',
         slug: 'second-test-' + Date.now(),
         track: 'climate',
-        published: true,
+        is_published: true,
         created_by: teacherClient.userId,
       }).select().single();
 

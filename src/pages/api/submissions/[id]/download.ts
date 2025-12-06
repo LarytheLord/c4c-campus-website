@@ -75,22 +75,28 @@ export const GET: APIRoute = async ({ request, params }) => {
       );
     }
 
-    // Check access: student can download own, teacher can download from their courses
+    // Check access: student can download own, teacher can download from their courses, admin can download all
     const isOwner = submission.user_id === user.id;
     const isTeacher = (submission.assignments as any)?.lessons?.modules?.courses?.created_by === user.id;
 
-    if (!isOwner && !isTeacher) {
+    // Check if user is admin
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    const isAdmin = profile?.role === 'admin';
+
+    if (!isOwner && !isTeacher && !isAdmin) {
       return new Response(
         JSON.stringify({ error: 'Access denied' }),
         { status: 403, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    // Extract auth token
-    const token = authHeader.replace('Bearer ', '');
-
-    // Get signed download URL
-    const urlResult = await getSignedDownloadUrl(submission.file_url, token, 3600);
+    // Get signed download URL from private bucket (time-limited access)
+    const urlResult = await getSignedDownloadUrl(submission.file_url);
 
     if (!urlResult.success) {
       return new Response(
@@ -104,7 +110,8 @@ export const GET: APIRoute = async ({ request, params }) => {
         success: true,
         url: urlResult.url,
         file_name: submission.file_name,
-        file_size_bytes: submission.file_size_bytes
+        file_size_bytes: submission.file_size_bytes,
+        file_type: submission.file_type
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );

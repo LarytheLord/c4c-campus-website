@@ -1,8 +1,28 @@
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
 
+/**
+ * LEGACY ENDPOINT: POST /api/enroll
+ *
+ * This endpoint creates direct course enrollments without cohort association.
+ * For cohort-based courses, prefer using:
+ *   - POST /api/cohorts/[id]/enroll (for cohort enrollment with capacity checks)
+ *   - POST /api/enroll-cohort (alternative cohort enrollment endpoint)
+ *
+ * Body:
+ *   - courseId: number (required) - Course ID to enroll in
+ *   - cohortId?: string (optional) - UUID of cohort to associate enrollment with
+ *
+ * Use cases for this endpoint:
+ *   - Self-paced courses without cohorts
+ *   - Legacy enrollments migration
+ *   - Direct course access without time-gating
+ */
+
 const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY!;
+
+export const prerender = false;
 
 export const POST: APIRoute = async ({ request }) => {
   try {
@@ -41,7 +61,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     // Parse request body
     const body = await request.json();
-    const { courseId } = body;
+    const { courseId, cohortId } = body;
 
     if (!courseId) {
       return new Response(
@@ -102,15 +122,25 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // Create enrollment (RLS policy allows authenticated users to enroll themselves)
+    const enrollmentData: {
+      user_id: string;
+      course_id: number;
+      status: string;
+      cohort_id?: string;
+    } = {
+      user_id: user.id,
+      course_id: courseId,
+      status: 'active',
+    };
+
+    // Optionally associate with a cohort
+    if (cohortId) {
+      enrollmentData.cohort_id = cohortId;
+    }
+
     const { data: enrollment, error: enrollError } = await supabase
       .from('enrollments')
-      .insert([
-        {
-          user_id: user.id,
-          course_id: courseId,
-          status: 'active',
-        },
-      ])
+      .insert([enrollmentData])
       .select()
       .single();
 

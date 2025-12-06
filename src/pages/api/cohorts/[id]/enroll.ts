@@ -126,52 +126,60 @@ export const POST: APIRoute = async ({ request, params }) => {
       );
     }
 
-    // Check if cohort is accepting enrollments (not archived)
-    if (cohort.status === 'archived') {
+    // Check if cohort is accepting enrollments (must be upcoming or active)
+    if (cohort.status !== 'upcoming' && cohort.status !== 'active') {
       return new Response(
-        JSON.stringify({ error: 'Cannot enroll in archived cohort' }),
+        JSON.stringify({ error: 'Cohort is not open for enrollment' }),
         {
-          status: 400,
+          status: 403,
           headers: { 'Content-Type': 'application/json' },
         }
       );
     }
 
-    // Check if already enrolled
-    const { data: existingEnrollment } = await supabase
-      .from('cohort_enrollments')
-      .select('id, status')
-      .eq('cohort_id', id)
-      .eq('user_id', targetUserId)
+    // Check if course is published
+    const { data: course, error: courseError } = await supabase
+      .from('courses')
+      .select('id, is_published')
+      .eq('id', cohort.course_id)
       .single();
 
-    if (existingEnrollment) {
+    if (courseError || !course || !course.is_published) {
       return new Response(
-        JSON.stringify({
-          error: 'Already enrolled in this cohort',
-          enrollment: existingEnrollment,
-        }),
+        JSON.stringify({ error: 'Course is not available' }),
         {
-          status: 409,
+          status: 403,
           headers: { 'Content-Type': 'application/json' },
         }
       );
     }
 
-    // Check capacity if max_students is set
-    if (cohort.max_students !== null) {
-      const { count: currentEnrollments } = await supabase
-        .from('cohort_enrollments')
-        .select('*', { count: 'exact', head: true })
-        .eq('cohort_id', id)
-        .in('status', ['active', 'paused']); // Don't count dropped/completed
+    // Use atomic enrollment function to prevent race conditions
+    const { data: enrollment, error: enrollError } = await supabase
+      .rpc('enroll_in_cohort', {
+        p_cohort_id: id,
+        p_user_id: targetUserId,
+      });
 
-      if (currentEnrollments !== null && currentEnrollments >= cohort.max_students) {
+    if (enrollError) {
+      console.error('Error creating enrollment:', enrollError);
+
+      // Handle specific error codes from the function
+      if (enrollError.code === '23505' || enrollError.message?.includes('Already enrolled')) {
+        return new Response(
+          JSON.stringify({ error: 'Already enrolled in this cohort' }),
+          {
+            status: 409,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      if (enrollError.code === 'P0004' || enrollError.message?.includes('Cohort is full')) {
         return new Response(
           JSON.stringify({
             error: 'Cohort is full',
             max_students: cohort.max_students,
-            current_enrollments: currentEnrollments,
           }),
           {
             status: 409,
@@ -179,24 +187,17 @@ export const POST: APIRoute = async ({ request, params }) => {
           }
         );
       }
-    }
 
-    // Create enrollment
-    const enrollmentData: Partial<CohortEnrollment> = {
-      cohort_id: id, // UUID string
-      user_id: targetUserId,
-      status: 'active',
-      completed_lessons: 0,
-    };
+      if (enrollError.code === 'P0003' || enrollError.message?.includes('not open for enrollment')) {
+        return new Response(
+          JSON.stringify({ error: 'Cohort is not open for enrollment' }),
+          {
+            status: 403,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+      }
 
-    const { data: enrollment, error: enrollError } = await supabase
-      .from('cohort_enrollments')
-      .insert([enrollmentData])
-      .select()
-      .single();
-
-    if (enrollError) {
-      console.error('Error creating enrollment:', enrollError);
       return new Response(
         JSON.stringify({ error: 'Failed to enroll: ' + enrollError.message }),
         {
@@ -206,10 +207,38 @@ export const POST: APIRoute = async ({ request, params }) => {
       );
     }
 
+    // Also create a general course enrollment if not already enrolled
+    const { data: existingCourseEnrollment } = await supabase
+      .from('enrollments')
+      .select('id')
+      .eq('user_id', targetUserId)
+      .eq('course_id', cohort.course_id)
+      .single();
+
+    if (!existingCourseEnrollment) {
+      // Create general course enrollment
+      const { error: courseEnrollError } = await supabase
+        .from('enrollments')
+        .insert([
+          {
+            user_id: targetUserId,
+            course_id: cohort.course_id,
+            cohort_id: id,
+            status: 'active',
+          },
+        ]);
+
+      if (courseEnrollError) {
+        console.error('Course enrollment error:', courseEnrollError);
+        // Continue anyway - cohort enrollment is more important
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
         enrollment,
+        cohort_enrollment: enrollment,
         message: isTeacherEnrolling
           ? 'User enrolled successfully'
           : 'Successfully enrolled in cohort',
@@ -241,7 +270,7 @@ export const DELETE: APIRoute = async ({ request, params }) => {
   try {
     const { id } = params;
 
-    if (!id || isNaN(Number(id))) {
+    if (!id) {
       return new Response(
         JSON.stringify({ error: 'Invalid cohort ID' }),
         {

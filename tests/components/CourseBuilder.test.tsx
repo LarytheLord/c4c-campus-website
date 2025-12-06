@@ -32,7 +32,7 @@ describe('CourseBuilder Component', () => {
     expect(screen.getByLabelText(/description/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/track/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/difficulty/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/estimated hours/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/duration.*weeks/i)).toBeInTheDocument();
   });
   
   test('should pre-fill form when editing existing course', () => {
@@ -46,9 +46,9 @@ describe('CourseBuilder Component', () => {
     );
     
     // Assert - Fields populated with existing data
-    expect(screen.getByDisplayValue(mockCourse.name)).toBeInTheDocument();
+    expect(screen.getByDisplayValue(mockCourse.title)).toBeInTheDocument();
     expect(screen.getByDisplayValue(mockCourse.description!)).toBeInTheDocument();
-    expect(screen.getByDisplayValue('8')).toBeInTheDocument(); // estimated_hours
+    expect(screen.getByDisplayValue('2')).toBeInTheDocument(); // default_duration_weeks
   });
   
   // ==================== VALIDATION ====================
@@ -84,18 +84,18 @@ describe('CourseBuilder Component', () => {
     });
   });
   
-  test('should validate estimated hours is positive number', async () => {
+  test('should validate duration weeks is positive number', async () => {
     // Arrange
     const user = userEvent.setup({ delay: null });
     render(<CourseBuilder onSave={mockOnSave} onPublish={mockOnPublish} />);
-    
-    // Act - Enter negative hours
-    await user.type(screen.getByLabelText(/estimated hours/i), '-5');
+
+    // Act - Enter negative weeks
+    await user.type(screen.getByLabelText(/duration.*weeks/i), '-5');
     await user.click(screen.getByRole('button', { name: /save/i }));
-    
+
     // Assert
     await waitFor(() => {
-      expect(screen.getByText(/hours must be positive/i)).toBeInTheDocument();
+      expect(screen.getByText(/weeks must be positive/i)).toBeInTheDocument();
     });
   });
   
@@ -113,7 +113,7 @@ describe('CourseBuilder Component', () => {
     await waitFor(() => {
       expect(mockOnSave).toHaveBeenCalledWith(
         expect.objectContaining({
-          name: expect.not.stringContaining('<script>')
+          title: expect.not.stringContaining('<script>')
         })
       );
     });
@@ -131,20 +131,20 @@ describe('CourseBuilder Component', () => {
     await user.type(screen.getByLabelText(/description/i), 'Learn advanced n8n workflow patterns');
     await user.selectOptions(screen.getByLabelText(/track/i), 'animal-advocacy');
     await user.selectOptions(screen.getByLabelText(/difficulty/i), 'intermediate');
-    await user.type(screen.getByLabelText(/estimated hours/i), '12');
+    await user.type(screen.getByLabelText(/duration.*weeks/i), '3');
     
     await user.click(screen.getByRole('button', { name: /save/i }));
     
     // Assert - onSave called with correct data
     await waitFor(() => {
       expect(mockOnSave).toHaveBeenCalledWith({
-        name: 'n8n Advanced Patterns',
-        slug: 'n8n-advanced-patterns', // Auto-generated from name
+        title: 'n8n Advanced Patterns',
+        slug: 'n8n-advanced-patterns', // Auto-generated from title
         description: 'Learn advanced n8n workflow patterns',
         track: 'animal-advocacy',
         difficulty: 'intermediate',
-        estimated_hours: 12,
-        published: false, // Defaults to draft
+        default_duration_weeks: 3,
+        is_published: false, // Defaults to draft
       });
     });
   });
@@ -171,7 +171,7 @@ describe('CourseBuilder Component', () => {
       expect(mockOnSave).toHaveBeenCalledWith(
         expect.objectContaining({
           id: mockCourse.id,
-          name: 'Updated Course Name',
+          title: 'Updated Course Name',
           slug: mockCourse.slug, // Keeps original slug to prevent URL changes
         })
       );
@@ -182,8 +182,8 @@ describe('CourseBuilder Component', () => {
   
   test('should show publish button for draft courses', () => {
     // Arrange - Draft course
-    const draft = { ...mockCourse, published: false };
-    
+    const draft = { ...mockCourse, is_published: false };
+
     // Act
     render(
       <CourseBuilder
@@ -192,15 +192,15 @@ describe('CourseBuilder Component', () => {
         onPublish={mockOnPublish}
       />
     );
-    
+
     // Assert
     expect(screen.getByRole('button', { name: /publish/i })).toBeInTheDocument();
   });
-  
+
   test('should show unpublish button for published courses', () => {
     // Arrange - Published course
-    const published = { ...mockCourse, published: true };
-    
+    const published = { ...mockCourse, is_published: true };
+
     // Act
     render(
       <CourseBuilder
@@ -209,15 +209,15 @@ describe('CourseBuilder Component', () => {
         onPublish={mockOnPublish}
       />
     );
-    
+
     // Assert
     expect(screen.getByRole('button', { name: /unpublish/i })).toBeInTheDocument();
   });
-  
+
   test('should toggle published status', async () => {
     // Arrange
     const user = userEvent.setup({ delay: null });
-    const draft = { ...mockCourse, published: false };
+    const draft = { ...mockCourse, is_published: false };
     
     render(
       <CourseBuilder
@@ -406,19 +406,19 @@ describe('CourseBuilder Component', () => {
     await user.type(screen.getByLabelText(/description/i), 'Full description here');
     await user.selectOptions(screen.getByLabelText(/track/i), 'animal-advocacy');
     await user.selectOptions(screen.getByLabelText(/difficulty/i), 'beginner');
-    await user.type(screen.getByLabelText(/estimated hours/i), '10');
+    await user.type(screen.getByLabelText(/duration.*weeks/i), '2');
     await user.click(screen.getByRole('button', { name: /save/i }));
-    
+
     // Assert
     await waitFor(() => {
       expect(mockOnSave).toHaveBeenCalledWith({
-        name: 'Complete Course',
+        title: 'Complete Course',
         slug: 'complete-course',
         description: 'Full description here',
         track: 'animal-advocacy',
         difficulty: 'beginner',
-        estimated_hours: 10,
-        published: false,
+        default_duration_weeks: 2,
+        is_published: false,
       });
     });
   });
@@ -450,7 +450,7 @@ describe('CourseBuilder Component', () => {
     expect(screen.getByLabelText(/description/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/track/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/difficulty/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/estimated hours/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/duration.*weeks/i)).toBeInTheDocument();
   });
   
   test('should announce validation errors to screen readers', async () => {

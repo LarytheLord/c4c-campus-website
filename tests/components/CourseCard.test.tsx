@@ -14,12 +14,12 @@ import { mockCourse, mockCourseWithProgress } from '../fixtures/courses';
 describe('CourseCard Component', () => {
   // ==================== RENDERING ====================
   
-  test('should display course name and description', () => {
+  test('should display course title and description', () => {
     // Arrange & Act
     render(<CourseCard course={mockCourse} />);
-    
+
     // Assert
-    expect(screen.getByText(mockCourse.name)).toBeInTheDocument();
+    expect(screen.getByText(mockCourse.title)).toBeInTheDocument();
     expect(screen.getByText(mockCourse.description!)).toBeInTheDocument();
   });
   
@@ -32,12 +32,12 @@ describe('CourseCard Component', () => {
     expect(screen.getByText(/beginner/i)).toBeInTheDocument();
   });
   
-  test('should display estimated hours', () => {
+  test('should display default duration weeks', () => {
     // Arrange & Act
     render(<CourseCard course={mockCourse} />);
-    
-    // Assert - Shows "8 hours" from mockCourse.estimated_hours
-    expect(screen.getByText(/8 hours/i)).toBeInTheDocument();
+
+    // Assert - Shows "2 weeks" from mockCourse.default_duration_weeks
+    expect(screen.getByText(/2 weeks/i)).toBeInTheDocument();
   });
   
   test('should display thumbnail image', () => {
@@ -45,7 +45,7 @@ describe('CourseCard Component', () => {
     render(<CourseCard course={mockCourse} />);
     
     // Assert
-    const thumbnail = screen.getByRole('img', { name: new RegExp(mockCourse.name, 'i') });
+    const thumbnail = screen.getByRole('img', { name: new RegExp(mockCourse.title, 'i') });
     expect(thumbnail).toHaveAttribute('src', mockCourse.thumbnail_url);
   });
   
@@ -106,22 +106,22 @@ describe('CourseCard Component', () => {
   
   test('should not display unpublished courses', () => {
     // Arrange - Unpublished course
-    const unpublished = { ...mockCourse, published: false };
-    
+    const unpublished = { ...mockCourse, is_published: false };
+
     // Act
     const { container } = render(<CourseCard course={unpublished} />);
-    
+
     // Assert - Component renders nothing (or "Draft" badge)
     expect(container).toBeEmptyDOMElement();
   });
-  
+
   test('should show "Draft" badge for unpublished in teacher view', () => {
     // Arrange
-    const unpublished = { ...mockCourse, published: false };
-    
+    const unpublished = { ...mockCourse, is_published: false };
+
     // Act
     render(<CourseCard course={unpublished} teacherView={true} />);
-    
+
     // Assert
     expect(screen.getByText(/draft/i)).toBeInTheDocument();
   });
@@ -148,7 +148,7 @@ describe('CourseCard Component', () => {
     render(<CourseCard course={noDescription} />);
     
     // Assert - Still renders without crash
-    expect(screen.getByText(mockCourse.name)).toBeInTheDocument();
+    expect(screen.getByText(mockCourse.title)).toBeInTheDocument();
     expect(screen.queryByText('null')).not.toBeInTheDocument();
   });
   

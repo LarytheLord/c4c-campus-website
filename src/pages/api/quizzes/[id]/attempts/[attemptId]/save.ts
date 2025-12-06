@@ -43,12 +43,13 @@ export const POST: APIRoute = async ({ request, params }) => {
       );
     }
 
-    const quizId = parseInt(params.id!);
-    const attemptId = parseInt(params.attemptId!);
+    // Quiz and attempt IDs are UUIDs - treat as strings, not numbers
+    const quizId = params.id;
+    const attemptId = params.attemptId;
 
-    if (isNaN(quizId) || isNaN(attemptId)) {
+    if (!quizId || !attemptId) {
       return new Response(
-        JSON.stringify({ error: 'Invalid quiz or attempt ID' }),
+        JSON.stringify({ error: 'Quiz ID and attempt ID are required' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }

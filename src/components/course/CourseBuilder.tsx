@@ -102,13 +102,13 @@ export default function CourseBuilder({ course, onSave, onPublish }: CourseBuild
       // Sanitize user input (XSS prevention)
       const sanitizedData = {
         ...(course?.id && { id: course.id }),
-        name: DOMPurify.sanitize(formData.name, { ALLOWED_TAGS: [] }),
-        slug: formData.slug || formData.name.toLowerCase().replace(/[^a-z0-9-]/g, '-'),
+        title: DOMPurify.sanitize(formData.title, { ALLOWED_TAGS: [] }),
+        slug: formData.slug || formData.title.toLowerCase().replace(/[^a-z0-9-]/g, '-'),
         description: formData.description ? DOMPurify.sanitize(formData.description, { ALLOWED_TAGS: [] }) : null,
         track: formData.track,
         difficulty: formData.difficulty,
-        estimated_hours: formData.estimated_hours ? parseInt(formData.estimated_hours, 10) : null,
-        published: course?.published || false,
+        default_duration_weeks: formData.default_duration_weeks ? parseInt(formData.default_duration_weeks, 10) : null,
+        is_published: course?.is_published || false,
       };
 
       const result = await onSave(sanitizedData);
@@ -128,7 +128,7 @@ export default function CourseBuilder({ course, onSave, onPublish }: CourseBuild
     if (!course) return;
 
     try {
-      const newPublishedState = !course.published;
+      const newPublishedState = !course.is_published;
       await onPublish(course.id, newPublishedState);
     } catch (err) {
       console.error('Publish error:', err);
@@ -139,14 +139,14 @@ export default function CourseBuilder({ course, onSave, onPublish }: CourseBuild
     <div className="course-builder">
       <form onSubmit={handleSubmit}>
         <div className="form-group">
-          <label htmlFor="course-name">Course Name</label>
+          <label htmlFor="course-title">Course Title</label>
           <input
             type="text"
-            id="course-name"
-            name="name"
-            value={formData.name}
+            id="course-title"
+            name="title"
+            value={formData.title}
             onChange={handleChange}
-            aria-label="Course name"
+            aria-label="Course title"
           />
         </div>
 
@@ -196,14 +196,14 @@ export default function CourseBuilder({ course, onSave, onPublish }: CourseBuild
         </div>
 
         <div className="form-group">
-          <label htmlFor="estimated-hours">Estimated Hours</label>
+          <label htmlFor="default-duration-weeks">Duration (weeks)</label>
           <input
             type="number"
-            id="estimated-hours"
-            name="estimated_hours"
-            value={formData.estimated_hours}
+            id="default-duration-weeks"
+            name="default_duration_weeks"
+            value={formData.default_duration_weeks}
             onChange={handleChange}
-            aria-label="Estimated hours"
+            aria-label="Duration in weeks"
           />
         </div>
 
@@ -256,7 +256,7 @@ export default function CourseBuilder({ course, onSave, onPublish }: CourseBuild
               onClick={handlePublishToggle}
               role="button"
             >
-              {course.published ? 'Unpublish' : 'Publish'}
+              {course.is_published ? 'Unpublish' : 'Publish'}
             </button>
           )}
         </div>

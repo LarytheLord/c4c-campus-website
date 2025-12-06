@@ -291,7 +291,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 
         enrollments?.forEach(enrollment => {
           const courseId = enrollment.course_id;
-          const courseName = (enrollment.courses as any)?.name || 'Unknown';
+          const courseName = (enrollment.courses as any)?.title || 'Unknown';
           courseNames[courseId] = courseName;
           courseCounts[courseName] = (courseCounts[courseName] || 0) + 1;
         });

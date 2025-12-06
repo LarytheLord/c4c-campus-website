@@ -30,6 +30,52 @@ export interface DownloadUrlResult {
 }
 
 /**
+ * Map of file extensions to allowed MIME types
+ */
+const EXTENSION_MIME_MAP: Record<string, string[]> = {
+  // Documents
+  pdf: ['application/pdf'],
+  doc: ['application/msword'],
+  docx: ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+  txt: ['text/plain'],
+  rtf: ['application/rtf', 'text/rtf'],
+  odt: ['application/vnd.oasis.opendocument.text'],
+  // Spreadsheets
+  xls: ['application/vnd.ms-excel'],
+  xlsx: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+  csv: ['text/csv', 'application/csv'],
+  ods: ['application/vnd.oasis.opendocument.spreadsheet'],
+  // Presentations
+  ppt: ['application/vnd.ms-powerpoint'],
+  pptx: ['application/vnd.openxmlformats-officedocument.presentationml.presentation'],
+  odp: ['application/vnd.oasis.opendocument.presentation'],
+  // Images
+  jpg: ['image/jpeg'],
+  jpeg: ['image/jpeg'],
+  png: ['image/png'],
+  gif: ['image/gif'],
+  webp: ['image/webp'],
+  svg: ['image/svg+xml'],
+  bmp: ['image/bmp'],
+  // Archives
+  zip: ['application/zip', 'application/x-zip-compressed'],
+  rar: ['application/vnd.rar', 'application/x-rar-compressed'],
+  '7z': ['application/x-7z-compressed'],
+  tar: ['application/x-tar'],
+  gz: ['application/gzip', 'application/x-gzip'],
+};
+
+/**
+ * List of dangerous file extensions that should always be blocked (without leading dot)
+ * These are blocked if they appear as any segment in a multi-extension filename
+ * (e.g., "report.pdf.exe" has segments ["pdf", "exe"], and "exe" triggers a block)
+ */
+const DANGEROUS_EXTENSIONS = [
+  'exe', 'scr', 'bat', 'cmd', 'com', 'pif', 'vbs', 'js',
+  'jar', 'app', 'deb', 'rpm', 'dmg', 'pkg', 'sh'
+];
+
+/**
  * Get file extension from filename
  */
 function getExtension(filename: string): string {
@@ -38,14 +84,60 @@ function getExtension(filename: string): string {
 }
 
 /**
- * Validate a file against size and type constraints
+ * Validate a file against size, type, MIME, and security constraints
  * @param file - File to validate
  * @param options - Validation options
  * @returns Validation result
  */
 export function validateFile(file: File, options: FileValidationOptions): FileValidationResult {
   const { maxSizeMB, allowedTypes } = options;
-  const fileExtension = getExtension(file.name);
+  const fileName = file.name;
+  const fileNameLower = fileName.toLowerCase();
+
+  // Check for empty files
+  if (file.size === 0) {
+    return {
+      valid: false,
+      error: 'File is empty',
+    };
+  }
+
+  // Check for files without extension (no dot in filename)
+  if (!fileName.includes('.')) {
+    return {
+      valid: false,
+      error: 'File must have an extension',
+    };
+  }
+
+  // Check for hidden files (starting with .)
+  if (fileName.startsWith('.')) {
+    return {
+      valid: false,
+      error: 'Hidden files are not allowed',
+    };
+  }
+
+  const fileExtension = getExtension(fileName);
+
+  // Check for dangerous extensions by splitting filename into dot-separated segments
+  // This catches double-extension attacks (e.g., "report.pdf.exe") while avoiding
+  // false positives on benign filenames that contain extension substrings
+  // (e.g., "executable_report.pdf" should be allowed)
+  const segments = fileNameLower.split('.');
+  // Skip the first segment (it's the base filename, not an extension)
+  const extensionSegments = segments.slice(1);
+
+  for (const segment of extensionSegments) {
+    const segmentLower = segment.toLowerCase();
+    if (DANGEROUS_EXTENSIONS.includes(segmentLower)) {
+      return {
+        valid: false,
+        error: `Security error: File contains dangerous extension ".${segmentLower}"`,
+        fileExtension,
+      };
+    }
+  }
 
   // Check file size
   const maxSizeBytes = maxSizeMB * 1024 * 1024;
@@ -57,7 +149,7 @@ export function validateFile(file: File, options: FileValidationOptions): FileVa
     };
   }
 
-  // Check file type
+  // Check file type against allowed types
   const normalizedTypes = allowedTypes.map(t => t.toLowerCase().replace('.', ''));
   if (!normalizedTypes.includes(fileExtension)) {
     return {
@@ -65,6 +157,18 @@ export function validateFile(file: File, options: FileValidationOptions): FileVa
       error: `File type ".${fileExtension}" is not allowed. Allowed types: ${allowedTypes.join(', ')}`,
       fileExtension,
     };
+  }
+
+  // Validate MIME type matches extension (when file.type is available)
+  if (file.type) {
+    const expectedMimeTypes = EXTENSION_MIME_MAP[fileExtension];
+    if (expectedMimeTypes && !expectedMimeTypes.includes(file.type)) {
+      return {
+        valid: false,
+        error: `Security error: File MIME type "${file.type}" does not match extension ".${fileExtension}"`,
+        fileExtension,
+      };
+    }
   }
 
   return {
@@ -158,18 +262,29 @@ export function getFileIcon(filename: string): string {
 }
 
 /**
- * Upload a file to Supabase Storage
+ * Default private bucket for assignment submissions.
+ * This bucket should be configured in Supabase as non-public with RLS policies.
+ */
+const DEFAULT_PRIVATE_BUCKET = 'assignment-submissions-private';
+
+/**
+ * Upload a file to Supabase Storage (private bucket)
+ *
+ * Files are stored in a private bucket and accessed via signed URLs only.
+ * The returned path should be stored in the database; use getSignedDownloadUrl()
+ * to generate time-limited download URLs for authorized users.
+ *
  * @param file - File to upload
  * @param userId - User ID
  * @param assignmentId - Assignment ID
- * @param bucket - Storage bucket name (default: 'assignment-submissions')
- * @returns Upload result
+ * @param bucket - Storage bucket name (default: 'assignment-submissions-private')
+ * @returns Upload result with storage path (no public URL)
  */
 export async function uploadFile(
   file: File,
   userId: string,
   assignmentId: string,
-  bucket: string = 'assignment-submissions'
+  bucket: string = DEFAULT_PRIVATE_BUCKET
 ): Promise<UploadResult> {
   try {
     const timestamp = Date.now();
@@ -190,15 +305,12 @@ export async function uploadFile(
       };
     }
 
-    // Get public URL
-    const { data: urlData } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(data.path);
-
+    // Return only the storage path - no public URL for private buckets
+    // Use getSignedDownloadUrl() to generate time-limited download URLs
     return {
       success: true,
       path: data.path,
-      url: urlData.publicUrl,
+      // url is intentionally omitted for private bucket storage
     };
   } catch (err) {
     return {
@@ -209,15 +321,19 @@ export async function uploadFile(
 }
 
 /**
- * Get a signed download URL for a file
+ * Get a signed download URL for a file in private storage
+ *
+ * This generates a time-limited signed URL for accessing files in private buckets.
+ * Authorization must be checked by the caller before generating the URL.
+ *
  * @param filePath - Path to file in storage
- * @param bucket - Storage bucket name
- * @param expiresIn - URL expiration time in seconds (default: 3600)
- * @returns Download URL result
+ * @param bucket - Storage bucket name (default: 'assignment-submissions-private')
+ * @param expiresIn - URL expiration time in seconds (default: 3600 = 1 hour)
+ * @returns Download URL result with time-limited signed URL
  */
 export async function getSignedDownloadUrl(
   filePath: string,
-  bucket: string = 'assignment-submissions',
+  bucket: string = DEFAULT_PRIVATE_BUCKET,
   expiresIn: number = 3600
 ): Promise<DownloadUrlResult> {
   try {
@@ -247,12 +363,12 @@ export async function getSignedDownloadUrl(
 /**
  * Delete a file from storage
  * @param filePath - Path to file
- * @param bucket - Storage bucket name
+ * @param bucket - Storage bucket name (default: 'assignment-submissions-private')
  * @returns Success boolean
  */
 export async function deleteFile(
   filePath: string,
-  bucket: string = 'assignment-submissions'
+  bucket: string = DEFAULT_PRIVATE_BUCKET
 ): Promise<boolean> {
   try {
     const { error } = await supabase.storage

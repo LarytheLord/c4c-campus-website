@@ -65,11 +65,11 @@ describe('Admin Tools Integration Tests', () => {
     // Create test courses for bulk operations
     for (let i = 1; i <= 5; i++) {
       const { data: course } = await supabaseAdmin.from('courses').insert({
-        name: `Admin Test Course ${i}`,
+        title: `Admin Test Course ${i}`,
         slug: `admin-test-course-${i}-${Date.now()}`,
         track: 'animal-advocacy',
         difficulty: i % 2 === 0 ? 'intermediate' : 'beginner',
-        published: i % 2 === 0, // Alternate published/unpublished
+        is_published: i % 2 === 0, // Alternate published/unpublished
         description: `Test course for admin bulk operations`,
         created_by: teacherClient.userId,
       }).select().single();
@@ -135,7 +135,7 @@ describe('Admin Tools Integration Tests', () => {
 
     test('Should prevent teacher from accessing admin endpoints', async () => {
       const response = await teacherClient.client.from('courses').update({
-        published: false
+        is_published: false
       }).eq('id', testCourseIds[0]);
 
       // Teachers should not be able to bulk update other courses
@@ -144,7 +144,7 @@ describe('Admin Tools Integration Tests', () => {
 
     test('Should prevent student from accessing admin endpoints', async () => {
       const response = await student1Client.client.from('courses').update({
-        published: false
+        is_published: false
       }).eq('id', testCourseIds[0]);
 
       expect(response.error).toBeDefined();
@@ -194,7 +194,7 @@ describe('Admin Tools Integration Tests', () => {
       if (unpublishedIds.length > 0) {
         const { error } = await supabaseAdmin
           .from('courses')
-          .update({ published: true, updated_at: new Date().toISOString() })
+          .update({ is_published: true, updated_at: new Date().toISOString() })
           .in('id', unpublishedIds);
 
         expect(error).toBeNull();
@@ -202,10 +202,10 @@ describe('Admin Tools Integration Tests', () => {
         // Verify courses are now published
         const { data: published } = await supabaseAdmin
           .from('courses')
-          .select('id, published')
+          .select('id, is_published')
           .in('id', unpublishedIds);
 
-        expect(published?.every(c => c.published === true)).toBe(true);
+        expect(published?.every(c => c.is_published === true)).toBe(true);
       }
     });
 
@@ -215,7 +215,7 @@ describe('Admin Tools Integration Tests', () => {
       if (publishedIds.length > 0) {
         const { error } = await supabaseAdmin
           .from('courses')
-          .update({ published: false, updated_at: new Date().toISOString() })
+          .update({ is_published: false, updated_at: new Date().toISOString() })
           .in('id', publishedIds);
 
         expect(error).toBeNull();
@@ -223,17 +223,17 @@ describe('Admin Tools Integration Tests', () => {
         // Verify courses are now unpublished
         const { data: unpublished } = await supabaseAdmin
           .from('courses')
-          .select('id, published')
+          .select('id, is_published')
           .in('id', publishedIds);
 
-        expect(unpublished?.every(c => c.published === false)).toBe(true);
+        expect(unpublished?.every(c => c.is_published === false)).toBe(true);
       }
     });
 
     test('Should handle empty course list gracefully', async () => {
       const { error } = await supabaseAdmin
         .from('courses')
-        .update({ published: true })
+        .update({ is_published: true })
         .in('id', []);
 
       // Should either succeed with no updates or have a clear error
@@ -245,7 +245,7 @@ describe('Admin Tools Integration Tests', () => {
 
       const { error } = await supabaseAdmin
         .from('courses')
-        .update({ published: true, track: 'climate' })
+        .update({ is_published: true, track: 'climate' })
         .in('id', courseIds);
 
       expect(error).toBeNull();
@@ -253,11 +253,11 @@ describe('Admin Tools Integration Tests', () => {
       // Verify all courses were updated
       const { data: updated } = await supabaseAdmin
         .from('courses')
-        .select('id, published, track')
+        .select('id, is_published, track')
         .in('id', courseIds);
 
       expect(updated?.length).toBe(2);
-      expect(updated?.every(c => c.published && c.track === 'climate')).toBe(true);
+      expect(updated?.every(c => c.is_published && c.track === 'climate')).toBe(true);
     });
 
     test('Should rollback on partial failure', async () => {
@@ -266,13 +266,13 @@ describe('Admin Tools Integration Tests', () => {
 
       const { error } = await supabaseAdmin
         .from('courses')
-        .update({ published: false })
+        .update({ is_published: false })
         .in('id', invalidIds);
 
       // Update should still work for valid IDs
       const { data: course } = await supabaseAdmin
         .from('courses')
-        .select('published')
+        .select('is_published')
         .eq('id', validId)
         .single();
 
@@ -286,7 +286,7 @@ describe('Admin Tools Integration Tests', () => {
       const { error } = await supabaseAdmin
         .from('courses')
         .update({
-          published: true,
+          is_published: true,
           updated_at: updateTime,
           difficulty: 'advanced',
         })
@@ -297,10 +297,10 @@ describe('Admin Tools Integration Tests', () => {
       // Verify all metadata updated
       const { data: updated } = await supabaseAdmin
         .from('courses')
-        .select('id, difficulty, published')
+        .select('id, difficulty, is_published')
         .in('id', courseIds);
 
-      expect(updated?.every(c => c.difficulty === 'advanced' && c.published)).toBe(true);
+      expect(updated?.every(c => c.difficulty === 'advanced' && c.is_published)).toBe(true);
     });
   });
 
@@ -899,7 +899,7 @@ describe('Admin Tools Integration Tests', () => {
       const courseIds = testCourseIds.slice(0, 2);
 
       const updates = [
-        supabaseAdmin.from('courses').update({ published: true }).in('id', courseIds),
+        supabaseAdmin.from('courses').update({ is_published: true }).in('id', courseIds),
         supabaseAdmin.from('courses').update({ track: 'climate' }).in('id', courseIds),
       ];
 
@@ -996,7 +996,7 @@ describe('Admin Tools Integration Tests', () => {
 
       const { error } = await supabaseAdmin
         .from('courses')
-        .update({ published: true, updated_at: actionTime })
+        .update({ is_published: true, updated_at: actionTime })
         .eq('id', courseId);
 
       if (!error) {
@@ -1068,7 +1068,7 @@ describe('Admin Tools Integration Tests', () => {
 
       const { error } = await supabaseAdmin
         .from('courses')
-        .update({ published: true })
+        .update({ is_published: true })
         .in('id', emptyIds);
 
       // Should handle gracefully (error or no-op)
@@ -1081,7 +1081,7 @@ describe('Admin Tools Integration Tests', () => {
       for (const id of [invalidIds[0], invalidIds[1]]) {
         const { error } = await supabaseAdmin
           .from('courses')
-          .update({ published: true })
+          .update({ is_published: true })
           .eq('id', id);
 
         // Should error or have no effect
@@ -1160,7 +1160,7 @@ describe('Admin Tools Integration Tests', () => {
 
       const { error } = await supabaseAdmin
         .from('courses')
-        .update({ published: true })
+        .update({ is_published: true })
         .eq('track', 'animal-advocacy');
 
       const duration = Date.now() - startTime;

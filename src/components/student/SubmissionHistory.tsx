@@ -8,7 +8,7 @@ import { formatFileSize, getFileIcon } from '@/lib/file-upload';
 import type { Submission } from '@/types/assignment';
 
 interface SubmissionHistoryProps {
-  assignmentId: number;
+  assignmentId: string;
   assignmentTitle: string;
   onClose: () => void;
 }
@@ -36,19 +36,20 @@ export default function SubmissionHistory({
         return;
       }
 
-      // Get user's submissions for this assignment
-      const { data, error: fetchError } = await supabase
-        .from('assignment_submissions')
-        .select('*')
-        .eq('assignment_id', assignmentId)
-        .eq('user_id', session.user.id)
-        .order('submission_number', { ascending: false });
+      // Use the API endpoint instead of direct Supabase query
+      const response = await fetch(`/api/assignments/${assignmentId}/submissions`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
 
-      if (fetchError) {
-        throw new Error(fetchError.message);
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to fetch submissions');
       }
 
-      setSubmissions(data || []);
+      setSubmissions(result.data || []);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -56,7 +57,7 @@ export default function SubmissionHistory({
     }
   };
 
-  const handleDownload = async (submissionId: number) => {
+  const handleDownload = async (submissionId: string) => {
     try {
       const supabase = (window as any).supabase;
       const { data: { session } } = await supabase.auth.getSession();
@@ -165,7 +166,7 @@ export default function SubmissionHistory({
                       {submission.status === 'graded' ? (
                         <div className="text-right">
                           <div className="text-2xl font-bold text-green-600">
-                            {submission.points_earned || submission.grade}
+                            {submission.score}
                           </div>
                           <div className="text-xs text-gray-600">
                             Graded {submission.graded_at && formatDate(submission.graded_at)}
@@ -211,23 +212,15 @@ export default function SubmissionHistory({
                   )}
 
                   {/* Grade Details */}
-                  {submission.grade !== null && (
+                  {submission.score !== null && (
                     <div className="mt-3 pt-3 border-t border-gray-200">
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="text-gray-600">Raw Grade:</span>
-                          <span className="ml-2 font-medium">{submission.grade}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">Final Points:</span>
-                          <span className="ml-2 font-medium text-green-600">
-                            {submission.points_earned || submission.grade}
-                          </span>
-                        </div>
+                      <div className="text-sm">
+                        <span className="text-gray-600">Score:</span>
+                        <span className="ml-2 font-medium text-green-600">{submission.score}</span>
                       </div>
-                      {submission.is_late && submission.points_earned !== submission.grade && (
+                      {submission.is_late && (
                         <p className="text-xs text-red-600 mt-2">
-                          * Late penalty applied
+                          * Late submission
                         </p>
                       )}
                     </div>

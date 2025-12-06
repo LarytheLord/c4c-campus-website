@@ -4,6 +4,7 @@
  * Students can view all assignments across enrolled courses
  */
 import BaseLayout from '@/layouts/BaseLayout.astro';
+// Note: getStatusBadgeHtml is imported in the client script below
 export const prerender = false;
 ---
 
@@ -83,6 +84,7 @@ export const prerender = false;
   <script>
     import { createClient } from '@supabase/supabase-js';
     import type { AssignmentWithSubmission } from '@/types/assignment';
+    import { getAssignmentStatus, getStatusBadgeHtml } from '@/lib/assignment-status';
 
     const supabase = createClient(
       import.meta.env.PUBLIC_SUPABASE_URL,
@@ -161,7 +163,7 @@ export const prerender = false;
           return {
             ...assignment,
             user_submission: userSubmission,
-            course_name: course?.name || 'Unknown Course',
+            course_name: course?.title || 'Unknown Course',
             course_id: course?.id,
             lesson_name: lesson?.name || 'Unknown Lesson'
           };
@@ -310,26 +312,11 @@ export const prerender = false;
       const now = new Date();
 
       listContainer.innerHTML = filteredAssignments.map(assignment => {
+        // Use centralized status helper
+        const status = getAssignmentStatus(assignment, now);
+        const statusBadge = getStatusBadgeHtml(status);
         const dueDate = assignment.due_date ? new Date(assignment.due_date) : null;
-        const isPastDue = dueDate && now > dueDate;
-        const hasSubmission = assignment.user_submission !== null;
-        const isGraded = assignment.user_submission?.status === 'graded';
-
-        let statusBadge = '';
-        if (!hasSubmission) {
-          if (isPastDue && !assignment.allow_late_submissions) {
-            statusBadge = '<span class="px-3 py-1 bg-red-100 text-red-700 text-sm font-medium rounded-full">Closed</span>';
-          } else if (isPastDue) {
-            statusBadge = '<span class="px-3 py-1 bg-orange-100 text-orange-700 text-sm font-medium rounded-full">Late</span>';
-          } else {
-            statusBadge = '<span class="px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-full">Not Submitted</span>';
-          }
-        } else if (isGraded) {
-          const points = assignment.user_submission?.points_earned || assignment.user_submission?.grade || 0;
-          statusBadge = `<span class="px-3 py-1 bg-green-100 text-green-700 text-sm font-medium rounded-full">Graded: ${points}/${assignment.max_points}</span>`;
-        } else {
-          statusBadge = '<span class="px-3 py-1 bg-yellow-100 text-yellow-700 text-sm font-medium rounded-full">Submitted - Pending</span>';
-        }
+        const isPastDue = status.isPastDue;
 
         return `
           <a href="/assignments/${assignment.id}" class="block bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">

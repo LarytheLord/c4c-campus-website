@@ -1,58 +1,50 @@
 // TypeScript Type Definitions - E-Learning Platform
 // Reference: BOOTCAMP_ARCHITECTURE.md lines 193-290 (database schema)
+//
+// NOTE: These types are thin wrappers over the Supabase-generated types in ./generated.ts
+// When modifying types, ensure they remain compatible with the generated schema types.
+// Run `npm run db:types` to regenerate types from the database schema.
+
+import type {
+  CourseRow,
+  ModuleRow,
+  LessonRow,
+  EnrollmentRow,
+  LessonProgressRow,
+  CohortRow,
+  CohortEnrollmentRow,
+  Json,
+} from './generated';
 
 /**
  * Course - Top-level content container
  * Reference: BOOTCAMP_ARCHITECTURE.md lines 194-207
+ *
+ * Extends the generated CourseRow type with stricter non-null constraints
+ * where the application guarantees values exist.
  */
-export interface Course {
-  id: number;
-  slug: string;
-  title: string;
-  description: string | null;
-  thumbnail_url: string | null;
+export interface Course extends Omit<CourseRow, 'track' | 'difficulty' | 'created_by'> {
   track: 'animal_advocacy' | 'climate' | 'ai_safety' | 'general';
   difficulty: 'beginner' | 'intermediate' | 'advanced';
-  is_published: boolean;
-  is_cohort_based: boolean;
-  default_duration_weeks: number;
-  enrollment_type: 'open' | 'cohort_only' | 'hybrid';
-  created_by: string; // UUID
-  created_at: string; // ISO timestamp
-  updated_at: string; // ISO timestamp
+  created_by: string; // UUID - required in application context
 }
 
 /**
  * Module - Groups of lessons within a course
  * Reference: BOOTCAMP_ARCHITECTURE.md lines 214-221
+ *
+ * Uses the generated ModuleRow type directly.
  */
-export interface Module {
-  id: number;
-  course_id: number;
-  title: string;
-  description: string | null;
-  order_index: number;
-  created_at: string;
-  updated_at: string;
-}
+export type Module = ModuleRow;
 
 /**
  * Lesson - Individual video/content unit
  * Reference: BOOTCAMP_ARCHITECTURE.md lines 226-248
+ *
+ * Extends LessonRow with typed resources array instead of generic Json.
  */
-export interface Lesson {
-  id: number;
-  module_id: number;
-  title: string;
-  slug: string;
-  content: string | null;
-  video_url: string | null;
-  duration_minutes: number | null;
-  order_index: number;
-  is_preview: boolean;
+export interface Lesson extends Omit<LessonRow, 'resources'> {
   resources: Resource[];
-  created_at: string;
-  updated_at: string;
 }
 
 /**
@@ -68,34 +60,25 @@ export interface Resource {
 
 /**
  * Enrollment - User-course relationship
- * Reference: BOOTCAMP_ARCHITECTURE.md lines 253-262
+ * Reference: schema.sql enrollments table
+ * NOTE: cohort_id is a UUID string (not number) matching schema.sql cohorts.id
+ *
+ * Uses the generated EnrollmentRow type directly.
  */
-export interface Enrollment {
-  id: number;
-  user_id: string; // UUID
-  course_id: number;
-  cohort_id: string | null; // UUID
-  enrolled_at: string;
-  completed_at: string | null;
-  status: 'active' | 'completed' | 'dropped' | 'paused';
-  progress_percentage: number;
-}
+export type Enrollment = EnrollmentRow;
 
 /**
  * LessonProgress - Video resume + completion tracking
  * Reference: BOOTCAMP_ARCHITECTURE.md lines 268-286
+ *
+ * Fields:
+ * - completed_at: ISO timestamp when lesson was marked complete (null if not completed)
+ * - watch_count: Number of times the student has watched/revisited this lesson
+ * - last_accessed_at: ISO timestamp of last access (canonical name matching schema.sql)
+ *
+ * Uses the generated LessonProgressRow type directly.
  */
-export interface LessonProgress {
-  id: number;
-  user_id: string; // UUID
-  lesson_id: number;
-  cohort_id: string | null; // UUID
-  completed: boolean;
-  video_position_seconds: number;
-  time_spent_seconds: number;
-  last_accessed_at: string;
-  created_at: string;
-}
+export type LessonProgress = LessonProgressRow;
 
 /**
  * API Response Format
@@ -152,33 +135,34 @@ export interface EnrollmentCheck {
 /**
  * Cohort - Time-gated learning groups
  * Reference: schema.sql lines 378-390
+ *
+ * Extends CohortRow with required created_by field in application context.
  */
-export interface Cohort {
-  id: string; // UUID
-  course_id: number;
-  name: string;
-  start_date: string; // ISO date string
-  end_date: string | null;
-  status: 'upcoming' | 'active' | 'completed' | 'archived';
-  max_students: number | null;
-  created_by: string; // UUID
-  created_at: string; // ISO timestamp
-  updated_at: string; // ISO timestamp
+export interface Cohort extends Omit<CohortRow, 'created_by'> {
+  created_by: string; // UUID - required in application context
+}
+
+/**
+ * Progress data stored in cohort_enrollments.progress JSONB column
+ * This structure matches the default JSON value in schema.sql
+ */
+export interface CohortProgress {
+  completed_lessons: number;
+  completed_modules: number;
+  percentage?: number; // Optional computed field
+  quiz_scores?: Record<string, number>; // quiz_id -> score
+  certificates_earned?: string[]; // module slugs or IDs
+  current_lesson_id?: number;
 }
 
 /**
  * Cohort Enrollment - Students enrolled in specific cohorts
- * Reference: schema.sql
+ * Reference: schema.sql cohort_enrollments table
+ *
+ * Extends CohortEnrollmentRow with typed progress object instead of generic Json.
  */
-export interface CohortEnrollment {
-  id: string; // UUID
-  cohort_id: string; // UUID
-  user_id: string; // UUID
-  enrolled_at: string;
-  status: 'active' | 'completed' | 'dropped' | 'paused';
-  completed_lessons: number;
-  last_activity_at: string;
-  created_at: string;
+export interface CohortEnrollment extends Omit<CohortEnrollmentRow, 'progress'> {
+  progress: CohortProgress; // Typed JSONB structure
 }
 
 /**
@@ -218,7 +202,7 @@ export interface StudentWithProgress {
  * Used by teacher dashboard overview
  */
 export interface CohortAnalytics {
-  cohort_id: number;
+  cohort_id: string; // UUID - matches schema.sql cohorts.id
   cohort_name: string;
   course_name: string;
   total_students: number;

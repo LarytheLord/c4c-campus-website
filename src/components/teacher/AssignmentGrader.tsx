@@ -21,7 +21,7 @@ export default function AssignmentGrader({
   onClose,
   onSuccess
 }: AssignmentGraderProps) {
-  const [grade, setGrade] = useState(submission.grade || '');
+  const [grade, setGrade] = useState(submission.score?.toString() || '');
   const [feedback, setFeedback] = useState(submission.feedback || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -55,7 +55,7 @@ export default function AssignmentGrader({
         },
         body: JSON.stringify({
           submission_id: submission.id,
-          grade: parseFloat(grade),
+          score: parseFloat(grade),
           feedback: feedback.trim() || undefined
         })
       });
@@ -263,7 +263,7 @@ export default function AssignmentGrader({
               disabled={loading || !grade}
               className="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Saving...' : submission.grade !== null ? 'Update Grade' : 'Submit Grade'}
+              {loading ? 'Saving...' : submission.score !== null ? 'Update Grade' : 'Submit Grade'}
             </button>
           </div>
         </form>

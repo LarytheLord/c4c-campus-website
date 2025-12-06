@@ -625,7 +625,8 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
       grid?.querySelectorAll('.edit-course-tab').forEach(btn => {
         btn.addEventListener('click', (e) => {
           const id = (btn as HTMLElement).getAttribute('data-id');
-          editCourseInTab(parseInt(id!));
+          // IDs are UUIDs (strings), not numbers
+          editCourseInTab(id!);
         });
       });
     }
@@ -732,7 +733,8 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
         btn.addEventListener('click', async (e) => {
           const id = (btn as HTMLElement).getAttribute('data-id');
           showConfirm('Delete Cohort', 'Are you sure you want to delete this cohort?', async () => {
-            await deleteCohort(parseInt(id!));
+            // IDs are UUIDs (strings), not numbers
+            await deleteCohort(id!);
           });
         });
       });
@@ -885,7 +887,8 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
       document.getElementById(`content-${tab}`)?.classList.remove('hidden');
     }
 
-    function editCourseInTab(courseId: number) {
+    function editCourseInTab(courseId: string) {
+      // Course IDs are UUIDs (strings)
       editingCourse = courses.find(c => c.id === courseId);
       if (!editingCourse) return;
 
@@ -1085,7 +1088,8 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
       showNotification('Success', 'Cohort created successfully!', 'success');
     }
 
-    async function deleteCohort(id: number) {
+    async function deleteCohort(id: string) {
+      // Cohort IDs are UUIDs (strings)
       const { error } = await supabase
         .from('cohorts')
         .delete()

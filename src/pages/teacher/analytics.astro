@@ -227,11 +227,18 @@ const defaultCohort = cohortsWithCounts?.[0];
     import { createRoot } from 'react-dom/client';
     import { createElement } from 'react';
     import { Chart, registerables } from 'chart.js';
+    import { createClient } from '@supabase/supabase-js';
 
     Chart.register(...registerables);
 
+    // Supabase client for auth token
+    const supabase = createClient(
+      import.meta.env.PUBLIC_SUPABASE_URL,
+      import.meta.env.PUBLIC_SUPABASE_ANON_KEY
+    );
+
     // Global state
-    let currentCohortId: number | null = null;
+    let currentCohortId: string | null = null; // UUID string, not number
     let currentDateRange = { start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), end: new Date() };
 
     // Initialize
@@ -245,11 +252,12 @@ const defaultCohort = cohortsWithCounts?.[0];
     function initializeCohortSelector() {
       const select = document.getElementById('cohort-select') as HTMLSelectElement;
       if (select && select.value) {
-        currentCohortId = parseInt(select.value);
+        currentCohortId = select.value; // UUID string, not parsed as number
       }
 
       select?.addEventListener('change', (e) => {
-        currentCohortId = parseInt((e.target as HTMLSelectElement).value);
+        const value = (e.target as HTMLSelectElement).value;
+        currentCohortId = value || null; // Treat empty string as null
         loadDashboardData();
       });
     }
@@ -315,13 +323,67 @@ const defaultCohort = cohortsWithCounts?.[0];
       const container = document.getElementById('metrics-container');
       if (!container) return;
 
-      // TODO: Fetch real metrics from API
-      const metrics = [
-        { title: 'Total Students', value: '42', trend: 'up', trendValue: '+8%', color: 'blue', icon: '👥' },
-        { title: 'Avg Completion', value: '78%', trend: 'up', trendValue: '+5%', color: 'green', icon: '✓' },
-        { title: 'At Risk', value: '6', trend: 'down', trendValue: '-2', color: 'red', icon: '⚠️' },
-        { title: 'Engagement Rate', value: '85%', trend: 'stable', trendValue: '0%', color: 'purple', icon: '📊' }
+      // Fetch real metrics from cohort-analytics API
+      let metrics = [
+        { title: 'Total Students', value: '-', trend: 'stable', trendValue: '', color: 'blue', icon: '👥' },
+        { title: 'Avg Completion', value: '-', trend: 'stable', trendValue: '', color: 'green', icon: '✓' },
+        { title: 'At Risk', value: '-', trend: 'stable', trendValue: '', color: 'red', icon: '⚠️' },
+        { title: 'Engagement Rate', value: '-', trend: 'stable', trendValue: '', color: 'purple', icon: '📊' }
       ];
+
+      if (currentCohortId) {
+        try {
+          const response = await fetch(`/api/teacher/cohort-analytics?cohortId=${currentCohortId}`, {
+            headers: {
+              'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`
+            }
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const analytics = data.analytics;
+
+            if (analytics) {
+              metrics = [
+                {
+                  title: 'Total Students',
+                  value: String(analytics.total_students || 0),
+                  trend: 'stable',
+                  trendValue: '',
+                  color: 'blue',
+                  icon: '👥'
+                },
+                {
+                  title: 'Avg Completion',
+                  value: `${analytics.average_completion_percentage || 0}%`,
+                  trend: analytics.average_completion_percentage >= 70 ? 'up' : 'stable',
+                  trendValue: '',
+                  color: 'green',
+                  icon: '✓'
+                },
+                {
+                  title: 'At Risk',
+                  value: String(analytics.struggling_students_count || 0),
+                  trend: analytics.struggling_students_count > 3 ? 'up' : 'down',
+                  trendValue: '',
+                  color: 'red',
+                  icon: '⚠️'
+                },
+                {
+                  title: 'Engagement Rate',
+                  value: `${analytics.engagement_rate || 0}%`,
+                  trend: analytics.engagement_rate >= 70 ? 'up' : 'stable',
+                  trendValue: '',
+                  color: 'purple',
+                  icon: '📊'
+                }
+              ];
+            }
+          }
+        } catch (error) {
+          console.error('Failed to load metrics from API:', error);
+        }
+      }
 
       container.innerHTML = '';
       metrics.forEach(metric => {
@@ -401,18 +463,28 @@ const defaultCohort = cohortsWithCounts?.[0];
       container.innerHTML = '<div class="text-center py-8"><div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div></div>';
 
       try {
-        // TODO: Get courseId from cohort
-        const courseId = 1;
+        // First, get the cohort data to retrieve the course_id
+        const { data: cohortData, error: cohortError } = await supabase
+          .from('cohorts')
+          .select('course_id')
+          .eq('id', currentCohortId)
+          .single();
+
+        if (cohortError || !cohortData) {
+          throw new Error('Failed to fetch cohort data');
+        }
+
+        const courseId = cohortData.course_id;
         const response = await fetch(`/api/analytics/dropout-predictions?cohortId=${currentCohortId}&courseId=${courseId}`);
         const data = await response.json();
 
         // Render at-risk students by level
         container.innerHTML = `
           <div class="space-y-4">
-            ${renderRiskLevel('critical', data.byRiskLevel.critical)}
-            ${renderRiskLevel('high', data.byRiskLevel.high)}
-            ${renderRiskLevel('medium', data.byRiskLevel.medium)}
-            ${renderRiskLevel('low', data.byRiskLevel.low)}
+            ${renderRiskLevel('critical', data.byRiskLevel?.critical || [])}
+            ${renderRiskLevel('high', data.byRiskLevel?.high || [])}
+            ${renderRiskLevel('medium', data.byRiskLevel?.medium || [])}
+            ${renderRiskLevel('low', data.byRiskLevel?.low || [])}
           </div>
         `;
       } catch (error) {
@@ -457,7 +529,138 @@ const defaultCohort = cohortsWithCounts?.[0];
       if (!container) return;
 
       container.innerHTML = '<p class="text-center text-gray-500">Loading lesson data...</p>';
-      // TODO: Implement lesson effectiveness display
+
+      if (!currentCohortId) {
+        container.innerHTML = '<p class="text-center text-gray-500">Select a cohort to view lesson effectiveness.</p>';
+        return;
+      }
+
+      try {
+        // Get cohort data to find course_id
+        const { data: cohortData, error: cohortError } = await supabase
+          .from('cohorts')
+          .select('course_id')
+          .eq('id', currentCohortId)
+          .single();
+
+        if (cohortError || !cohortData) {
+          throw new Error('Failed to fetch cohort data');
+        }
+
+        // Get modules for this course
+        const { data: modules } = await supabase
+          .from('modules')
+          .select('id, title')
+          .eq('course_id', cohortData.course_id)
+          .order('order_index');
+
+        if (!modules || modules.length === 0) {
+          container.innerHTML = '<p class="text-center text-gray-500">No lessons found for this course.</p>';
+          return;
+        }
+
+        const moduleIds = modules.map(m => m.id);
+
+        // Get lessons for these modules
+        const { data: lessons } = await supabase
+          .from('lessons')
+          .select('id, module_id, title, duration_minutes')
+          .in('module_id', moduleIds)
+          .order('order_index');
+
+        if (!lessons || lessons.length === 0) {
+          container.innerHTML = '<p class="text-center text-gray-500">No lessons found for this course.</p>';
+          return;
+        }
+
+        // Get enrollment count for completion rate calculation
+        const { count: enrollmentCount } = await supabase
+          .from('cohort_enrollments')
+          .select('*', { count: 'exact', head: true })
+          .eq('cohort_id', currentCohortId)
+          .in('status', ['active', 'completed']);
+
+        const totalStudents = enrollmentCount || 1;
+
+        // Get lesson progress data for this cohort
+        const lessonIds = lessons.map(l => l.id);
+        const { data: progressData } = await supabase
+          .from('lesson_progress')
+          .select('lesson_id, completed, time_spent_seconds')
+          .eq('cohort_id', currentCohortId)
+          .in('lesson_id', lessonIds);
+
+        // Aggregate progress by lesson
+        const lessonStats: Record<number, { completions: number; totalTimeSpent: number }> = {};
+        lessonIds.forEach(id => {
+          lessonStats[id] = { completions: 0, totalTimeSpent: 0 };
+        });
+
+        progressData?.forEach((p: any) => {
+          if (p.completed) lessonStats[p.lesson_id].completions++;
+          lessonStats[p.lesson_id].totalTimeSpent += (p.time_spent_seconds || 0);
+        });
+
+        // Build module-grouped lesson display
+        const moduleMap: Record<number, string> = {};
+        modules.forEach(m => { moduleMap[m.id] = m.title; });
+
+        const lessonsByModule: Record<number, any[]> = {};
+        lessons.forEach(l => {
+          if (!lessonsByModule[l.module_id]) lessonsByModule[l.module_id] = [];
+          lessonsByModule[l.module_id].push(l);
+        });
+
+        let html = '<div class="space-y-6">';
+
+        modules.forEach(module => {
+          const moduleLessons = lessonsByModule[module.id] || [];
+          if (moduleLessons.length === 0) return;
+
+          html += `
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+              <h3 class="font-semibold text-lg mb-4">${module.title}</h3>
+              <div class="space-y-3">
+          `;
+
+          moduleLessons.forEach(lesson => {
+            const stats = lessonStats[lesson.id];
+            const completionRate = Math.round((stats.completions / totalStudents) * 100);
+            const avgTimeMinutes = stats.completions > 0
+              ? Math.round((stats.totalTimeSpent / stats.completions) / 60)
+              : 0;
+            const expectedDuration = lesson.duration_minutes || 0;
+
+            // Color code based on completion rate
+            const barColor = completionRate >= 70 ? 'bg-green-500' : completionRate >= 40 ? 'bg-yellow-500' : 'bg-red-500';
+
+            html += `
+              <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
+                <div class="flex justify-between items-center mb-2">
+                  <span class="font-medium">${lesson.title}</span>
+                  <span class="text-sm text-gray-600 dark:text-gray-400">${stats.completions}/${totalStudents} completed</span>
+                </div>
+                <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-2">
+                  <div class="${barColor} h-2 rounded-full" style="width: ${completionRate}%"></div>
+                </div>
+                <div class="flex justify-between text-xs text-gray-500">
+                  <span>${completionRate}% completion rate</span>
+                  <span>Avg: ${avgTimeMinutes}min ${expectedDuration > 0 ? `/ ${expectedDuration}min expected` : ''}</span>
+                </div>
+              </div>
+            `;
+          });
+
+          html += '</div></div>';
+        });
+
+        html += '</div>';
+        container.innerHTML = html;
+
+      } catch (error) {
+        console.error('Failed to load lesson effectiveness:', error);
+        container.innerHTML = '<p class="text-red-600">Failed to load lesson data. Please try again.</p>';
+      }
     }
 
     // Risk filter buttons

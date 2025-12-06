@@ -92,7 +92,7 @@ export async function createTestCourse(courseData: any): Promise<number | null> 
       .from('courses')
       .insert({
         ...courseData,
-        published: true,
+        is_published: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
@@ -191,7 +191,7 @@ export async function cleanupTestData(): Promise<void> {
     await supabase
       .from('courses')
       .delete()
-      .like('name', 'E2E Test Course%');
+      .like('title', 'E2E Test Course%');
 
     console.log('Test data cleanup complete');
   } catch (error) {

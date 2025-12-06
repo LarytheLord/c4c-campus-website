@@ -110,7 +110,7 @@ export const POST: APIRoute = async ({ request }) => {
       title: sanitizedTitle,
       passing_score: body.passingScore,
       max_attempts: body.maxAttempts,
-      time_limit: body.timeLimit,
+      time_limit_minutes: body.timeLimit, // Use correct field name
       available_from: body.availableFrom,
       available_until: body.availableUntil,
     });
@@ -122,20 +122,31 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
 
-    // Create quiz
+    // Get course_id from lesson's module
+    const courseId = (lesson as any).modules?.courses?.id;
+    if (!courseId) {
+      return new Response(
+        JSON.stringify({ error: 'Could not determine course for lesson' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Create quiz - use schema column names exactly
     const { data: quiz, error: createError } = await supabase
       .from('quizzes')
       .insert([
         {
+          course_id: courseId, // Required FK to courses table
           lesson_id: body.lessonId,
+          module_id: (lesson as any).modules?.id || null,
           title: sanitizedTitle,
           description: sanitizedDescription,
-          instructions: sanitizedInstructions,
-          time_limit: body.timeLimit || null,
+          time_limit_minutes: body.timeLimit || null, // Correct schema column name
           passing_score: body.passingScore ?? 70,
           max_attempts: body.maxAttempts ?? 3,
           randomize_questions: body.shuffleQuestions ?? false,
           show_correct_answers: body.showCorrectAnswers ?? true,
+          show_results_immediately: true, // Default from schema
           available_from: body.availableFrom || null,
           available_until: body.availableUntil || null,
           is_published: body.published ?? false,

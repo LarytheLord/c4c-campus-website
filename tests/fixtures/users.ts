@@ -127,7 +127,7 @@ export const mockEnrollmentWithProgress = {
   enrollment: mockEnrollment,
   course: {
     id: 1,
-    name: 'n8n Workflow Automation Basics',
+    title: 'n8n Workflow Automation Basics',
     slug: 'n8n-basics',
     thumbnail_url: 'thumbnails/course-1-n8n-basics.jpg',
   },
@@ -138,7 +138,7 @@ export const mockEnrollmentWithProgress = {
     time_spent_hours: 0.21, // 777s / 3600 = 0.215 hours
     next_lesson: {
       id: 2,
-      name: 'Installing n8n',
+      title: 'Installing n8n',
       slug: 'installing-n8n',
     },
   },

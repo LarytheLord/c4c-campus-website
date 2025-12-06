@@ -30,13 +30,13 @@ describe('Course Creation API+DB Integration', () => {
   test('should create course → add module → add lesson → fetch nested structure', async () => {
     // Arrange - Course data (created_by will be set by RLS policy)
     const courseData = {
-      name: 'Integration Test Course',
+      title: 'Integration Test Course',
       slug: 'integration-test-course',
       description: 'Testing full workflow',
       track: 'animal-advocacy' as const,
       difficulty: 'beginner' as const,
-      estimated_hours: 5,
-      published: false,
+      default_duration_weeks: 1,
+      is_published: false,
       created_by: teacherClient.userId, // Required by RLS
     };
 
@@ -55,7 +55,7 @@ describe('Course Creation API+DB Integration', () => {
     // Act & Assert - Step 2: Add module to course
     const moduleData = {
       course_id: testCourseId,
-      name: 'Module 1: Basics',
+      title: 'Module 1: Basics',
       description: 'Foundational concepts',
       order_index: 1,
     };
@@ -74,12 +74,11 @@ describe('Course Creation API+DB Integration', () => {
     // Act & Assert - Step 3: Add lesson to module
     const lessonData = {
       module_id: testModuleId,
-      name: 'Lesson 1: Introduction',
+      title: 'Lesson 1: Introduction',
       slug: 'intro',
-      video_path: 'videos/test/lesson1.mp4',
-      video_size_bytes: 10485760, // 10MB
-      video_duration_seconds: 300, // 5 min
-      text_content: '# Welcome\n\nIntroduction to the course.',
+      video_url: 'videos/test/lesson1.mp4',
+      duration_minutes: 5,
+      content: '# Welcome\n\nIntroduction to the course.',
       resources: [{ name: 'slides.pdf', url: '/resources/slides.pdf' }],
       order_index: 1,
     };
@@ -112,7 +111,7 @@ describe('Course Creation API+DB Integration', () => {
     expect(fullCourse).toBeDefined();
     expect(fullCourse.modules).toHaveLength(1);
     expect(fullCourse.modules[0].lessons).toHaveLength(1);
-    expect(fullCourse.modules[0].lessons[0].name).toBe('Lesson 1: Introduction');
+    expect(fullCourse.modules[0].lessons[0].title).toBe('Lesson 1: Introduction');
   });
   
   // ==================== CASCADE DELETES ====================
@@ -129,17 +128,16 @@ describe('Course Creation API+DB Integration', () => {
 
     const { data: module } = await teacherClient.client.from('modules').insert({
       course_id: course.id,
-      name: 'Module 1',
+      title: 'Module 1',
       order_index: 1,
     }).select().single();
 
     await teacherClient.client.from('lessons').insert({
       module_id: module.id,
-      name: 'Lesson 1',
+      title: 'Lesson 1',
       slug: 'lesson-1',
-      video_path: 'test.mp4',
-      video_duration_seconds: 100,
-      video_size_bytes: 1000000,
+      video_url: 'test.mp4',
+      duration_minutes: 2,
       order_index: 1,
     });
 
@@ -174,9 +172,9 @@ describe('Course Creation API+DB Integration', () => {
 
     // Insert in reverse order (3, 2, 1)
     await teacherClient.client.from('modules').insert([
-      { course_id: course.id, name: 'Module 3', order_index: 3 },
-      { course_id: course.id, name: 'Module 2', order_index: 2 },
-      { course_id: course.id, name: 'Module 1', order_index: 1 },
+      { course_id: course.id, title: 'Module 3', order_index: 3 },
+      { course_id: course.id, title: 'Module 2', order_index: 2 },
+      { course_id: course.id, title: 'Module 1', order_index: 1 },
     ]);
 
     // Act - Fetch with order
@@ -188,9 +186,9 @@ describe('Course Creation API+DB Integration', () => {
       .single();
 
     // Assert - Modules returned in correct order
-    expect(fullCourse.modules[0].name).toBe('Module 1');
-    expect(fullCourse.modules[1].name).toBe('Module 2');
-    expect(fullCourse.modules[2].name).toBe('Module 3');
+    expect(fullCourse.modules[0].title).toBe('Module 1');
+    expect(fullCourse.modules[1].title).toBe('Module 2');
+    expect(fullCourse.modules[2].title).toBe('Module 3');
   });
   
   // ==================== PUBLISHED FILTER ====================
@@ -198,19 +196,19 @@ describe('Course Creation API+DB Integration', () => {
   test('should only fetch published courses for students', async () => {
     // Arrange - Create published and unpublished courses
     await teacherClient.client.from('courses').insert([
-      { name: 'Published', slug: 'pub', track: 'animal-advocacy', difficulty: 'beginner', published: true, created_by: teacherClient.userId },
-      { name: 'Draft', slug: 'draft', track: 'animal-advocacy', difficulty: 'beginner', published: false, created_by: teacherClient.userId },
+      { title: 'Published', slug: 'pub', track: 'animal-advocacy', difficulty: 'beginner', is_published: true, created_by: teacherClient.userId },
+      { title: 'Draft', slug: 'draft', track: 'animal-advocacy', difficulty: 'beginner', is_published: false, created_by: teacherClient.userId },
     ]);
 
     // Act - Fetch only published
     const { data: publishedCourses } = await teacherClient.client
       .from('courses')
       .select()
-      .eq('published', true);
+      .eq('is_published', true);
 
     // Assert - Only published course returned
-    expect(publishedCourses?.some(c => c.name === 'Published')).toBe(true);
-    expect(publishedCourses?.some(c => c.name === 'Draft')).toBe(false);
+    expect(publishedCourses?.some(c => c.title === 'Published')).toBe(true);
+    expect(publishedCourses?.some(c => c.title === 'Draft')).toBe(false);
   });
   
   // ==================== ERROR CASES ====================

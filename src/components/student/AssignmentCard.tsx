@@ -5,6 +5,7 @@
 
 import { useState } from 'react';
 import type { AssignmentWithSubmission } from '@/types/assignment';
+import { getAssignmentStatus, getBadgeClasses } from '@/lib/assignment-status';
 import FileUploader from './FileUploader';
 import SubmissionHistory from './SubmissionHistory';
 
@@ -17,37 +18,17 @@ export default function AssignmentCard({ assignment, onSubmissionComplete }: Ass
   const [showUploader, setShowUploader] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
-  const now = new Date();
-  const dueDate = assignment.due_date ? new Date(assignment.due_date) : null;
-  const isPastDue = dueDate && now > dueDate;
-  const canSubmit = !isPastDue || assignment.allow_late_submissions;
-  const hasSubmission = assignment.user_submission !== null;
-  const canResubmit = assignment.allow_resubmission && hasSubmission &&
-    (!assignment.user_submission || assignment.user_submission.submission_number < assignment.max_submissions);
+  // Use centralized status helper
+  const status = getAssignmentStatus(assignment);
+  const { isPastDue, hasSubmission, canSubmit, canResubmit, statusLabel, badgeVariant } = status;
+  const badgeClasses = getBadgeClasses(badgeVariant);
 
   const getStatusBadge = () => {
-    if (!hasSubmission) {
-      if (isPastDue && !assignment.allow_late_submissions) {
-        return <span className="px-3 py-1 bg-red-100 text-red-700 text-sm font-medium rounded-full">Closed</span>;
-      }
-      if (isPastDue) {
-        return <span className="px-3 py-1 bg-orange-100 text-orange-700 text-sm font-medium rounded-full">Late</span>;
-      }
-      return <span className="px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-full">Not Submitted</span>;
-    }
-
-    const submission = assignment.user_submission!;
-    if (submission.status === 'graded') {
-      const percentage = (submission.points_earned || submission.grade || 0) / assignment.max_points * 100;
-      const color = percentage >= 90 ? 'green' : percentage >= 70 ? 'blue' : percentage >= 60 ? 'yellow' : 'red';
-      return (
-        <span className={`px-3 py-1 bg-${color}-100 text-${color}-700 text-sm font-medium rounded-full`}>
-          Graded: {submission.points_earned || submission.grade}/{assignment.max_points}
-        </span>
-      );
-    }
-
-    return <span className="px-3 py-1 bg-green-100 text-green-700 text-sm font-medium rounded-full">Submitted</span>;
+    return (
+      <span className={`px-3 py-1 ${badgeClasses.fullClass} text-sm font-medium rounded-full`}>
+        {statusLabel}
+      </span>
+    );
   };
 
   const formatDate = (dateString: string) => {
@@ -147,12 +128,12 @@ export default function AssignmentCard({ assignment, onSubmissionComplete }: Ass
                 )}
               </span>
             </div>
-            {assignment.user_submission.grade !== null && (
+            {assignment.user_submission.score !== null && (
               <>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Grade:</span>
+                  <span className="text-gray-600">Score:</span>
                   <span className="font-bold text-green-600">
-                    {assignment.user_submission.points_earned || assignment.user_submission.grade} / {assignment.max_points}
+                    {assignment.user_submission.score} / {assignment.max_points}
                   </span>
                 </div>
                 {assignment.user_submission.feedback && (
@@ -185,12 +166,12 @@ export default function AssignmentCard({ assignment, onSubmissionComplete }: Ass
 
       {/* Actions */}
       <div className="flex items-center gap-3">
-        {!showUploader && canSubmit && (!hasSubmission || canResubmit) && (
+        {!showUploader && canSubmit && (
           <button
             onClick={() => setShowUploader(true)}
             className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
           >
-            {hasSubmission ? 'Resubmit Assignment' : 'Submit Assignment'}
+            {canResubmit ? 'Resubmit Assignment' : 'Submit Assignment'}
           </button>
         )}
 
@@ -203,7 +184,7 @@ export default function AssignmentCard({ assignment, onSubmissionComplete }: Ass
           </button>
         )}
 
-        {!canSubmit && !hasSubmission && (
+        {status.isClosed && !hasSubmission && (
           <div className="text-sm text-red-600 font-medium">
             This assignment is closed for submissions
           </div>
@@ -211,7 +192,7 @@ export default function AssignmentCard({ assignment, onSubmissionComplete }: Ass
       </div>
 
       {/* Warnings */}
-      {isPastDue && !hasSubmission && assignment.allow_late_submissions && (
+      {status.isLateButAllowed && !hasSubmission && (
         <div className="mt-4 p-3 bg-orange-50 border border-orange-200 rounded text-sm text-orange-700">
           <strong>Late Submission:</strong> A {assignment.late_penalty_percent}% penalty will be applied to your grade.
         </div>

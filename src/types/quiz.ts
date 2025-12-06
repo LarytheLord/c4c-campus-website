@@ -1,16 +1,29 @@
 /**
  * Quiz System Type Definitions
  *
- * Comprehensive TypeScript types for the quiz and assessment system
+ * Comprehensive TypeScript types for the quiz and assessment system.
+ *
+ * NOTE: These types are thin wrappers over the Supabase-generated types in ./generated.ts
+ * When modifying types, ensure they remain compatible with the generated schema types.
+ * Run `npm run db:types` to regenerate types from the database schema.
  */
+
+import type {
+  QuizRow,
+  QuizQuestionRow,
+  QuizAttemptRow,
+  Json,
+} from './generated';
 
 // ============================================================================
 // ENUMS & CONSTANTS
 // ============================================================================
 
-export type QuestionType = 'multiple_choice' | 'true_false' | 'short_answer' | 'essay' | 'fill_blank';
+// NOTE: Must match schema.sql quiz_questions.question_type CHECK constraint
+export type QuestionType = 'multiple_choice' | 'true_false' | 'short_answer' | 'essay' | 'multiple_select';
 
-export type GradingStatus = 'pending' | 'auto_graded' | 'manually_graded' | 'needs_review';
+// NOTE: Must match schema.sql quiz_attempts.grading_status CHECK constraint
+export type GradingStatus = 'pending' | 'auto_graded' | 'needs_review';
 
 export type QuestionDifficulty = 'easy' | 'medium' | 'hard';
 
@@ -18,52 +31,24 @@ export type QuestionDifficulty = 'easy' | 'medium' | 'hard';
 // DATABASE TYPES
 // ============================================================================
 
-export interface Quiz {
-  id: string; // UUID
-  course_id: number;
-  module_id: number | null;
-  lesson_id: number | null;
-  title: string;
-  description: string | null;
-
-  // Configuration
-  time_limit_minutes: number | null;
-  passing_score: number; // Percentage (0-100)
-  max_attempts: number;
-  randomize_questions: boolean;
-  show_correct_answers: boolean;
-  show_results_immediately: boolean;
-
-  // Availability
-  available_from: string | null; // ISO timestamp
-  available_until: string | null; // ISO timestamp
-
-  // Status
-  is_published: boolean;
-
-  // Metadata
-  created_by: string; // UUID
-  created_at: string; // ISO timestamp
-  updated_at: string; // ISO timestamp
+/**
+ * Quiz - matches schema.sql quizzes table
+ * All IDs are UUIDs (strings)
+ *
+ * Extends QuizRow with required created_by field in application context.
+ */
+export interface Quiz extends Omit<QuizRow, 'created_by'> {
+  created_by: string; // UUID - required in application context
 }
 
-export interface QuizQuestion {
-  id: string; // UUID
-  quiz_id: string; // UUID
-
-  // Content
+/**
+ * QuizQuestion - matches schema.sql quiz_questions table
+ *
+ * Extends QuizQuestionRow with typed options array instead of generic Json.
+ */
+export interface QuizQuestion extends Omit<QuizQuestionRow, 'options' | 'question_type'> {
   question_type: QuestionType;
-  question_text: string;
-  points: number;
-  order_index: number;
-
-  // Answers
-  options: QuestionOption[] | null; // JSONB
-  correct_answer: string | null;
-  answer_explanation: string | null;
-
-  // Metadata
-  created_at: string;
+  options: QuestionOption[] | null; // Typed JSONB structure
 }
 
 export interface QuestionOption {
@@ -71,31 +56,20 @@ export interface QuestionOption {
   text: string;
 }
 
-export interface QuizAttempt {
-  id: string; // UUID
-  quiz_id: string; // UUID
-  user_id: string; // UUID
-  attempt_number: number;
-
-  // Timing
-  started_at: string;
-  submitted_at: string | null;
-  time_taken_seconds: number | null;
-
-  // Scoring
-  score: number | null; // Percentage (0-100)
-  passed: boolean | null;
-
-  // Answers
-  answers: QuestionAnswer[] | null; // JSONB
-
-  // Grading
-  graded_by: string | null; // UUID
-  graded_at: string | null;
+/**
+ * QuizAttempt - matches schema.sql quiz_attempts table
+ * NOTE: Uses answers_json (not answers) to match DB column name
+ *
+ * Extends QuizAttemptRow with typed answers_json array and grading_status.
+ */
+export interface QuizAttempt extends Omit<QuizAttemptRow, 'answers_json' | 'grading_status'> {
+  answers_json: QuestionAnswer[] | null; // Typed JSONB structure
+  grading_status: GradingStatus;
+  teacher_feedback?: string | null; // Optional teacher feedback (application-layer field)
 }
 
 export interface QuestionAnswer {
-  question_id: number;
+  question_id: string; // UUID - matches schema
   answer: string | string[]; // Single answer or array for multiple choice
   is_correct: boolean | null;
   points_earned: number;
@@ -132,28 +106,55 @@ export interface QuestionBankItem {
 // API REQUEST TYPES
 // ============================================================================
 
+/**
+ * Request type for creating a new quiz.
+ *
+ * Field mapping notes (view-layer names -> database column names):
+ * - timeLimit -> time_limit_minutes (in database)
+ * - shuffleQuestions -> randomize_questions (in database)
+ *
+ * All IDs referencing UUID-backed columns should be strings.
+ */
 export interface CreateQuizRequest {
-  lessonId: number;
+  courseId: number;
+  moduleId?: number;
+  lessonId?: number;
   title: string;
   description?: string;
-  instructions?: string;
+  /**
+   * Time limit in minutes. Maps to `time_limit_minutes` column in database.
+   * Use null or omit for no time limit.
+   */
   timeLimit?: number;
   passingScore?: number;
   maxAttempts?: number;
+  /**
+   * Whether to randomize question order. Maps to `randomize_questions` column in database.
+   */
   shuffleQuestions?: boolean;
-  shuffleOptions?: boolean;
   showCorrectAnswers?: boolean;
+  showResultsImmediately?: boolean;
   availableFrom?: string;
   availableUntil?: string;
   published?: boolean;
 }
 
+/**
+ * Request type for updating an existing quiz.
+ *
+ * Note: `id` is a UUID string (not number) matching schema.sql quizzes.id
+ */
 export interface UpdateQuizRequest extends Partial<CreateQuizRequest> {
-  id: number;
+  id: string; // UUID - matches schema.sql quizzes.id
 }
 
+/**
+ * Request type for creating a new quiz question.
+ *
+ * Note: `quizId` is a UUID string (not number) matching schema.sql quiz_questions.quiz_id
+ */
 export interface CreateQuestionRequest {
-  quizId: number;
+  quizId: string; // UUID - matches schema.sql quiz_questions.quiz_id
   type: QuestionType;
   questionText: string;
   questionImageUrl?: string;
@@ -166,31 +167,70 @@ export interface CreateQuestionRequest {
   orderIndex: number;
 }
 
+/**
+ * Request type for updating an existing quiz question.
+ *
+ * Note: `id` is a UUID string (not number) matching schema.sql quiz_questions.id
+ */
 export interface UpdateQuestionRequest extends Partial<CreateQuestionRequest> {
-  id: number;
+  id: string; // UUID - matches schema.sql quiz_questions.id
 }
 
+/**
+ * Request to start a new quiz attempt
+ */
 export interface StartQuizAttemptRequest {
-  cohortId?: number;
+  cohortId?: string; // UUID - matches schema
 }
 
+/**
+ * Canonical answer format for API requests.
+ * This is the PUBLIC interface for answer submission.
+ *
+ * Each answer contains:
+ * - questionId: UUID string of the question
+ * - answer: string for single-answer questions (multiple_choice, true_false, short_answer, essay)
+ *           string[] for multiple_select questions (array of selected option IDs)
+ *
+ * Example:
+ * ```typescript
+ * [
+ *   { questionId: "uuid-1", answer: "option-a" },           // multiple_choice
+ *   { questionId: "uuid-2", answer: ["opt-1", "opt-3"] },   // multiple_select
+ *   { questionId: "uuid-3", answer: "true" },               // true_false
+ *   { questionId: "uuid-4", answer: "My short answer" },    // short_answer
+ * ]
+ * ```
+ */
+export type StudentAnswer = {
+  questionId: string; // UUID - matches schema
+  answer: string | string[];
+};
+
+/**
+ * Request to save answers in progress (without submitting)
+ *
+ * The `answers` array uses the canonical StudentAnswer format.
+ * API handlers validate this structure before processing.
+ */
 export interface SaveAnswersRequest {
-  answers: Array<{
-    questionId: number;
-    answer: string | string[];
-  }>;
+  answers: StudentAnswer[];
 }
 
+/**
+ * Request to submit a quiz attempt for grading
+ *
+ * The `answers` array uses the canonical StudentAnswer format.
+ * API handlers validate this structure and normalize to the canonical
+ * array form before passing to grading functions.
+ */
 export interface SubmitQuizAttemptRequest {
-  answers: Array<{
-    questionId: number;
-    answer: string | string[];
-  }>;
+  answers: StudentAnswer[];
 }
 
 export interface GradeAttemptRequest {
   answers: Array<{
-    questionId: number;
+    questionId: string; // UUID - matches schema
     pointsEarned: number;
     feedback?: string;
   }>;
@@ -198,11 +238,11 @@ export interface GradeAttemptRequest {
 }
 
 export interface ReorderQuestionsRequest {
-  questionIds: number[];
+  questionIds: string[]; // UUIDs - matches schema
 }
 
 export interface ImportFromBankRequest {
-  questionBankId: number;
+  questionBankId: string; // UUID - matches schema
   orderIndex: number;
 }
 
@@ -231,16 +271,16 @@ export interface QuizQuestionWithAnswer extends QuizQuestion {
 export interface StartAttemptResponse {
   success: true;
   attempt: {
-    id: number;
+    id: string; // UUID
     attemptNumber: number;
     startedAt: string;
-    timeLimit: number | null;
+    timeLimit: number | null; // time_limit_minutes from quiz
   };
   questions: QuizQuestionForStudent[];
 }
 
 export interface QuizQuestionForStudent {
-  id: number;
+  id: string; // UUID - matches schema
   type: QuestionType;
   questionText: string;
   questionImageUrl: string | null;
@@ -253,7 +293,7 @@ export interface QuizQuestionForStudent {
 export interface SubmitAttemptResponse {
   success: true;
   attempt: {
-    id: number;
+    id: string; // UUID - matches schema
     score: number;
     pointsEarned: number;
     totalPoints: number;
@@ -263,7 +303,7 @@ export interface SubmitAttemptResponse {
   };
   results?: {
     questions: Array<{
-      id: number;
+      id: string; // UUID - matches schema
       questionText: string;
       yourAnswer: string | string[];
       correctAnswer?: string | string[];
@@ -304,7 +344,7 @@ export interface QuizStats {
 
 export interface PendingGradingResponse {
   attempts: Array<{
-    id: number;
+    id: string; // UUID - matches schema
     userId: string;
     userName: string;
     userEmail: string;
@@ -313,7 +353,7 @@ export interface PendingGradingResponse {
     submittedAt: string;
     autoGradedScore: number;
     essayQuestions: Array<{
-      questionId: number;
+      questionId: string; // UUID - matches schema
       questionText: string;
       studentAnswer: string;
       points: number;
@@ -323,7 +363,7 @@ export interface PendingGradingResponse {
 
 export interface QuizAnalyticsResponse {
   questionAnalytics: Array<{
-    questionId: number;
+    questionId: string; // UUID - matches schema
     questionText: string;
     type: QuestionType;
     totalAnswers: number;
@@ -343,7 +383,7 @@ export interface QuizAnalyticsResponse {
 
 export interface AttemptsHistoryResponse {
   attempts: Array<{
-    id: number;
+    id: string; // UUID - matches schema
     attemptNumber: number;
     score: number;
     pointsEarned: number;
@@ -352,7 +392,7 @@ export interface AttemptsHistoryResponse {
     startedAt: string;
     submittedAt: string | null;
     gradingStatus: GradingStatus;
-    timeSpentSeconds: number | null;
+    time_taken_seconds: number | null; // matches schema column name
   }>;
   canRetake: boolean;
   attemptsRemaining: number | null;
@@ -431,16 +471,28 @@ export interface QuizReviewProps {
   showCorrectAnswers: boolean;
 }
 
+/**
+ * Props for QuizBuilder component.
+ *
+ * Note: courseId is required; moduleId and lessonId are optional associations.
+ */
 export interface QuizBuilderProps {
   quiz?: QuizWithDetails;
-  lessonId: number;
+  courseId: number;
+  moduleId?: number;
+  lessonId?: number;
   onSave: (quiz: CreateQuizRequest | UpdateQuizRequest) => Promise<void>;
   onCancel: () => void;
 }
 
+/**
+ * Props for QuestionEditor component.
+ *
+ * Note: `quizId` is a UUID string (not number) matching schema.sql quiz_questions.quiz_id
+ */
 export interface QuestionEditorProps {
   question?: QuizQuestion;
-  quizId: number;
+  quizId: string; // UUID - matches schema.sql quiz_questions.quiz_id
   orderIndex: number;
   onSave: (question: CreateQuestionRequest | UpdateQuestionRequest) => Promise<void>;
   onCancel: () => void;
@@ -455,7 +507,7 @@ export interface QuizResultsProps {
 export interface GradingQueueProps {
   quiz: Quiz;
   pendingAttempts: PendingGradingResponse['attempts'];
-  onGrade: (attemptId: number, grading: GradeAttemptRequest) => Promise<void>;
+  onGrade: (attemptId: string, grading: GradeAttemptRequest) => Promise<void>;
 }
 
 // ============================================================================
@@ -463,25 +515,169 @@ export interface GradingQueueProps {
 // ============================================================================
 
 export function isMultipleChoiceQuestion(question: QuizQuestion): boolean {
-  return question.type === 'multiple_choice';
+  return question.question_type === 'multiple_choice';
 }
 
 export function isTrueFalseQuestion(question: QuizQuestion): boolean {
-  return question.type === 'true_false';
+  return question.question_type === 'true_false';
 }
 
 export function isShortAnswerQuestion(question: QuizQuestion): boolean {
-  return question.type === 'short_answer';
+  return question.question_type === 'short_answer';
 }
 
 export function isEssayQuestion(question: QuizQuestion): boolean {
-  return question.type === 'essay';
+  return question.question_type === 'essay';
+}
+
+export function isMultipleSelectQuestion(question: QuizQuestion): boolean {
+  return question.question_type === 'multiple_select';
 }
 
 export function needsManualGrading(question: QuizQuestion): boolean {
-  return question.type === 'essay';
+  return question.question_type === 'essay';
 }
 
 export function canAutoGrade(question: QuizQuestion): boolean {
   return !needsManualGrading(question);
+}
+
+// ============================================================================
+// DTO TYPES - Separate types for UI forms vs API requests
+// ============================================================================
+// These types help avoid conflating schema-driven types with presentation-layer types.
+// Use Form types for React component state/props, and API types for server communication.
+
+/**
+ * Quiz form data for UI components (QuizBuilder, etc.).
+ *
+ * Uses presentation-layer field names that are more intuitive for UI:
+ * - timeLimit (maps to time_limit_minutes in DB)
+ * - shuffleQuestions (maps to randomize_questions in DB)
+ *
+ * This type is used for form state management before converting to API request types.
+ */
+export interface QuizFormData {
+  title: string;
+  description: string;
+  /** Time limit in minutes. Displayed as "Time Limit" in UI. Maps to time_limit_minutes in DB. */
+  timeLimit: number | null;
+  passingScore: number;
+  maxAttempts: number;
+  /** Whether to shuffle question order. Displayed as "Shuffle Questions" in UI. Maps to randomize_questions in DB. */
+  shuffleQuestions: boolean;
+  showCorrectAnswers: boolean;
+  showResultsImmediately: boolean;
+  availableFrom: string | null;
+  availableUntil: string | null;
+  isPublished: boolean;
+}
+
+/**
+ * Question form data for UI components (QuestionEditor, etc.).
+ *
+ * Uses presentation-layer field names suitable for forms.
+ */
+export interface QuestionFormData {
+  type: QuestionType;
+  questionText: string;
+  questionImageUrl: string;
+  options: QuestionOption[];
+  correctAnswer: string;
+  correctAnswers: string[];
+  explanation: string;
+  points: number;
+  caseSensitive: boolean;
+}
+
+/**
+ * Converts QuizFormData to CreateQuizRequest for API calls.
+ *
+ * Handles the mapping from presentation-layer names to API/DB names:
+ * - timeLimit -> timeLimit (API accepts this, server maps to time_limit_minutes)
+ * - shuffleQuestions -> shuffleQuestions (API accepts this, server maps to randomize_questions)
+ */
+export function quizFormToCreateRequest(
+  formData: QuizFormData,
+  courseId: number,
+  moduleId?: number,
+  lessonId?: number
+): CreateQuizRequest {
+  return {
+    courseId,
+    moduleId,
+    lessonId,
+    title: formData.title,
+    description: formData.description || undefined,
+    timeLimit: formData.timeLimit ?? undefined,
+    passingScore: formData.passingScore,
+    maxAttempts: formData.maxAttempts,
+    shuffleQuestions: formData.shuffleQuestions,
+    showCorrectAnswers: formData.showCorrectAnswers,
+    showResultsImmediately: formData.showResultsImmediately,
+    availableFrom: formData.availableFrom ?? undefined,
+    availableUntil: formData.availableUntil ?? undefined,
+    published: formData.isPublished,
+  };
+}
+
+/**
+ * Converts QuizFormData to UpdateQuizRequest for API calls.
+ */
+export function quizFormToUpdateRequest(
+  formData: QuizFormData,
+  quizId: string
+): UpdateQuizRequest {
+  return {
+    id: quizId,
+    title: formData.title,
+    description: formData.description || undefined,
+    timeLimit: formData.timeLimit ?? undefined,
+    passingScore: formData.passingScore,
+    maxAttempts: formData.maxAttempts,
+    shuffleQuestions: formData.shuffleQuestions,
+    showCorrectAnswers: formData.showCorrectAnswers,
+    showResultsImmediately: formData.showResultsImmediately,
+    availableFrom: formData.availableFrom ?? undefined,
+    availableUntil: formData.availableUntil ?? undefined,
+    published: formData.isPublished,
+  };
+}
+
+/**
+ * Creates default QuizFormData values for a new quiz form.
+ */
+export function createDefaultQuizFormData(): QuizFormData {
+  return {
+    title: '',
+    description: '',
+    timeLimit: null,
+    passingScore: 70,
+    maxAttempts: 3,
+    shuffleQuestions: false,
+    showCorrectAnswers: true,
+    showResultsImmediately: true,
+    availableFrom: null,
+    availableUntil: null,
+    isPublished: false,
+  };
+}
+
+/**
+ * Converts a Quiz (database type) to QuizFormData for editing.
+ */
+export function quizToFormData(quiz: Quiz): QuizFormData {
+  return {
+    title: quiz.title,
+    description: quiz.description ?? '',
+    timeLimit: quiz.time_limit_minutes,
+    passingScore: quiz.passing_score,
+    maxAttempts: quiz.max_attempts,
+    shuffleQuestions: quiz.randomize_questions,
+    showCorrectAnswers: quiz.show_correct_answers,
+    showResultsImmediately: quiz.show_results_immediately,
+    availableFrom: quiz.available_from,
+    availableUntil: quiz.available_until,
+    isPublished: quiz.is_published,
+  };
 }

@@ -114,13 +114,13 @@ export function validateCourseInput(input: Record<string, unknown>): CourseValid
     }
   }
 
-  // Optional: estimated_hours
-  if (input.estimated_hours !== undefined) {
-    const hours = Number(input.estimated_hours);
-    if (isNaN(hours) || hours <= 0 || !Number.isInteger(hours)) {
-      errors.push('Estimated hours must be a positive integer');
+  // Optional: default_duration_weeks
+  if (input.default_duration_weeks !== undefined) {
+    const weeks = Number(input.default_duration_weeks);
+    if (isNaN(weeks) || weeks <= 0 || !Number.isInteger(weeks)) {
+      errors.push('Duration weeks must be a positive integer');
     } else {
-      sanitized.estimated_hours = hours;
+      sanitized.default_duration_weeks = weeks;
     }
   }
 

@@ -124,6 +124,7 @@ export const prerender = false;
   import { createClient } from '@supabase/supabase-js';
   import { marked } from 'marked';
   import { showToast } from '@/lib/notifications';
+  import { canAccessLesson } from '@/lib/time-gating';
 
   const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
@@ -135,6 +136,14 @@ export const prerender = false;
   let currentCourse: any = null;
   let userCohortId: string | null = null;
   let isTeacher = false;
+  let hasAccess = false;
+  let accessReason: string = '';
+
+  // Progress tracking state
+  let existingProgressId: number | null = null; // Cache existing progress record ID for updates
+  let existingProgressData: any = null; // Cached progress data
+  let localTimeSpentSeconds = 0; // Accumulator for time tracking
+  let lastSaveTime = 0; // Track when we last saved (for 10s interval)
 
   async function init() {
     // Get slug from URL
@@ -199,43 +208,123 @@ export const prerender = false;
     currentModule = lesson.modules;
     currentCourse = lesson.modules.courses;
 
-    // Get user's cohort for this course
+    // Get user's cohort for this course - filter by course to avoid mismatched cohorts
     const { data: enrollment } = await supabase
       .from('cohort_enrollments')
-      .select('cohort_id')
+      .select(`
+        cohort_id,
+        cohorts!inner (
+          course_id
+        )
+      `)
       .eq('user_id', currentUser.id)
       .eq('status', 'active')
+      .eq('cohorts.course_id', currentCourse.id)
       .limit(1)
       .single();
 
     userCohortId = enrollment?.cohort_id || null;
+
+    // Query existing lesson_progress for video resume and to cache record ID
+    const { data: existingProgress } = await supabase
+      .from('lesson_progress')
+      .select('id, video_position_seconds, time_spent_seconds, completed, watch_count')
+      .eq('user_id', currentUser.id)
+      .eq('lesson_id', currentLesson.id)
+      .single();
+
+    if (existingProgress) {
+      existingProgressId = existingProgress.id;
+      existingProgressData = existingProgress;
+      localTimeSpentSeconds = existingProgress.time_spent_seconds || 0;
+    }
+
+    // Check lesson access using time-gating utilities
+    const accessStatus = await canAccessLesson(
+      currentLesson.id,
+      currentUser.id,
+      supabase,
+      isTeacher
+    );
+
+    hasAccess = accessStatus.canAccess;
+    accessReason = accessStatus.reason;
+
+    // If user doesn't have access, show appropriate message and hide content
+    if (!hasAccess) {
+      document.getElementById('loading-state')?.classList.add('hidden');
+      const contentDiv = document.getElementById('lesson-content');
+      if (contentDiv) {
+        contentDiv.classList.remove('hidden');
+        let message = '';
+        if (accessReason === 'not_enrolled') {
+          message = 'You are not enrolled in this course. Please enroll to access this lesson.';
+        } else if (accessReason === 'module_locked') {
+          message = 'This module is currently locked. It will be available when unlocked by your instructor.';
+        } else {
+          message = 'You do not have access to this lesson.';
+        }
+
+        contentDiv.innerHTML = `
+          <div class="container mx-auto px-4 py-12">
+            <div class="max-w-md mx-auto text-center">
+              <div class="mb-6">
+                <svg class="w-16 h-16 mx-auto text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                </svg>
+              </div>
+              <h2 class="text-2xl font-bold mb-4">Access Restricted</h2>
+              <p class="text-text-muted mb-6">${message}</p>
+              <a href="/courses/${currentCourse.slug}" class="btn btn-primary">
+                Back to Course
+              </a>
+            </div>
+          </div>
+        `;
+      }
+      return;
+    }
 
     // Update UI
     document.getElementById('lesson-title')!.textContent = lesson.title;
     document.getElementById('breadcrumb')!.textContent =
       `${currentCourse.title} / ${currentModule.title} / ${lesson.title}`;
 
-    // Video
+    // Video with resume support
     const videoDiv = document.querySelector('#video-container .bg-black') as HTMLElement;
+    const resumePosition = existingProgressData?.video_position_seconds || 0;
+
     if (lesson.video_url) {
       // Check if it's a YouTube URL
       const youtubeId = extractYouTubeId(lesson.video_url);
       if (youtubeId && videoDiv) {
+        // For YouTube, pass start time via query parameter
+        const startParam = resumePosition > 0 ? `&start=${Math.floor(resumePosition)}` : '';
         videoDiv.innerHTML = `
           <iframe
             class="w-full h-full"
-            src="https://www.youtube.com/embed/${youtubeId}"
+            src="https://www.youtube.com/embed/${youtubeId}?enablejsapi=1${startParam}"
             frameborder="0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowfullscreen
           ></iframe>
         `;
       } else {
-        // Regular video file
+        // Regular HTML5 video file
         const videoSource = document.getElementById('video-source') as HTMLSourceElement;
         videoSource.src = lesson.video_url;
         const video = document.getElementById('lesson-video') as HTMLVideoElement;
         video.load();
+
+        // Resume from saved position once metadata is loaded
+        if (resumePosition > 0) {
+          video.addEventListener('loadedmetadata', () => {
+            video.currentTime = resumePosition;
+          }, { once: true });
+        }
+
+        // Setup video progress tracking
+        setupVideoProgressTracking(video);
       }
     } else {
       document.getElementById('video-container')?.classList.add('hidden');
@@ -473,24 +562,187 @@ export const prerender = false;
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   }
 
+  // Setup video progress tracking with periodic auto-save
+  function setupVideoProgressTracking(video: HTMLVideoElement) {
+    let isPlaying = false;
+    let playStartTime = 0;
+
+    // Track play/pause for time accumulation
+    video.addEventListener('play', () => {
+      isPlaying = true;
+      playStartTime = Date.now();
+    });
+
+    video.addEventListener('pause', () => {
+      if (isPlaying) {
+        const elapsed = Math.floor((Date.now() - playStartTime) / 1000);
+        localTimeSpentSeconds += elapsed;
+      }
+      isPlaying = false;
+      // Save on pause
+      saveVideoProgress(video.currentTime, false);
+    });
+
+    // Auto-save every 10 seconds during playback
+    video.addEventListener('timeupdate', () => {
+      const now = Date.now();
+      if (now - lastSaveTime >= 10000) { // 10 seconds
+        if (isPlaying) {
+          const elapsed = Math.floor((now - playStartTime) / 1000);
+          localTimeSpentSeconds += elapsed;
+          playStartTime = now; // Reset for next interval
+        }
+        saveVideoProgress(video.currentTime, false);
+        lastSaveTime = now;
+      }
+    });
+
+    // Save on page unload
+    window.addEventListener('beforeunload', () => {
+      if (isPlaying) {
+        const elapsed = Math.floor((Date.now() - playStartTime) / 1000);
+        localTimeSpentSeconds += elapsed;
+      }
+      // Use sendBeacon for reliable delivery on page close
+      saveVideoProgressSync(video.currentTime, false);
+    });
+  }
+
+  // Async save video progress (upsert)
+  async function saveVideoProgress(positionSeconds: number, completed: boolean) {
+    if (!currentUser || !currentLesson) return;
+
+    const progressData: any = {
+      user_id: currentUser.id,
+      lesson_id: currentLesson.id,
+      video_position_seconds: Math.floor(positionSeconds),
+      time_spent_seconds: localTimeSpentSeconds,
+      last_accessed_at: new Date().toISOString(),
+    };
+
+    // Include cohort_id when user is in a cohort
+    if (userCohortId) {
+      progressData.cohort_id = userCohortId;
+    }
+
+    if (completed) {
+      progressData.completed = true;
+      progressData.completed_at = new Date().toISOString();
+    }
+
+    // If we have an existing record, update by ID; otherwise upsert on unique constraint
+    if (existingProgressId) {
+      await supabase
+        .from('lesson_progress')
+        .update(progressData)
+        .eq('id', existingProgressId);
+    } else {
+      const { data } = await supabase
+        .from('lesson_progress')
+        .upsert(progressData, { onConflict: 'user_id,lesson_id' })
+        .select('id')
+        .single();
+
+      if (data) {
+        existingProgressId = data.id;
+      }
+    }
+  }
+
+  // Synchronous save for beforeunload (uses sendBeacon fallback)
+  function saveVideoProgressSync(positionSeconds: number, completed: boolean) {
+    if (!currentUser || !currentLesson) return;
+
+    const progressData: any = {
+      user_id: currentUser.id,
+      lesson_id: currentLesson.id,
+      video_position_seconds: Math.floor(positionSeconds),
+      time_spent_seconds: localTimeSpentSeconds,
+      last_accessed_at: new Date().toISOString(),
+    };
+
+    if (userCohortId) {
+      progressData.cohort_id = userCohortId;
+    }
+
+    // Attempt to use sendBeacon for reliable delivery
+    // This is a best-effort save on page close
+    try {
+      const url = `${supabaseUrl}/rest/v1/lesson_progress?on_conflict=user_id,lesson_id`;
+      const headers = {
+        'Content-Type': 'application/json',
+        'apikey': supabaseAnonKey!,
+        'Prefer': 'resolution=merge-duplicates',
+      };
+
+      const body = JSON.stringify(progressData);
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
+      }
+    } catch (e) {
+      // Silently fail - best effort
+    }
+  }
+
   function setupEventListeners() {
-    // Mark complete button
+    // Mark complete button - enhanced to update existing record with full data
     document.getElementById('mark-complete-btn')?.addEventListener('click', async () => {
       if (!currentUser || !currentLesson) return;
 
-      const { error } = await supabase
-        .from('lesson_progress')
-        .upsert({
-          user_id: currentUser.id,
-          lesson_id: currentLesson.id,
-          completed: true,
-          completed_at: new Date().toISOString(),
-        });
+      // Get video duration if available
+      const video = document.getElementById('lesson-video') as HTMLVideoElement;
+      const videoDuration = video?.duration ? Math.floor(video.duration) : 0;
+
+      const progressData: any = {
+        user_id: currentUser.id,
+        lesson_id: currentLesson.id,
+        completed: true,
+        completed_at: new Date().toISOString(),
+        last_accessed_at: new Date().toISOString(),
+        time_spent_seconds: localTimeSpentSeconds,
+      };
+
+      // Set video_position_seconds to lesson duration if available
+      if (videoDuration > 0) {
+        progressData.video_position_seconds = videoDuration;
+      }
+
+      // Include cohort_id when user is in a cohort
+      if (userCohortId) {
+        progressData.cohort_id = userCohortId;
+      }
+
+      // Increment watch_count if this is a revisit completion
+      if (existingProgressData?.completed) {
+        progressData.watch_count = (existingProgressData.watch_count || 1) + 1;
+      } else {
+        progressData.watch_count = existingProgressData?.watch_count || 1;
+      }
+
+      let error;
+      if (existingProgressId) {
+        // Update existing record
+        const result = await supabase
+          .from('lesson_progress')
+          .update(progressData)
+          .eq('id', existingProgressId);
+        error = result.error;
+      } else {
+        // Upsert new record
+        const result = await supabase
+          .from('lesson_progress')
+          .upsert(progressData, { onConflict: 'user_id,lesson_id' });
+        error = result.error;
+      }
 
       if (error) {
         showToast('Failed to mark lesson as complete', 'error');
       } else {
         showToast('Lesson marked as complete!', 'success');
+        // Update local state
+        if (existingProgressData) {
+          existingProgressData.completed = true;
+        }
       }
     });
 

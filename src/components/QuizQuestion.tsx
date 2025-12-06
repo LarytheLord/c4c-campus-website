@@ -260,8 +260,62 @@ export function QuizQuestion({
     );
   };
 
-  const renderFillBlank = () => {
-    return renderShortAnswer(); // Same as short answer
+  const renderMultipleSelect = () => {
+    const selectedOptions = Array.isArray(localValue) ? localValue : localValue ? [localValue] : [];
+    const options = question.options || [];
+
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-text-muted mb-2">Select all that apply</p>
+        {options.map((option) => {
+          const isSelected = selectedOptions.includes(option.id);
+          const isThisCorrect = showCorrectAnswer && Array.isArray(correctAnswer) && correctAnswer.includes(option.id);
+
+          return (
+            <label
+              key={option.id}
+              className={`flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                readonly ? 'cursor-default' : 'hover:border-primary'
+              } ${
+                isSelected
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border'
+              } ${
+                showCorrectAnswer && isThisCorrect
+                  ? 'border-success bg-success/5'
+                  : ''
+              } ${
+                showCorrectAnswer && isSelected && !isThisCorrect
+                  ? 'border-error bg-error/5'
+                  : ''
+              }`}
+            >
+              <input
+                type="checkbox"
+                name={`question-${question.id}`}
+                value={option.id}
+                checked={isSelected}
+                onChange={(e) => {
+                  if (readonly) return;
+                  const newValue = e.target.checked
+                    ? [...selectedOptions, option.id]
+                    : selectedOptions.filter(v => v !== option.id);
+                  handleChange(newValue);
+                }}
+                disabled={readonly}
+                className="mt-1 w-4 h-4 text-primary"
+              />
+              <span className="flex-1">{option.text}</span>
+              {showCorrectAnswer && isThisCorrect && (
+                <svg className="w-5 h-5 text-success flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              )}
+            </label>
+          );
+        })}
+      </div>
+    );
   };
 
   const renderQuestionInput = () => {
@@ -274,8 +328,8 @@ export function QuizQuestion({
         return renderShortAnswer();
       case 'essay':
         return renderEssay();
-      case 'fill_blank':
-        return renderFillBlank();
+      case 'multiple_select':
+        return renderMultipleSelect();
       default:
         return <div className="text-error">Unknown question type</div>;
     }

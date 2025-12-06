@@ -1,0 +1,111 @@
+name: Schema-Types Synchronization Check
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'schema.sql'
+      - 'src/types/**'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'schema.sql'
+      - 'src/types/**'
+
+jobs:
+  check-schema-types:
+    name: Verify Schema-Types Sync
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # NOTE: When using a live Supabase instance, uncomment the following step
+      # to regenerate types from the actual database schema before checking.
+      # This ensures generated.ts in CI is truly derived from the current schema.
+      #
+      # - name: Regenerate types from database
+      #   run: npm run db:types
+      #   env:
+      #     SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Check schema-types synchronization
+        run: npm run db:types:check
+
+      - name: Run TypeScript type check
+        run: npm run check
+
+  # NOTE: When using a live Supabase instance, uncomment this job to verify
+  # that generated.ts matches the actual database schema.
+  # This requires setting up Supabase CLI access in CI.
+  #
+  # verify-generated-types:
+  #   name: Verify Generated Types Match DB
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+  #
+  #     - name: Setup Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: '20'
+  #         cache: 'npm'
+  #
+  #     - name: Install dependencies
+  #       run: npm ci
+  #
+  #     - name: Install Supabase CLI
+  #       run: npm install -g supabase
+  #
+  #     - name: Generate types from database
+  #       run: npm run db:types
+  #       env:
+  #         SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+  #         SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+  #
+  #     - name: Check for uncommitted changes to generated.ts
+  #       run: |
+  #         if git diff --exit-code src/types/generated.ts; then
+  #           echo "✅ generated.ts is up to date with the database schema"
+  #         else
+  #           echo "❌ generated.ts is out of sync with the database schema"
+  #           echo "Please run 'npm run db:types' and commit the changes"
+  #           exit 1
+  #         fi
+
+  lint-and-test:
+    name: Lint and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Run integration tests
+        run: npm run test:integration
+        env:
+          PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}

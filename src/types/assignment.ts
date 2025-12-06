@@ -1,58 +1,66 @@
 /**
  * Assignment System TypeScript Types
+ * NOTE: Must match schema.sql assignments and assignment_submissions tables
+ *
+ * NOTE: These types are thin wrappers over the Supabase-generated types in ./generated.ts
+ * When modifying types, ensure they remain compatible with the generated schema types.
+ * Run `npm run db:types` to regenerate types from the database schema.
  */
 
-export interface Assignment {
-  id: string; // UUID
-  course_id: number;
-  module_id: number | null;
-  lesson_id: number | null;
-  title: string;
-  description: string | null;
-  instructions: string | null;
-  max_points: number;
-  due_date: string | null;
-  allow_late_submissions: boolean;
-  late_penalty_percent: number;
-  max_file_size_mb: number;
-  allowed_file_types: string[];
-  is_published: boolean;
-  created_by: string; // UUID
-  created_at: string;
-  updated_at: string;
+import type {
+  AssignmentRow,
+  AssignmentSubmissionRow,
+} from './generated';
+
+/**
+ * Assignment - matches schema.sql assignments table
+ *
+ * Extends AssignmentRow with required created_by field in application context.
+ */
+export interface Assignment extends Omit<AssignmentRow, 'created_by'> {
+  created_by: string; // UUID - required in application context
 }
 
-export interface Submission {
-  id: string; // UUID
-  assignment_id: string; // UUID
-  user_id: string; // UUID
-  submission_text: string | null;
-  file_urls: string[];
-  submitted_at: string;
-  is_late: boolean;
+/**
+ * Submission - matches schema.sql assignment_submissions table
+ * Supports both single file (file_url, file_name, etc.) and multi-file (file_urls) approaches
+ *
+ * Extends AssignmentSubmissionRow with typed rubric_scores object.
+ */
+export interface Submission extends Omit<AssignmentSubmissionRow, 'rubric_scores' | 'status'> {
   status: 'draft' | 'submitted' | 'graded' | 'returned';
-  score: number | null;
-  feedback: string | null;
-  graded_by: string | null; // UUID
-  graded_at: string | null;
-  rubric_scores: any | null;
-  created_at: string;
-  updated_at: string;
+  rubric_scores: Record<string, number> | null; // Typed JSONB structure
 }
 
+/**
+ * NOTE: SubmissionHistory table does not exist in schema.sql.
+ * This interface is kept for potential future use but is not backed by a database table.
+ * If implementing submission history tracking, add corresponding table to schema.sql first.
+ * @deprecated Not yet implemented in database schema
+ */
 export interface SubmissionHistory {
   id: number;
-  submission_id: number;
-  assignment_id: number;
-  user_id: string;
+  submission_id: string; // Should be UUID to match assignment_submissions.id
+  assignment_id: string; // Should be UUID to match assignments.id
+  user_id: string; // UUID
   action: string;
   performed_by: string | null;
-  details: any | null;
+  details: Record<string, unknown> | null;
   ip_address: string | null;
   user_agent: string | null;
   created_at: string;
 }
 
+/**
+ * Assignment with user submission data.
+ * Optionally includes serverCanSubmit flag from can_user_submit RPC.
+ */
 export interface AssignmentWithSubmission extends Assignment {
   user_submission: Submission | null;
+  /**
+   * Server-provided flag from can_user_submit RPC.
+   * When present, this is the authoritative source for whether submission is allowed.
+   * API handlers can include this field to ensure UI stays aligned with server rules.
+   */
+  serverCanSubmit?: boolean;
 }

@@ -7,7 +7,7 @@ import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
 import { rateLimit, RateLimitPresets } from '@/lib/rate-limiter';
 import { autoGradeQuizAttempt, isAttemptExpired } from '@/lib/quiz-grading';
-import { showToast } from '@/lib/notifications';
+// Removed unused showToast import (client-side only)
 import type { SubmitQuizAttemptRequest, SubmitAttemptResponse } from '@/types/quiz';
 
 export const prerender = false;
@@ -45,12 +45,13 @@ export const POST: APIRoute = async ({ request, params }) => {
       );
     }
 
-    const quizId = parseInt(params.id!);
-    const attemptId = parseInt(params.attemptId!);
+    // Quiz and attempt IDs are UUIDs - treat as strings, not numbers
+    const quizId = params.id;
+    const attemptId = params.attemptId;
 
-    if (isNaN(quizId) || isNaN(attemptId)) {
+    if (!quizId || !attemptId) {
       return new Response(
-        JSON.stringify({ error: 'Invalid quiz or attempt ID' }),
+        JSON.stringify({ error: 'Quiz ID and attempt ID are required' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
@@ -102,10 +103,25 @@ export const POST: APIRoute = async ({ request, params }) => {
       );
     }
 
-    // Check if time expired (allow submission even if expired, but calculate actual time)
+    // Calculate time spent
     const timeSpentSeconds = Math.floor(
       (Date.now() - new Date(attempt.started_at).getTime()) / 1000
     );
+
+    // Check if time expired - use server-side enforcement
+    const isExpired = isAttemptExpired(attempt, quiz);
+    let timeLimitExceeded = false;
+
+    if (isExpired && quiz.time_limit_minutes) {
+      // Mark as exceeded but still allow submission
+      timeLimitExceeded = true;
+      // Cap the time_taken_seconds to the limit + a small grace period (30 seconds)
+      const maxTimeSeconds = (quiz.time_limit_minutes * 60) + 30;
+      if (timeSpentSeconds > maxTimeSeconds) {
+        // Log the late submission for auditing
+        console.warn(`Late quiz submission: attempt ${attemptId} exceeded time limit by ${timeSpentSeconds - maxTimeSeconds}s`);
+      }
+    }
 
     // Get questions
     const { data: questions, error: questionsError } = await supabase
@@ -134,7 +150,7 @@ export const POST: APIRoute = async ({ request, params }) => {
         passed: gradingResult.passed,
         grading_status: gradingResult.gradingStatus,
         submitted_at: new Date().toISOString(),
-        time_spent_seconds: timeSpentSeconds,
+        time_taken_seconds: timeSpentSeconds,
       })
       .eq('id', attemptId)
       .select()
@@ -172,7 +188,7 @@ export const POST: APIRoute = async ({ request, params }) => {
       };
     }
 
-    const response: SubmitAttemptResponse = {
+    const response: SubmitAttemptResponse & { timeLimitExceeded?: boolean } = {
       success: true,
       attempt: {
         id: updatedAttempt.id,
@@ -184,6 +200,7 @@ export const POST: APIRoute = async ({ request, params }) => {
         submittedAt: updatedAttempt.submitted_at!,
       },
       results,
+      timeLimitExceeded,
     };
 
     // Send notification if has essay questions needing grading

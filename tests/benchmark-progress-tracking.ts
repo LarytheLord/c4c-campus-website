@@ -46,11 +46,11 @@ async function setupTestData() {
 
   // Create a course
   const { data: course } = await supabaseAdmin.from('courses').insert({
-    name: 'Benchmark Course',
+    title: 'Benchmark Course',
     slug: 'benchmark-course-' + Date.now(),
     track: 'animal-advocacy',
     difficulty: 'beginner',
-    published: true,
+    is_published: true,
   }).select().single();
 
   if (!course) throw new Error('Failed to create course');
@@ -72,7 +72,7 @@ async function setupTestData() {
   for (let i = 1; i <= 5; i++) {
     const { data: module } = await supabaseAdmin.from('modules').insert({
       course_id: course.id,
-      name: `Module ${i}`,
+      title: `Module ${i}`,
       order_index: i,
     }).select().single();
 
@@ -85,9 +85,9 @@ async function setupTestData() {
     for (let i = 1; i <= 5; i++) {
       const { data: lesson } = await supabaseAdmin.from('lessons').insert({
         module_id: module.id,
-        name: `Lesson ${i}`,
+        title: `Lesson ${i}`,
         slug: `lesson-${i}`,
-        video_duration_seconds: 300,
+        duration_minutes: 5,
         order_index: i,
       }).select().single();
 

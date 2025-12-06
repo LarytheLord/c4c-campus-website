@@ -26,7 +26,9 @@
     "test:e2e:report": "playwright show-report",
     "optimize:images": "node scripts/optimize-images.js",
     "analyze:bundle": "astro build --verbose",
-    "perf:audit": "lighthouse http://localhost:4321 --output=html --output-path=./docs/performance/lighthouse-report.html"
+    "perf:audit": "lighthouse http://localhost:4321 --output=html --output-path=./docs/performance/lighthouse-report.html",
+    "db:types": "npx supabase gen types typescript --local > src/types/generated.ts",
+    "db:types:check": "node scripts/check-schema-types.js"
   },
   "dependencies": {
     "@astrojs/node": "^9.5.0",

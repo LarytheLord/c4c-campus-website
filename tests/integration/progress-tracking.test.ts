@@ -55,30 +55,30 @@ describe('Progress Tracking - Cohort-Based Learning', () => {
 
     // Create test course with multiple lessons
     const { data: course } = await supabaseAdmin.from('courses').insert({
-      name: 'Test Course - Progress Tracking',
+      title: 'Test Course - Progress Tracking',
       slug: 'test-progress-' + Date.now(),
       track: 'animal-advocacy',
       difficulty: 'beginner',
-      published: true,
-      estimated_hours: 10,
+      is_published: true,
+      default_duration_weeks: 2,
     }).select().single();
     testCourseId = course.id;
 
     // Create module with 5 lessons
     const { data: module } = await supabaseAdmin.from('modules').insert({
       course_id: testCourseId,
-      name: 'Module 1: Fundamentals',
+      title: 'Module 1: Fundamentals',
       order_index: 1,
     }).select().single();
     testModuleId = module.id;
 
     // Create 5 lessons for progress tracking
     const lessons = await supabaseAdmin.from('lessons').insert([
-      { module_id: testModuleId, name: 'Lesson 1', slug: 'lesson-1', video_duration_seconds: 300, video_size_bytes: 1000000, order_index: 1 },
-      { module_id: testModuleId, name: 'Lesson 2', slug: 'lesson-2', video_duration_seconds: 420, video_size_bytes: 1500000, order_index: 2 },
-      { module_id: testModuleId, name: 'Lesson 3', slug: 'lesson-3', video_duration_seconds: 360, video_size_bytes: 1200000, order_index: 3 },
-      { module_id: testModuleId, name: 'Lesson 4', slug: 'lesson-4', video_duration_seconds: 480, video_size_bytes: 1800000, order_index: 4 },
-      { module_id: testModuleId, name: 'Lesson 5', slug: 'lesson-5', video_duration_seconds: 540, video_size_bytes: 2000000, order_index: 5 },
+      { module_id: testModuleId, title: 'Lesson 1', slug: 'lesson-1', duration_minutes: 5, order_index: 1 },
+      { module_id: testModuleId, title: 'Lesson 2', slug: 'lesson-2', duration_minutes: 7, order_index: 2 },
+      { module_id: testModuleId, title: 'Lesson 3', slug: 'lesson-3', duration_minutes: 6, order_index: 3 },
+      { module_id: testModuleId, title: 'Lesson 4', slug: 'lesson-4', duration_minutes: 8, order_index: 4 },
+      { module_id: testModuleId, title: 'Lesson 5', slug: 'lesson-5', duration_minutes: 9, order_index: 5 },
     ]).select();
     testLessonIds = lessons.data.map(l => l.id);
 

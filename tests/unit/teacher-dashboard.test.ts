@@ -463,33 +463,33 @@ describe('Teacher Dashboard - My Courses Tab (List View)', () => {
     courses = [
       {
         id: 1,
-        name: 'n8n Workflow Automation',
+        title: 'n8n Workflow Automation',
         slug: 'n8n-basics',
         track: 'animal-advocacy',
         difficulty: 'beginner',
-        published: true,
+        is_published: true,
         students: 12,
         cohorts: 2,
         created_at: '2025-01-15T00:00:00Z',
       },
       {
         id: 2,
-        name: 'Advanced Automation Patterns',
+        title: 'Advanced Automation Patterns',
         slug: 'n8n-advanced',
         track: 'animal-advocacy',
         difficulty: 'intermediate',
-        published: false,
+        is_published: false,
         students: 0,
         cohorts: 0,
         created_at: '2025-01-20T00:00:00Z',
       },
       {
         id: 3,
-        name: 'Climate Data Analysis',
+        title: 'Climate Data Analysis',
         slug: 'climate-analysis',
         track: 'climate',
         difficulty: 'advanced',
-        published: true,
+        is_published: true,
         students: 8,
         cohorts: 1,
         created_at: '2025-01-25T00:00:00Z',
@@ -734,24 +734,24 @@ describe('Teacher Dashboard - Edit Course Tab (Course Builder)', () => {
 
   beforeEach(() => {
     formData = {
-      name: '',
+      title: '',
       description: '',
       track: '',
       difficulty: '',
-      estimated_hours: '',
+      default_duration_weeks: '',
       slug: '',
-      published: false,
+      is_published: false,
     };
   });
 
   // ==================== FORM RENDERING ====================
 
-  test('should render course name input field', () => {
+  test('should render course title input field', () => {
     // Arrange & Act
-    const hasNameField = 'name' in formData;
+    const hasTitleField = 'title' in formData;
 
     // Assert
-    expect(hasNameField).toBe(true);
+    expect(hasTitleField).toBe(true);
   });
 
   test('should render description textarea field', () => {
@@ -809,21 +809,21 @@ describe('Teacher Dashboard - Edit Course Tab (Course Builder)', () => {
   test('should pre-fill form with course data when editing', () => {
     // Arrange
     const existingCourse = {
-      name: 'n8n Basics',
+      title: 'n8n Basics',
       description: 'Learn n8n',
       track: 'animal-advocacy',
       difficulty: 'beginner',
-      estimated_hours: 8,
+      default_duration_weeks: 2,
       slug: 'n8n-basics',
-      published: true,
+      is_published: true,
     };
 
     // Act
     formData = { ...formData, ...existingCourse };
 
     // Assert
-    expect(formData.name).toBe('n8n Basics');
-    expect(formData.published).toBe(true);
+    expect(formData.title).toBe('n8n Basics');
+    expect(formData.is_published).toBe(true);
   });
 
   // ==================== VALIDATION ====================

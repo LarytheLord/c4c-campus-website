@@ -417,7 +417,8 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
     document.querySelectorAll('.enroll-btn').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
-        const courseId = parseInt(btn.getAttribute('data-course-id')!);
+        // Course IDs are UUIDs (strings)
+        const courseId = btn.getAttribute('data-course-id')!;
         const button = btn as HTMLButtonElement;
 
         // Add loading state
@@ -431,7 +432,7 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
     });
   }
 
-  async function enrollInCourse(courseId: number) {
+  async function enrollInCourse(courseId: string) {
     if (!currentUser) {
       showToast('Please login to enroll in courses', 'error');
       setTimeout(() => {

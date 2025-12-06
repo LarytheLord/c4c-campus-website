@@ -20,11 +20,11 @@ describe('Enrollment + Progress + Resume Integration', () => {
 
     // Create test course, module, lesson using admin (bypasses RLS)
     const { data: course, error: courseError } = await supabaseAdmin.from('courses').insert({
-      name: 'Test Course',
+      title: 'Test Course',
       slug: 'test-course-' + Date.now(), // Unique slug per test
       track: 'animal-advocacy',
       difficulty: 'beginner',
-      published: true,
+      is_published: true,
     }).select().single();
 
     if (courseError || !course) {
@@ -45,11 +45,10 @@ describe('Enrollment + Progress + Resume Integration', () => {
 
     const { data: lesson, error: lessonError } = await supabaseAdmin.from('lessons').insert({
       module_id: module.id,
-      name: 'Lesson 1',
+      title: 'Lesson 1',
       slug: 'lesson-1',
-      video_path: 'videos/test.mp4',
-      video_duration_seconds: 420, // 7 minutes
-      video_size_bytes: 10000000,
+      video_url: 'videos/test.mp4',
+      duration_minutes: 7,
       order_index: 1,
     }).select().single();
 
@@ -272,7 +271,7 @@ describe('Enrollment + Progress + Resume Integration', () => {
       watch_count: 1,
     }).select().single();
 
-    const initialAccess = progress.last_accessed;
+    const initialAccess = progress.last_accessed_at;
 
     // Act - Set a specific timestamp to verify update works
     const newTimestamp = new Date('2025-01-30T12:00:00Z').toISOString();
@@ -281,16 +280,16 @@ describe('Enrollment + Progress + Resume Integration', () => {
       .update({
         video_position_seconds: 200,
         time_spent_seconds: 200,
-        last_accessed: newTimestamp
+        last_accessed_at: newTimestamp
       })
       .eq('id', progress.id)
       .select()
       .single();
 
-    // Assert - last_accessed was successfully updated
-    expect(updated.last_accessed).not.toBe(initialAccess);
+    // Assert - last_accessed_at was successfully updated
+    expect(updated.last_accessed_at).not.toBe(initialAccess);
     // Check timestamp represents the same moment (ignore format differences)
-    expect(new Date(updated.last_accessed).getTime()).toBe(new Date(newTimestamp).getTime());
+    expect(new Date(updated.last_accessed_at).getTime()).toBe(new Date(newTimestamp).getTime());
   });
 
   // ==================== WATCH COUNT ====================

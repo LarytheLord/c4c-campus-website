@@ -52,8 +52,8 @@ export default function NotificationBell({ userId, accessToken }: NotificationBe
 
           // Show browser notification if permitted
           if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification(newNotification.title, {
-              body: newNotification.message,
+            new window.Notification(newNotification.title, {
+              body: newNotification.content || '',
               icon: '/favicon.svg',
               tag: `notification-${newNotification.id}`,
             });
@@ -104,7 +104,7 @@ export default function NotificationBell({ userId, accessToken }: NotificationBe
     }
   };
 
-  const markAsRead = async (notificationIds: number[]) => {
+  const markAsRead = async (notificationIds: string[]) => {
     try {
       const response = await fetch('/api/notifications', {
         method: 'POST',
@@ -120,7 +120,7 @@ export default function NotificationBell({ userId, accessToken }: NotificationBe
         setNotifications((prev) =>
           prev.map((n) =>
             notificationIds.includes(n.id)
-              ? { ...n, read_at: new Date().toISOString() }
+              ? { ...n, is_read: true }
               : n
           )
         );
@@ -224,7 +224,7 @@ export default function NotificationBell({ userId, accessToken }: NotificationBe
               <button
                 onClick={() => {
                   const unreadIds = notifications
-                    .filter((n) => !n.read_at)
+                    .filter((n) => !n.is_read)
                     .map((n) => n.id);
                   markAsRead(unreadIds);
                 }}

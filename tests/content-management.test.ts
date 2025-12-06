@@ -41,10 +41,10 @@ describe('Content Management System', () => {
     const { data: course } = await supabase
       .from('courses')
       .insert({
-        name: 'Test Course for CMS',
+        title: 'Test Course for CMS',
         slug: 'test-course-cms-' + Date.now(),
         created_by: testUserId,
-        published: true
+        is_published: true
       })
       .select()
       .single();
@@ -56,7 +56,7 @@ describe('Content Management System', () => {
       .from('modules')
       .insert({
         course_id: testCourseId,
-        name: 'Test Module',
+        title: 'Test Module',
         order_index: 1
       })
       .select()
@@ -77,16 +77,16 @@ describe('Content Management System', () => {
       const csvData = [
         {
           module_id: testModuleId.toString(),
-          name: 'Test Lesson 1',
+          title: 'Test Lesson 1',
           slug: 'test-lesson-1',
-          text_content: 'Content for lesson 1',
+          content: 'Content for lesson 1',
           order_index: '1'
         },
         {
           module_id: testModuleId.toString(),
-          name: 'Test Lesson 2',
+          title: 'Test Lesson 2',
           slug: 'test-lesson-2',
-          text_content: 'Content for lesson 2',
+          content: 'Content for lesson 2',
           order_index: '2'
         }
       ];
@@ -154,7 +154,7 @@ describe('Content Management System', () => {
 
       expect(response.status).toBe(200);
       expect(result.success).toBe(true);
-      expect(result.course.name).toBe('Cloned Test Course');
+      expect(result.course.title).toBe('Cloned Test Course');
       expect(result.stats.modulesCloned).toBeGreaterThan(0);
 
       // Cleanup cloned course
@@ -267,7 +267,7 @@ describe('Content Management System', () => {
         .from('lessons')
         .insert({
           module_id: testModuleId,
-          name: 'Test Lesson for A/B',
+          title: 'Test Lesson for A/B',
           slug: 'test-lesson-ab',
           order_index: 99
         })
@@ -289,8 +289,8 @@ describe('Content Management System', () => {
           description: 'Testing video vs text',
           lessonId: testLessonId,
           variantBData: {
-            name: 'Alternative Lesson',
-            text_content: 'Alternative content for testing'
+            title: 'Alternative Lesson',
+            content: 'Alternative content for testing'
           },
           trafficSplit: 50,
           primaryMetric: 'completion_rate',
@@ -462,17 +462,17 @@ describe('Content Management System', () => {
       const modules = await Promise.all([
         supabase.from('modules').insert({
           course_id: testCourseId,
-          name: 'Module 1',
+          title: 'Module 1',
           order_index: 1
         }).select().single(),
         supabase.from('modules').insert({
           course_id: testCourseId,
-          name: 'Module 2',
+          title: 'Module 2',
           order_index: 2
         }).select().single(),
         supabase.from('modules').insert({
           course_id: testCourseId,
-          name: 'Module 3',
+          title: 'Module 3',
           order_index: 3
         }).select().single()
       ]);

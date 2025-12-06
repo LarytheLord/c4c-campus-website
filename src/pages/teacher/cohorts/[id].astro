@@ -345,9 +345,9 @@ import TeacherLayout from '../../../layouts/TeacherLayout.astro';
 
       // Update UI
       document.getElementById('cohort-name-header')!.textContent = cohort.name;
-      document.getElementById('course-name-header')!.textContent = cohort.courses?.name || 'Unknown Course';
+      document.getElementById('course-name-header')!.textContent = cohort.courses?.title || 'Unknown Course';
       document.getElementById('cohort-name')!.textContent = cohort.name;
-      document.getElementById('course-name')!.textContent = cohort.courses?.name || 'Unknown Course';
+      document.getElementById('course-name')!.textContent = cohort.courses?.title || 'Unknown Course';
       document.getElementById('breadcrumb-cohort')!.textContent = cohort.name;
 
       // Update status badge

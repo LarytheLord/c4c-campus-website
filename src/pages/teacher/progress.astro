@@ -114,7 +114,7 @@ import Leaderboard from '../../components/Leaderboard';
 
     let currentUser: any = null;
     let cohorts: any[] = [];
-    let currentCohortId: number | null = null;
+    let currentCohortId: string | null = null; // UUID string, not number
     let dashboardData: any = null;
     let autoRefreshInterval: number | null = null;
 
@@ -199,7 +199,7 @@ import Leaderboard from '../../components/Leaderboard';
       }
     }
 
-    async function loadDashboardData(cohortId: number) {
+    async function loadDashboardData(cohortId: string) {
       try {
         // Show loading state for components
         renderComponents(null, true);
@@ -292,9 +292,11 @@ import Leaderboard from '../../components/Leaderboard';
     }
 
     function setupEventListeners() {
-      // Cohort selector
+      // Cohort selector - cohort IDs are UUID strings, not numbers
       document.getElementById('cohort-selector')?.addEventListener('change', (e) => {
-        const cohortId = parseInt((e.target as HTMLSelectElement).value);
+        const value = (e.target as HTMLSelectElement).value;
+        // Treat empty string as null (no cohort selected)
+        const cohortId = value || null;
         if (cohortId) {
           currentCohortId = cohortId;
           loadDashboardData(cohortId);

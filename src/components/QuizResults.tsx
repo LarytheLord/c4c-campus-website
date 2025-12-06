@@ -22,8 +22,8 @@ export function QuizResults({
   onReview,
   canRetake,
 }: QuizResultsProps) {
-  const scorePercentage = attempt.score;
-  const passed = attempt.passed;
+  const scorePercentage = attempt.score ?? 0;
+  const passed = attempt.passed ?? false;
 
   const formatTime = (seconds: number | null) => {
     if (!seconds) return 'N/A';
@@ -150,7 +150,7 @@ export function QuizResults({
           <div className="p-4 bg-surface rounded-lg">
             <div className="text-text-muted text-sm mb-1">Time Spent</div>
             <div className="text-lg font-bold">
-              {formatTime(attempt.time_spent_seconds)}
+              {formatTime(attempt.time_taken_seconds)}
             </div>
           </div>
 

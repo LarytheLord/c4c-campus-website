@@ -44,10 +44,11 @@ export const POST: APIRoute = async ({ request, params }) => {
       );
     }
 
-    const quizId = parseInt(params.id!);
-    if (isNaN(quizId)) {
+    // Quiz IDs are UUIDs - treat as strings, not numbers
+    const quizId = params.id;
+    if (!quizId) {
       return new Response(
-        JSON.stringify({ error: 'Invalid quiz ID' }),
+        JSON.stringify({ error: 'Quiz ID is required' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
@@ -152,13 +153,48 @@ export const POST: APIRoute = async ({ request, params }) => {
     // Calculate total points
     const totalPoints = questions.reduce((sum, q) => sum + q.points, 0);
 
-    // Shuffle questions if enabled
+    // Shuffle questions if enabled (schema uses randomize_questions)
     let questionsForStudent = quiz.randomize_questions
       ? shuffleQuestions(questions, true)
       : questions;
 
     // Get next attempt number
     const attemptNumber = submittedCount + 1;
+
+    // Validate cohortId if provided
+    let validatedCohortId: string | null = null;
+    if (body.cohortId) {
+      // Verify cohort exists
+      const { data: cohort, error: cohortError } = await supabase
+        .from('cohorts')
+        .select('id')
+        .eq('id', body.cohortId)
+        .single();
+
+      if (cohortError || !cohort) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid cohort ID' }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Verify user is enrolled in the cohort
+      const { data: cohortEnrollment } = await supabase
+        .from('cohort_enrollments')
+        .select('id')
+        .eq('cohort_id', body.cohortId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (!cohortEnrollment) {
+        return new Response(
+          JSON.stringify({ error: 'You are not enrolled in this cohort' }),
+          { status: 403, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+
+      validatedCohortId = body.cohortId;
+    }
 
     // Create attempt
     const { data: attempt, error: attemptError } = await supabase
@@ -167,7 +203,7 @@ export const POST: APIRoute = async ({ request, params }) => {
         {
           quiz_id: quizId,
           user_id: user.id,
-          cohort_id: body.cohortId || null,
+          cohort_id: validatedCohortId,
           attempt_number: attemptNumber,
           total_points: totalPoints,
           answers_json: [],
@@ -205,7 +241,7 @@ export const POST: APIRoute = async ({ request, params }) => {
         id: attempt.id,
         attemptNumber: attempt.attempt_number,
         startedAt: attempt.started_at,
-        timeLimit: quiz.time_limit,
+        timeLimit: quiz.time_limit_minutes,
       },
       questions: questionsForResponse,
     };

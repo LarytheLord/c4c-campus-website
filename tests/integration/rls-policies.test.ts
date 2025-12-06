@@ -22,11 +22,11 @@ describe('RLS Policy Integration Tests', () => {
 
     // Create a test course using admin
     const { data: course } = await supabaseAdmin.from('courses').insert({
-      name: 'RLS Test Course',
+      title: 'RLS Test Course',
       slug: 'rls-test-' + Date.now(),
       track: 'animal-advocacy',
       difficulty: 'beginner',
-      published: true,
+      is_published: true,
       created_by: teacherClient.userId,
     }).select().single();
     testCourseId = course.id;
@@ -96,11 +96,10 @@ describe('RLS Policy Integration Tests', () => {
 
     const { data: lesson } = await supabaseAdmin.from('lessons').insert({
       module_id: module.id,
-      name: 'Test Lesson',
+      title: 'Test Lesson',
       slug: 'test-lesson',
-      video_path: 'videos/test.mp4',
-      video_duration_seconds: 300,
-      video_size_bytes: 1000000,
+      video_url: 'videos/test.mp4',
+      duration_minutes: 5,
       order_index: 1,
     }).select().single();
 
@@ -145,11 +144,10 @@ describe('RLS Policy Integration Tests', () => {
 
     const { data: lesson } = await supabaseAdmin.from('lessons').insert({
       module_id: module.id,
-      name: 'Test Lesson',
+      title: 'Test Lesson',
       slug: 'test-lesson',
-      video_path: 'videos/test.mp4',
-      video_duration_seconds: 300,
-      video_size_bytes: 1000000,
+      video_url: 'videos/test.mp4',
+      duration_minutes: 5,
       order_index: 1,
     }).select().single();
 
@@ -186,30 +184,30 @@ describe('RLS Policy Integration Tests', () => {
   test('should allow unauthenticated users to view published courses', async () => {
     // Arrange - Published and unpublished courses
     await supabaseAdmin.from('courses').insert([
-      { name: 'Public Course', slug: 'public-' + Date.now(), track: 'animal-advocacy', difficulty: 'beginner', published: true },
-      { name: 'Draft Course', slug: 'draft-' + Date.now(), track: 'animal-advocacy', difficulty: 'beginner', published: false },
+      { title: 'Public Course', slug: 'public-' + Date.now(), track: 'animal-advocacy', difficulty: 'beginner', is_published: true },
+      { title: 'Draft Course', slug: 'draft-' + Date.now(), track: 'animal-advocacy', difficulty: 'beginner', is_published: false },
     ]);
 
     // Act - Unauthenticated request (using anon client)
     const { data: courses } = await supabaseAnon
       .from('courses')
       .select()
-      .eq('published', true);
+      .eq('is_published', true);
 
     // Assert - Can see published courses
     expect(courses).toBeDefined();
     expect(courses!.length).toBeGreaterThan(0);
-    expect(courses!.every(c => c.published === true)).toBe(true);
+    expect(courses!.every(c => c.is_published === true)).toBe(true);
   });
 
   test('should hide unpublished courses from students', async () => {
     // Arrange - Unpublished course
     await supabaseAdmin.from('courses').insert({
-      name: 'Draft',
+      title: 'Draft',
       slug: 'draft-' + Date.now(),
       track: 'animal-advocacy',
       difficulty: 'beginner',
-      published: false,
+      is_published: false,
     });
 
     // Act - Student queries all courses (should only see published)
@@ -218,7 +216,7 @@ describe('RLS Policy Integration Tests', () => {
       .select();
 
     // Assert - Only published courses visible (or empty array)
-    expect(courses?.every(c => c.published === true) || courses?.length === 0).toBe(true);
+    expect(courses?.every(c => c.is_published === true) || courses?.length === 0).toBe(true);
   });
 
   // ==================== TEACHER OWNERSHIP ====================
@@ -226,7 +224,7 @@ describe('RLS Policy Integration Tests', () => {
   test('should allow teachers to edit only their own courses', async () => {
     // Arrange - Teacher creates course, student 1 (acting as another teacher) tries to edit
     const { data: teacherCourse } = await teacherClient.client.from('courses').insert({
-      name: 'Teacher Course',
+      title: 'Teacher Course',
       slug: 'teacher-course-' + Date.now(),
       track: 'animal-advocacy',
       difficulty: 'beginner',
@@ -236,19 +234,19 @@ describe('RLS Policy Integration Tests', () => {
     // Act - Student 1 tries to edit teacher's course
     const { error, count } = await student1Client.client
       .from('courses')
-      .update({ name: 'Hijacked Course' })
+      .update({ title: 'Hijacked Course' })
       .eq('id', teacherCourse.id);
 
     // Assert - Blocked by RLS (created_by !== current user)
     expect(error).toBeNull(); // Supabase doesn't error, returns 0 rows
 
-    // Verify course name wasn't changed
+    // Verify course title wasn't changed
     const { data: unchanged } = await supabaseAdmin
       .from('courses')
-      .select('name')
+      .select('title')
       .eq('id', teacherCourse.id)
       .single();
-    expect(unchanged.name).toBe('Teacher Course');
+    expect(unchanged.title).toBe('Teacher Course');
   });
 
   // ==================== SERVICE ROLE BYPASS ====================
@@ -284,11 +282,11 @@ describe('RLS Policy Integration Tests', () => {
 
     // Arrange - Create UNPUBLISHED course (enrollment required)
     const { data: course2 } = await supabaseAdmin.from('courses').insert({
-      name: 'Course B (Unpublished)',
+      title: 'Course B (Unpublished)',
       slug: 'course-b-' + Date.now(),
       track: 'animal-advocacy',
       difficulty: 'beginner',
-      published: false, // UNPUBLISHED - requires enrollment
+      is_published: false, // UNPUBLISHED - requires enrollment
     }).select().single();
 
     const { data: module1 } = await supabaseAdmin.from('modules').insert({
@@ -305,21 +303,19 @@ describe('RLS Policy Integration Tests', () => {
 
     const { data: lessonA } = await supabaseAdmin.from('lessons').insert({
       module_id: module1.id,
-      name: 'Lesson A',
+      title: 'Lesson A',
       slug: 'lesson-a',
-      video_path: 'videos/a.mp4',
-      video_duration_seconds: 300,
-      video_size_bytes: 1000000,
+      video_url: 'videos/a.mp4',
+      duration_minutes: 5,
       order_index: 1,
     }).select().single();
 
     const { data: lessonB } = await supabaseAdmin.from('lessons').insert({
       module_id: module2.id,
-      name: 'Lesson B',
+      title: 'Lesson B',
       slug: 'lesson-b',
-      video_path: 'videos/b.mp4',
-      video_duration_seconds: 300,
-      video_size_bytes: 1000000,
+      video_url: 'videos/b.mp4',
+      duration_minutes: 5,
       order_index: 1,
     }).select().single();
 
@@ -372,11 +368,10 @@ describe('RLS Policy Integration Tests', () => {
 
     const { data: lesson } = await supabaseAdmin.from('lessons').insert({
       module_id: module.id,
-      name: 'Lesson',
+      title: 'Lesson',
       slug: 'lesson',
-      video_path: 'videos/test.mp4',
-      video_duration_seconds: 300,
-      video_size_bytes: 1000000,
+      video_url: 'videos/test.mp4',
+      duration_minutes: 5,
       order_index: 1,
     }).select().single();
 
@@ -402,6 +397,110 @@ describe('RLS Policy Integration Tests', () => {
 
     // Assert - Access denied (RLS checks status = 'active')
     expect(error).toBeDefined();
+  });
+
+  // ==================== TEACHER COHORT ENROLLMENT ACCESS ====================
+
+  test('should allow teacher to enroll students in their cohorts', async () => {
+    // Arrange - Create cohort for teacher's course
+    const { data: cohort } = await supabaseAdmin.from('cohorts').insert({
+      course_id: testCourseId,
+      name: 'Teacher RLS Test Cohort',
+      start_date: '2025-03-01',
+      status: 'active',
+      created_by: teacherClient.userId,
+    }).select().single();
+
+    // Act - Teacher enrolls student in their cohort
+    const { error, data } = await teacherClient.client
+      .from('cohort_enrollments')
+      .insert({
+        cohort_id: cohort.id,
+        user_id: student1Client.userId,
+        status: 'active',
+      })
+      .select()
+      .single();
+
+    // Assert - Should succeed
+    expect(error).toBeNull();
+    expect(data).toBeDefined();
+    expect(data.user_id).toBe(student1Client.userId);
+  });
+
+  test('should allow teacher to update student enrollment in their cohorts', async () => {
+    // Arrange - Create cohort and enrollment
+    const { data: cohort } = await supabaseAdmin.from('cohorts').insert({
+      course_id: testCourseId,
+      name: 'Teacher Update RLS Test Cohort',
+      start_date: '2025-03-01',
+      status: 'active',
+      created_by: teacherClient.userId,
+    }).select().single();
+
+    const { data: enrollment } = await supabaseAdmin.from('cohort_enrollments').insert({
+      cohort_id: cohort.id,
+      user_id: student1Client.userId,
+      status: 'active',
+    }).select().single();
+
+    // Act - Teacher updates enrollment status
+    const { error } = await teacherClient.client
+      .from('cohort_enrollments')
+      .update({ status: 'paused' })
+      .eq('id', enrollment.id);
+
+    // Assert - Should succeed
+    expect(error).toBeNull();
+
+    // Verify the update was applied
+    const { data: updated } = await supabaseAdmin
+      .from('cohort_enrollments')
+      .select('status')
+      .eq('id', enrollment.id)
+      .single();
+    expect(updated.status).toBe('paused');
+  });
+
+  test('should prevent teacher from enrolling in other teachers cohorts', async () => {
+    // Arrange - Create another teacher's course and cohort
+    const { data: otherTeacher } = await supabaseAdmin.auth.admin.createUser({
+      email: 'other-teacher@test.c4c.com',
+      password: 'test_password_123',
+      email_confirm: true,
+    });
+
+    const { data: otherCourse } = await supabaseAdmin.from('courses').insert({
+      title: 'Other Teacher Course',
+      slug: 'other-teacher-' + Date.now(),
+      track: 'general',
+      difficulty: 'beginner',
+      is_published: true,
+      created_by: otherTeacher.user!.id,
+    }).select().single();
+
+    const { data: otherCohort } = await supabaseAdmin.from('cohorts').insert({
+      course_id: otherCourse.id,
+      name: 'Other Teacher Cohort',
+      start_date: '2025-03-01',
+      status: 'active',
+      created_by: otherTeacher.user!.id,
+    }).select().single();
+
+    // Act - Teacher tries to enroll student in other teacher's cohort
+    const { error } = await teacherClient.client
+      .from('cohort_enrollments')
+      .insert({
+        cohort_id: otherCohort.id,
+        user_id: student1Client.userId,
+        status: 'active',
+      });
+
+    // Assert - Should fail (RLS blocks)
+    expect(error).toBeDefined();
+
+    // Cleanup
+    await supabaseAdmin.auth.admin.deleteUser(otherTeacher.user!.id);
   });
 
   // ==================== ANTI-PATTERN PREVENTION ====================

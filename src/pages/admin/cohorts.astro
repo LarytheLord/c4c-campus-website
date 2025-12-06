@@ -302,7 +302,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       const select = document.getElementById('cohort-course') as HTMLSelectElement;
       if (!select) return;
 
-      const options = courses.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+      const options = courses.map(c => `<option value="${c.id}">${c.title}</option>`).join('');
       select.innerHTML = '<option value="">Select a course</option>' + options;
     }
 
@@ -384,7 +384,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
                 <h3 class="text-xl font-bold mb-1">${cohort.name}</h3>
                 <p class="text-sm text-text-muted flex items-center gap-1">
                   <span>📚</span>
-                  ${cohort.courses?.name || 'Unknown Course'}
+                  ${cohort.courses?.title || 'Unknown Course'}
                 </p>
               </div>
               <span class="text-xs px-3 py-1 rounded-full font-semibold ${getCohortStatusColor(cohort.status)}">${cohort.status.toUpperCase()}</span>
@@ -447,7 +447,8 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       // Manage students buttons
       document.querySelectorAll('.manage-students-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-          const id = parseInt((btn as HTMLElement).getAttribute('data-id')!);
+          // IDs are UUIDs (strings), not numbers
+          const id = (btn as HTMLElement).getAttribute('data-id')!;
           openStudentsModal(id);
         });
       });
@@ -455,7 +456,8 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       // Edit buttons
       document.querySelectorAll('.edit-cohort-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-          const id = parseInt((btn as HTMLElement).getAttribute('data-id')!);
+          // IDs are UUIDs (strings), not numbers
+          const id = (btn as HTMLElement).getAttribute('data-id')!;
           editCohort(id);
         });
       });
@@ -463,7 +465,8 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       // Delete buttons
       document.querySelectorAll('.delete-cohort-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-          const id = parseInt((btn as HTMLElement).getAttribute('data-id')!);
+          // IDs are UUIDs (strings), not numbers
+          const id = (btn as HTMLElement).getAttribute('data-id')!;
           deleteCohort(id);
         });
       });
@@ -500,15 +503,16 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       editingCohort = null;
     }
 
-    function editCohort(id: number) {
+    function editCohort(id: string) {
+      // Cohort IDs are UUIDs (strings)
       editingCohort = allCohorts.find(c => c.id === id);
       if (!editingCohort) return;
 
       document.getElementById('cohort-modal-title')!.textContent = 'Edit Cohort';
       document.getElementById('cohort-submit-btn')!.textContent = 'Update Cohort';
 
-      (document.getElementById('cohort-id') as HTMLInputElement).value = editingCohort.id.toString();
-      (document.getElementById('cohort-course') as HTMLSelectElement).value = editingCohort.course_id.toString();
+      (document.getElementById('cohort-id') as HTMLInputElement).value = editingCohort.id;
+      (document.getElementById('cohort-course') as HTMLSelectElement).value = editingCohort.course_id;
       (document.getElementById('cohort-name') as HTMLInputElement).value = editingCohort.name;
       (document.getElementById('cohort-start-date') as HTMLInputElement).value = editingCohort.start_date;
       (document.getElementById('cohort-end-date') as HTMLInputElement).value = editingCohort.end_date || '';
@@ -560,7 +564,8 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       await loadCohorts();
     }
 
-    function deleteCohort(id: number) {
+    function deleteCohort(id: string) {
+      // Cohort IDs are UUIDs (strings)
       const cohort = allCohorts.find(c => c.id === id);
       if (!cohort) return;
 
@@ -586,7 +591,8 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       });
     }
 
-    async function openStudentsModal(cohortId: number) {
+    async function openStudentsModal(cohortId: string) {
+      // Cohort IDs are UUIDs (strings)
       currentCohortStudents = allCohorts.find(c => c.id === cohortId);
       if (!currentCohortStudents) return;
 
@@ -602,7 +608,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       currentCohortStudents = null;
     }
 
-    async function loadStudents(cohortId: number) {
+    async function loadStudents(cohortId: string) {
       const loading = document.getElementById('students-loading');
       const list = document.getElementById('students-list');
       const empty = document.getElementById('students-empty');
@@ -661,7 +667,8 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       // Add event listeners for remove buttons
       document.querySelectorAll('.remove-student-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
-          const enrollmentId = parseInt((btn as HTMLElement).getAttribute('data-enrollment-id')!);
+          // Enrollment IDs are UUIDs (strings)
+          const enrollmentId = (btn as HTMLElement).getAttribute('data-enrollment-id')!;
           const studentName = (btn as HTMLElement).getAttribute('data-name');
 
           showConfirm({

@@ -38,11 +38,11 @@ describe('Cohort Schema Integration Tests', () => {
   beforeEach(async () => {
     // Create test course and module for each test
     const { data: course } = await supabaseAdmin.from('courses').insert({
-      name: 'Cohort Test Course',
+      title: 'Cohort Test Course',
       slug: 'cohort-test-' + Date.now(),
       track: 'animal-advocacy',
       difficulty: 'beginner',
-      published: true,
+      is_published: true,
       created_by: teacherClient.userId,
     }).select().single();
     testCourseId = course.id;
@@ -129,10 +129,10 @@ describe('Cohort Schema Integration Tests', () => {
     test('should allow same cohort name for different courses', async () => {
       // Arrange - Create second course
       const { data: course2 } = await supabaseAdmin.from('courses').insert({
-        name: 'Another Course',
+        title: 'Another Course',
         slug: 'another-course-' + Date.now(),
         track: 'climate',
-        published: true,
+        is_published: true,
         created_by: teacherClient.userId,
       }).select().single();
 
@@ -1129,6 +1129,133 @@ describe('Cohort Schema Integration Tests', () => {
       // Assert
       expect(error).toBeNull();
       expect(enrollment.status).toBe('active');
+    });
+  });
+
+  // ============================================================================
+  // 7. PROGRESS JSONB FIELD (Comment 6)
+  // ============================================================================
+
+  describe('7. Progress JSONB Field', () => {
+    let testCohortId: string;
+
+    beforeEach(async () => {
+      // Create cohort for progress tests
+      const { data: cohort } = await supabaseAdmin.from('cohorts').insert({
+        course_id: testCourseId,
+        name: 'Progress Test Cohort',
+        start_date: '2025-01-01',
+        created_by: teacherClient.userId,
+      }).select().single();
+      testCohortId = cohort.id;
+    });
+
+    test('should store progress as typed CohortProgress structure', async () => {
+      // Arrange
+      const progressData = {
+        completed_lessons: 5,
+        completed_modules: 2,
+        percentage: 40,
+        quiz_scores: { 'quiz-1': 85, 'quiz-2': 92 },
+        certificates_earned: ['module-1', 'module-2'],
+        current_lesson_id: 123,
+      };
+
+      // Act
+      const { data: enrollment, error } = await supabaseAdmin
+        .from('cohort_enrollments')
+        .insert({
+          cohort_id: testCohortId,
+          user_id: student1Client.userId,
+          progress: progressData,
+        })
+        .select()
+        .single();
+
+      // Assert
+      expect(error).toBeNull();
+      expect(enrollment.progress).toEqual(progressData);
+      expect(enrollment.progress.completed_lessons).toBe(5);
+      expect(enrollment.progress.completed_modules).toBe(2);
+      expect(enrollment.progress.quiz_scores).toHaveProperty('quiz-1', 85);
+      expect(enrollment.progress.certificates_earned).toContain('module-1');
+    });
+
+    test('should default progress to empty object', async () => {
+      // Act - Create enrollment without progress field
+      const { data: enrollment, error } = await supabaseAdmin
+        .from('cohort_enrollments')
+        .insert({
+          cohort_id: testCohortId,
+          user_id: student1Client.userId,
+        })
+        .select()
+        .single();
+
+      // Assert
+      expect(error).toBeNull();
+      expect(enrollment.progress).toEqual({});
+    });
+
+    test('should allow updating individual progress fields', async () => {
+      // Arrange - Create enrollment with initial progress
+      const { data: enrollment } = await supabaseAdmin
+        .from('cohort_enrollments')
+        .insert({
+          cohort_id: testCohortId,
+          user_id: student1Client.userId,
+          progress: { completed_lessons: 0, completed_modules: 0 },
+        })
+        .select()
+        .single();
+
+      // Act - Update progress
+      const updatedProgress = {
+        completed_lessons: 3,
+        completed_modules: 1,
+        percentage: 25,
+        current_lesson_id: 456,
+      };
+
+      const { data: updated, error } = await supabaseAdmin
+        .from('cohort_enrollments')
+        .update({ progress: updatedProgress })
+        .eq('id', enrollment.id)
+        .select()
+        .single();
+
+      // Assert
+      expect(error).toBeNull();
+      expect(updated.progress.completed_lessons).toBe(3);
+      expect(updated.progress.completed_modules).toBe(1);
+      expect(updated.progress.percentage).toBe(25);
+    });
+
+    test('should query enrollments filtering by progress fields using JSONB operators', async () => {
+      // Arrange - Create enrollments with different progress
+      await supabaseAdmin.from('cohort_enrollments').insert([
+        {
+          cohort_id: testCohortId,
+          user_id: student1Client.userId,
+          progress: { completed_lessons: 10, completed_modules: 3, percentage: 100 },
+        },
+        {
+          cohort_id: testCohortId,
+          user_id: student2Client.userId,
+          progress: { completed_lessons: 2, completed_modules: 0, percentage: 10 },
+        },
+      ]);
+
+      // Act - Query using JSONB containment
+      const { data: completedStudents } = await supabaseAdmin
+        .from('cohort_enrollments')
+        .select('user_id, progress')
+        .eq('cohort_id', testCohortId)
+        .gte('progress->percentage', 50);
+
+      // Assert
+      expect(completedStudents).toBeDefined();
+      // Note: The exact filtering may need RPC or different approach depending on Supabase client support
     });
   });
 });

@@ -196,7 +196,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       loadEnrollments();
     }
 
-    // Load user's course enrollments
+    // Load user's course enrollments with real progress data
     async function loadEnrollments() {
       const coursesLoading = document.getElementById('courses-loading');
       const coursesList = document.getElementById('courses-list');
@@ -210,11 +210,11 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             *,
             courses:course_id (
               id,
-              name,
+              title,
               slug,
               description,
               track,
-              estimated_hours,
+              default_duration_weeks,
               thumbnail_url
             )
           `)
@@ -233,10 +233,98 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           return;
         }
 
-        // Display courses
+        // Fetch actual progress data for each course
+        const courseIds = enrollments.map((e: any) => e.courses.id);
+
+        // Get modules for these courses
+        const { data: modules } = await supabase
+          .from('modules')
+          .select('id, course_id')
+          .in('course_id', courseIds);
+
+        const moduleIds = modules?.map(m => m.id) || [];
+        const modulesByCourse: Record<number, number[]> = {};
+        modules?.forEach((m: any) => {
+          if (!modulesByCourse[m.course_id]) modulesByCourse[m.course_id] = [];
+          modulesByCourse[m.course_id].push(m.id);
+        });
+
+        // Get lessons for these modules
+        const { data: lessons } = moduleIds.length > 0
+          ? await supabase.from('lessons').select('id, module_id').in('module_id', moduleIds)
+          : { data: [] };
+
+        const lessonsByModule: Record<number, number[]> = {};
+        lessons?.forEach((l: any) => {
+          if (!lessonsByModule[l.module_id]) lessonsByModule[l.module_id] = [];
+          lessonsByModule[l.module_id].push(l.id);
+        });
+
+        // Calculate total lessons per course
+        const totalLessonsByCourse: Record<number, number> = {};
+        courseIds.forEach((courseId: number) => {
+          const courseModules = modulesByCourse[courseId] || [];
+          let total = 0;
+          courseModules.forEach(moduleId => {
+            total += (lessonsByModule[moduleId] || []).length;
+          });
+          totalLessonsByCourse[courseId] = total;
+        });
+
+        // Get lesson progress for this user
+        const allLessonIds = lessons?.map(l => l.id) || [];
+        const { data: progressData } = allLessonIds.length > 0
+          ? await supabase
+              .from('lesson_progress')
+              .select('lesson_id, completed, time_spent_seconds')
+              .eq('user_id', currentUser.id)
+              .in('lesson_id', allLessonIds)
+          : { data: [] };
+
+        // Map progress by lesson_id
+        const progressByLesson: Record<number, any> = {};
+        progressData?.forEach((p: any) => {
+          progressByLesson[p.lesson_id] = p;
+        });
+
+        // Calculate progress per course
+        type CourseProgress = {
+          completedLessons: number;
+          totalLessons: number;
+          percentage: number;
+          timeSpentSeconds: number;
+        };
+        const progressByCourse: Record<number, CourseProgress> = {};
+
+        courseIds.forEach((courseId: number) => {
+          const courseModules = modulesByCourse[courseId] || [];
+          let completedLessons = 0;
+          let timeSpentSeconds = 0;
+          let totalLessons = totalLessonsByCourse[courseId] || 0;
+
+          courseModules.forEach(moduleId => {
+            const moduleLessons = lessonsByModule[moduleId] || [];
+            moduleLessons.forEach(lessonId => {
+              const progress = progressByLesson[lessonId];
+              if (progress?.completed) completedLessons++;
+              if (progress?.time_spent_seconds) timeSpentSeconds += progress.time_spent_seconds;
+            });
+          });
+
+          progressByCourse[courseId] = {
+            completedLessons,
+            totalLessons,
+            percentage: totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0,
+            timeSpentSeconds,
+          };
+        });
+
+        // Display courses with real progress
         coursesList!.innerHTML = enrollments.map((enrollment: any) => {
           const course = enrollment.courses;
           const isCompleted = enrollment.completed_at !== null;
+          const progress = progressByCourse[course.id] || { completedLessons: 0, totalLessons: 0, percentage: 0, timeSpentSeconds: 0 };
+          const timeSpentHours = Math.round((progress.timeSpentSeconds / 3600) * 10) / 10;
 
           return `
             <a href="/courses/${course.slug}" class="block border border-border rounded-lg p-4 hover:bg-surface-hover transition-colors">
@@ -245,9 +333,21 @@ import BaseLayout from '../layouts/BaseLayout.astro';
                 <div class="flex-1">
                   <h4 class="font-semibold text-lg">${course.title}</h4>
                   <p class="text-sm text-text-muted mt-1">${course.description || ''}</p>
-                  <div class="flex items-center gap-4 mt-2 text-sm text-text-muted">
+
+                  <!-- Progress bar -->
+                  <div class="mt-3">
+                    <div class="flex items-center justify-between text-xs text-text-muted mb-1">
+                      <span>${progress.completedLessons}/${progress.totalLessons} lessons</span>
+                      <span>${progress.percentage}% complete</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                      <div class="bg-primary h-2 rounded-full transition-all" style="width: ${progress.percentage}%"></div>
+                    </div>
+                  </div>
+
+                  <div class="flex items-center gap-4 mt-3 text-sm text-text-muted">
                     ${course.track ? `<span class="px-2 py-1 bg-primary/10 rounded">${course.track}</span>` : ''}
-                    ${course.default_duration_weeks ? `<span>${course.default_duration_weeks} weeks</span>` : ''}
+                    <span>⏱️ ${timeSpentHours}h spent</span>
                     ${isCompleted ? '<span class="text-green-500">✓ Completed</span>' : '<span class="text-blue-500">In Progress</span>'}
                   </div>
                 </div>
@@ -258,11 +358,18 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
         coursesList?.classList.remove('hidden');
 
-        // Update stats
+        // Update stats with real progress data
         const completedCount = enrollments.filter((e: any) => e.completed_at !== null).length;
-        const totalHours = enrollments.reduce((sum: number, e: any) => {
-          return sum + (e.courses?.default_duration_weeks || 0) * 5; // Approximate hours per week
-        }, 0);
+
+        // Calculate total completed lessons and time from real progress
+        let totalCompletedLessons = 0;
+        let totalTimeSpentSeconds = 0;
+        Object.values(progressByCourse).forEach((p: CourseProgress) => {
+          totalCompletedLessons += p.completedLessons;
+          totalTimeSpentSeconds += p.timeSpentSeconds;
+        });
+
+        const totalHours = Math.round((totalTimeSpentSeconds / 3600) * 10) / 10;
 
         document.getElementById('stat-enrolled')!.textContent = enrollments.length.toString();
         document.getElementById('stat-completed')!.textContent = completedCount.toString();

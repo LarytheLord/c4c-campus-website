@@ -162,8 +162,8 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
           <form id="lesson-form" class="space-y-4">
             <div>
-              <label class="block text-sm font-medium mb-2">Lesson Name*</label>
-              <input type="text" id="lesson-name" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" required />
+              <label class="block text-sm font-medium mb-2">Lesson Title*</label>
+              <input type="text" id="lesson-title" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" required />
             </div>
 
             <div>
@@ -194,13 +194,13 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-2">Video Duration (seconds)</label>
+              <label class="block text-sm font-medium mb-2">Video Duration (minutes)</label>
               <input type="number" id="lesson-duration" min="0" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" />
               <p class="text-xs text-gray-500 mt-1">Optional - for progress tracking</p>
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-2">Text Content (Markdown)</label>
+              <label class="block text-sm font-medium mb-2">Content (Markdown)</label>
               <textarea id="lesson-content" rows="4" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" placeholder="Additional lesson content, notes, or instructions..."></textarea>
             </div>
 
@@ -472,21 +472,24 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
     if (currentCourse.created_by === currentUser.id) {
       list?.querySelectorAll('.add-lesson').forEach(btn => {
         btn.addEventListener('click', () => {
-          const moduleId = parseInt(btn.getAttribute('data-module-id')!);
+          // Module IDs are UUIDs (strings)
+          const moduleId = btn.getAttribute('data-module-id')!;
           addLesson(moduleId);
         });
       });
 
       list?.querySelectorAll('.edit-module').forEach(btn => {
         btn.addEventListener('click', () => {
-          const id = parseInt(btn.getAttribute('data-id')!);
+          // Module IDs are UUIDs (strings)
+          const id = btn.getAttribute('data-id')!;
           editModule(id);
         });
       });
 
       list?.querySelectorAll('.delete-module').forEach(btn => {
         btn.addEventListener('click', async () => {
-          const id = parseInt(btn.getAttribute('data-id')!);
+          // Module IDs are UUIDs (strings)
+          const id = btn.getAttribute('data-id')!;
           showConfirm('Delete this module and all its lessons?', async () => {
             await deleteModule(id);
           });
@@ -495,15 +498,17 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
       list?.querySelectorAll('.edit-lesson').forEach(btn => {
         btn.addEventListener('click', () => {
-          const id = parseInt(btn.getAttribute('data-id')!);
-          const moduleId = parseInt(btn.getAttribute('data-module-id')!);
+          // Lesson and Module IDs are UUIDs (strings)
+          const id = btn.getAttribute('data-id')!;
+          const moduleId = btn.getAttribute('data-module-id')!;
           editLesson(id, moduleId);
         });
       });
 
       list?.querySelectorAll('.delete-lesson').forEach(btn => {
         btn.addEventListener('click', async () => {
-          const id = parseInt(btn.getAttribute('data-id')!);
+          // Lesson IDs are UUIDs (strings)
+          const id = btn.getAttribute('data-id')!;
           showConfirm('Delete this lesson?', async () => {
             await deleteLesson(id);
           });
@@ -736,7 +741,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     if (editingModule) {
       title!.textContent = 'Edit Module';
-      (document.getElementById('module-name') as HTMLInputElement).value = editingModule.name;
+      (document.getElementById('module-name') as HTMLInputElement).value = editingModule.title;
       (document.getElementById('module-description') as HTMLTextAreaElement).value = editingModule.description || '';
       (document.getElementById('module-order') as HTMLInputElement).value = editingModule.order_index;
     } else {
@@ -758,7 +763,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const moduleData = {
       course_id: currentCourse.id,
-      name: (document.getElementById('module-name') as HTMLInputElement).value,
+      title: (document.getElementById('module-name') as HTMLInputElement).value,
       description: (document.getElementById('module-description') as HTMLTextAreaElement).value,
       order_index: parseInt((document.getElementById('module-order') as HTMLInputElement).value)
     };
@@ -788,14 +793,16 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
     await loadModules();
   }
 
-  function editModule(id: number) {
+  function editModule(id: string) {
+    // Module IDs are UUIDs (strings)
     editingModule = modules.find(m => m.id === id);
     if (editingModule) {
       showModuleModal();
     }
   }
 
-  async function deleteModule(id: number) {
+  async function deleteModule(id: string) {
+    // Module IDs are UUIDs (strings)
     const { error } = await supabase
       .from('modules')
       .delete()
@@ -810,7 +817,8 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
     await loadModules();
   }
 
-  function addLesson(moduleId: number) {
+  function addLesson(moduleId: string) {
+    // Module IDs are UUIDs (strings)
     currentModuleId = moduleId;
     editingLesson = null;
     showLessonModal();
@@ -826,10 +834,10 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     if (editingLesson) {
       title!.textContent = 'Edit Lesson';
-      (document.getElementById('lesson-name') as HTMLInputElement).value = editingLesson.name;
+      (document.getElementById('lesson-title') as HTMLInputElement).value = editingLesson.title;
       (document.getElementById('lesson-slug') as HTMLInputElement).value = editingLesson.slug;
-      (document.getElementById('lesson-duration') as HTMLInputElement).value = editingLesson.video_duration_seconds || '';
-      (document.getElementById('lesson-content') as HTMLTextAreaElement).value = editingLesson.text_content || '';
+      (document.getElementById('lesson-duration') as HTMLInputElement).value = editingLesson.duration_minutes || '';
+      (document.getElementById('lesson-content') as HTMLTextAreaElement).value = editingLesson.content || '';
       (document.getElementById('lesson-order') as HTMLInputElement).value = editingLesson.order_index;
 
       // Set video type and fields
@@ -841,9 +849,9 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
         videoTypeSelect.value = 'youtube';
         youtubeInput.value = editingLesson.youtube_url;
         document.getElementById('youtube-field')?.classList.remove('hidden');
-      } else if (editingLesson.video_path) {
+      } else if (editingLesson.video_url) {
         videoTypeSelect.value = 'upload';
-        videoPathInput.value = editingLesson.video_path;
+        videoPathInput.value = editingLesson.video_url;
         document.getElementById('upload-field')?.classList.remove('hidden');
       } else {
         videoTypeSelect.value = '';
@@ -874,13 +882,13 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const lessonData: any = {
       module_id: currentModuleId || editingLesson.module_id,
-      name: (document.getElementById('lesson-name') as HTMLInputElement).value,
+      title: (document.getElementById('lesson-title') as HTMLInputElement).value,
       slug: (document.getElementById('lesson-slug') as HTMLInputElement).value,
-      video_duration_seconds: parseInt((document.getElementById('lesson-duration') as HTMLInputElement).value) || null,
-      text_content: (document.getElementById('lesson-content') as HTMLTextAreaElement).value,
+      duration_minutes: parseInt((document.getElementById('lesson-duration') as HTMLInputElement).value) || null,
+      content: (document.getElementById('lesson-content') as HTMLTextAreaElement).value,
       order_index: parseInt((document.getElementById('lesson-order') as HTMLInputElement).value),
       youtube_url: videoType === 'youtube' ? youtubeUrl : null,
-      video_path: videoType === 'upload' ? videoPath : null
+      video_url: videoType === 'upload' ? videoPath : null
     };
 
     if (editingLesson) {
@@ -908,7 +916,8 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
     await loadModules();
   }
 
-  function editLesson(id: number, moduleId: number) {
+  function editLesson(id: string, moduleId: string) {
+    // Lesson and Module IDs are UUIDs (strings)
     const module = modules.find(m => m.id === moduleId);
     editingLesson = module?.lessons?.find((l: any) => l.id === id);
     currentModuleId = moduleId;
@@ -917,7 +926,8 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
     }
   }
 
-  async function deleteLesson(id: number) {
+  async function deleteLesson(id: string) {
+    // Lesson IDs are UUIDs (strings)
     const { error } = await supabase
       .from('lessons')
       .delete()

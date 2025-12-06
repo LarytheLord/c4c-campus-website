@@ -10,12 +10,14 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY!;
 /**
  * GET /api/cohorts/[id]
  * Get a specific cohort by ID
+ * Note: cohort_id is a UUID string per schema.sql
  */
 export const GET: APIRoute = async ({ request, params }) => {
   try {
     const { id } = params;
 
-    if (!id || isNaN(Number(id))) {
+    // cohort_id is UUID per schema.sql, validate as non-empty string
+    if (!id) {
       return new Response(
         JSON.stringify({ error: 'Invalid cohort ID' }),
         {
@@ -112,12 +114,14 @@ export const GET: APIRoute = async ({ request, params }) => {
  *   - end_date?: string (ISO date)
  *   - max_students?: number
  *   - status?: string
+ * Note: cohort_id is a UUID string per schema.sql
  */
 export const PATCH: APIRoute = async ({ request, params }) => {
   try {
     const { id } = params;
 
-    if (!id || isNaN(Number(id))) {
+    // cohort_id is UUID per schema.sql, validate as non-empty string
+    if (!id) {
       return new Response(
         JSON.stringify({ error: 'Invalid cohort ID' }),
         {
@@ -330,12 +334,14 @@ export const PATCH: APIRoute = async ({ request, params }) => {
 /**
  * DELETE /api/cohorts/[id]
  * Delete a cohort (teachers/admins only)
+ * Note: cohort_id is a UUID string per schema.sql
  */
 export const DELETE: APIRoute = async ({ request, params }) => {
   try {
     const { id } = params;
 
-    if (!id || isNaN(Number(id))) {
+    // cohort_id is UUID per schema.sql, validate as non-empty string
+    if (!id) {
       return new Response(
         JSON.stringify({ error: 'Invalid cohort ID' }),
         {

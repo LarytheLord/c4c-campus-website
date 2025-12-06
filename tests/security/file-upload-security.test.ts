@@ -1,110 +1,25 @@
 /**
  * File Upload Security Tests
- * Tests file validation without external dependencies
+ * Tests file validation using the real implementation
  */
 
 import { describe, it, expect } from 'vitest';
+import { validateFile } from '@/lib/file-upload';
+
+// Default options for tests
+const defaultOptions = {
+  maxSizeMB: 50,
+  allowedTypes: ['pdf', 'doc', 'docx', 'txt', 'png', 'jpg', 'jpeg']
+};
 
 describe('File Upload Security - Extension Spoofing Protection', () => {
-
-  // Mock validateFile function matching the actual implementation
-  function validateFile(file: File, options: { maxSizeMB?: number; allowedTypes?: string[] } = {}) {
-    const maxSize = (options.maxSizeMB || 50) * 1024 * 1024;
-    const allowedTypes = options.allowedTypes || ['pdf', 'doc', 'docx', 'txt', 'png', 'jpg', 'jpeg'];
-
-    const MIME_TYPE_MAP: Record<string, string[]> = {
-      'pdf': ['application/pdf'],
-      'doc': ['application/msword'],
-      'docx': ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
-      'txt': ['text/plain'],
-      'png': ['image/png'],
-      'jpg': ['image/jpeg'],
-      'jpeg': ['image/jpeg'],
-    };
-
-    // Check file size
-    if (file.size > maxSize) {
-      return {
-        valid: false,
-        error: `File size must be less than ${options.maxSizeMB || 50}MB`
-      };
-    }
-
-    if (file.size === 0) {
-      return {
-        valid: false,
-        error: 'File is empty'
-      };
-    }
-
-    // Get file extension
-    const fileName = file.name.toLowerCase();
-    const lastDotIndex = fileName.lastIndexOf('.');
-
-    if (lastDotIndex === -1) {
-      return {
-        valid: false,
-        error: 'File must have an extension'
-      };
-    }
-
-    const fileExtension = fileName.substring(lastDotIndex + 1);
-
-    // Check if extension is allowed
-    if (!allowedTypes.includes(fileExtension)) {
-      return {
-        valid: false,
-        error: `File type .${fileExtension} is not allowed`
-      };
-    }
-
-    // SECURITY: Validate MIME type matches extension
-    const expectedMimeTypes = MIME_TYPE_MAP[fileExtension];
-    if (expectedMimeTypes && file.type) {
-      if (!expectedMimeTypes.includes(file.type)) {
-        return {
-          valid: false,
-          error: `Security error: File MIME type "${file.type}" does not match extension ".${fileExtension}"`
-        };
-      }
-    }
-
-    // SECURITY: Detect double extensions
-    const dangerousDoubleExtensions = [
-      '.exe', '.scr', '.bat', '.cmd', '.com', '.pif', '.vbs', '.js',
-      '.jar', '.app', '.deb', '.rpm', '.dmg', '.pkg', '.sh'
-    ];
-
-    for (const dangerousExt of dangerousDoubleExtensions) {
-      if (fileName.includes(dangerousExt)) {
-        return {
-          valid: false,
-          error: `Security error: File contains dangerous extension "${dangerousExt}"`
-        };
-      }
-    }
-
-    // SECURITY: Block hidden files
-    if (fileName.startsWith('.')) {
-      return {
-        valid: false,
-        error: 'Files without extensions or hidden files are not allowed'
-      };
-    }
-
-    return {
-      valid: true,
-      fileExtension
-    };
-  }
-
   describe('MIME Type Validation (Extension Spoofing Protection)', () => {
     it('should BLOCK PDF with executable MIME type', () => {
       const file = new File(['content'], 'document.pdf', {
         type: 'application/x-msdownload' // Executable MIME type!
       });
 
-      const result = validateFile(file);
+      const result = validateFile(file, defaultOptions);
 
       expect(result.valid).toBe(false);
       expect(result.error).toContain('Security error');
@@ -117,7 +32,7 @@ describe('File Upload Security - Extension Spoofing Protection', () => {
         type: 'application/pdf'
       });
 
-      const result = validateFile(file);
+      const result = validateFile(file, defaultOptions);
 
       expect(result.valid).toBe(true);
       expect(result.fileExtension).toBe('pdf');
@@ -128,7 +43,7 @@ describe('File Upload Security - Extension Spoofing Protection', () => {
         type: 'application/pdf' // Wrong MIME for PNG
       });
 
-      const result = validateFile(file);
+      const result = validateFile(file, defaultOptions);
 
       expect(result.valid).toBe(false);
       expect(result.error).toContain('MIME type');
@@ -139,7 +54,7 @@ describe('File Upload Security - Extension Spoofing Protection', () => {
         type: 'image/png'
       });
 
-      const result = validateFile(file);
+      const result = validateFile(file, defaultOptions);
 
       expect(result.valid).toBe(true);
     });
@@ -160,7 +75,7 @@ describe('File Upload Security - Extension Spoofing Protection', () => {
           type: 'application/octet-stream'
         });
 
-        const result = validateFile(file);
+        const result = validateFile(file, defaultOptions);
 
         expect(result.valid).toBe(false);
         // File should be blocked either by dangerous extension check or disallowed type
@@ -181,11 +96,60 @@ describe('File Upload Security - Extension Spoofing Protection', () => {
           type: 'application/octet-stream'
         });
 
-        const result = validateFile(file);
+        const result = validateFile(file, defaultOptions);
 
         expect(result.valid).toBe(false);
         // File should be blocked - either as dangerous or not allowed
         expect(result.error).toBeDefined();
+      });
+    });
+
+    // Test uppercase/mixed case dangerous extensions
+    it('should BLOCK uppercase dangerous extensions', () => {
+      const file = new File(['content'], 'malware.EXE', {
+        type: 'application/octet-stream'
+      });
+
+      const result = validateFile(file, defaultOptions);
+
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('dangerous extension');
+    });
+
+    it('should BLOCK mixed case dangerous extensions', () => {
+      const file = new File(['content'], 'malware.ExE', {
+        type: 'application/octet-stream'
+      });
+
+      const result = validateFile(file, defaultOptions);
+
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('dangerous extension');
+    });
+  });
+
+  describe('Benign Filenames with Dangerous Substrings', () => {
+    // These filenames contain dangerous extension substrings but should be ALLOWED
+    // because the dangerous string is not an actual extension segment
+    const benignCases = [
+      { name: 'executable_report.pdf', desc: 'contains "exe" in base name' },
+      { name: 'batch_process_results.pdf', desc: 'contains "bat" in base name' },
+      { name: 'command_guide.pdf', desc: 'contains "cmd" in base name' },
+      { name: 'comparison_chart.pdf', desc: 'contains "com" in base name' },
+      { name: 'javascript_notes.pdf', desc: 'contains "js" in base name' },
+      { name: 'shell_script_guide.pdf', desc: 'contains "sh" in base name' },
+    ];
+
+    benignCases.forEach(({ name, desc }) => {
+      it(`should ALLOW ${name} (${desc})`, () => {
+        const file = new File(['%PDF-1.4'], name, {
+          type: 'application/pdf'
+        });
+
+        const result = validateFile(file, defaultOptions);
+
+        expect(result.valid).toBe(true);
+        expect(result.fileExtension).toBe('pdf');
       });
     });
   });
@@ -197,10 +161,10 @@ describe('File Upload Security - Extension Spoofing Protection', () => {
         type: 'application/pdf'
       });
 
-      const result = validateFile(file);
+      const result = validateFile(file, defaultOptions);
 
       expect(result.valid).toBe(false);
-      expect(result.error).toContain('File size must be less than');
+      expect(result.error).toContain('exceeds maximum allowed size');
     });
 
     it('should REJECT empty files', () => {
@@ -208,7 +172,7 @@ describe('File Upload Security - Extension Spoofing Protection', () => {
         type: 'application/pdf'
       });
 
-      const result = validateFile(file);
+      const result = validateFile(file, defaultOptions);
 
       expect(result.valid).toBe(false);
       expect(result.error).toBe('File is empty');
@@ -220,7 +184,7 @@ describe('File Upload Security - Extension Spoofing Protection', () => {
         type: 'application/pdf'
       });
 
-      const result = validateFile(file);
+      const result = validateFile(file, defaultOptions);
 
       expect(result.valid).toBe(true);
     });
@@ -232,11 +196,10 @@ describe('File Upload Security - Extension Spoofing Protection', () => {
         type: 'text/plain'
       });
 
-      const result = validateFile(file);
+      const result = validateFile(file, defaultOptions);
 
       expect(result.valid).toBe(false);
-      // Hidden files or disallowed types should be blocked
-      expect(result.error).toBeDefined();
+      expect(result.error).toBe('Hidden files are not allowed');
     });
 
     it('should BLOCK files without extension', () => {
@@ -244,7 +207,7 @@ describe('File Upload Security - Extension Spoofing Protection', () => {
         type: 'text/plain'
       });
 
-      const result = validateFile(file);
+      const result = validateFile(file, defaultOptions);
 
       expect(result.valid).toBe(false);
       expect(result.error).toBe('File must have an extension');
@@ -262,7 +225,7 @@ describe('File Upload Security - Extension Spoofing Protection', () => {
     allowedCases.forEach(({ name, type, ext }) => {
       it(`should ALLOW ${ext} files with correct MIME type`, () => {
         const file = new File(['content'], name, { type });
-        const result = validateFile(file);
+        const result = validateFile(file, defaultOptions);
 
         expect(result.valid).toBe(true);
         expect(result.fileExtension).toBe(ext);
@@ -274,7 +237,7 @@ describe('File Upload Security - Extension Spoofing Protection', () => {
         type: 'application/octet-stream'
       });
 
-      const result = validateFile(file);
+      const result = validateFile(file, defaultOptions);
 
       expect(result.valid).toBe(false);
       expect(result.error).toContain('is not allowed');

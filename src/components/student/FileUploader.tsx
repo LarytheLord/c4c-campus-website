@@ -7,7 +7,7 @@ import { useState, useRef } from 'react';
 import { validateFile, formatFileSize, getFileIcon } from '@/lib/file-upload';
 
 interface FileUploaderProps {
-  assignmentId: number;
+  assignmentId: string;
   allowedTypes: string[];
   maxSizeMB: number;
   onSuccess: () => void;

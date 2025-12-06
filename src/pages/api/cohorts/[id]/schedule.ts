@@ -10,12 +10,14 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY!;
 /**
  * GET /api/cohorts/[id]/schedule
  * Get the unlock schedule for a cohort
+ * Note: cohort_id is a UUID string per schema.sql
  */
 export const GET: APIRoute = async ({ request, params }) => {
   try {
     const { id } = params;
 
-    if (!id || isNaN(Number(id))) {
+    // cohort_id is UUID per schema.sql, validate as non-empty string
+    if (!id) {
       return new Response(
         JSON.stringify({ error: 'Invalid cohort ID' }),
         {
@@ -78,7 +80,7 @@ export const GET: APIRoute = async ({ request, params }) => {
     // Fetch schedule (RLS will handle access control)
     const { data: schedule, error: scheduleError } = await supabase
       .from('cohort_schedules')
-      .select('*, modules(id, name, order_index)')
+      .select('*, modules(id, title, order_index)')
       .eq('cohort_id', id)
       .order('unlock_date', { ascending: true });
 
@@ -119,12 +121,14 @@ export const GET: APIRoute = async ({ request, params }) => {
  *   - module_id: number (required)
  *   - unlock_date: string (required, ISO date)
  *   - lock_date?: string (optional, ISO date)
+ * Note: cohort_id is a UUID string per schema.sql
  */
 export const POST: APIRoute = async ({ request, params }) => {
   try {
     const { id } = params;
 
-    if (!id || isNaN(Number(id))) {
+    // cohort_id is UUID per schema.sql, validate as non-empty string
+    if (!id) {
       return new Response(
         JSON.stringify({ error: 'Invalid cohort ID' }),
         {
@@ -290,10 +294,11 @@ export const POST: APIRoute = async ({ request, params }) => {
       result = { data, error };
     } else {
       // Create new schedule entry
+      // cohort_id is UUID per schema.sql - pass as string directly
       const { data, error } = await supabase
         .from('cohort_schedules')
         .insert([{
-          cohort_id: parseInt(id),
+          cohort_id: id,
           module_id,
           unlock_date,
           lock_date: lock_date || null,
@@ -341,13 +346,15 @@ export const POST: APIRoute = async ({ request, params }) => {
 /**
  * DELETE /api/cohorts/[id]/schedule?module_id=X
  * Remove a module from the cohort schedule (teachers only)
+ * Note: cohort_id is a UUID string per schema.sql
  */
 export const DELETE: APIRoute = async ({ request, params, url }) => {
   try {
     const { id } = params;
     const moduleId = url.searchParams.get('module_id');
 
-    if (!id || isNaN(Number(id))) {
+    // cohort_id is UUID per schema.sql, validate as non-empty string
+    if (!id) {
       return new Response(
         JSON.stringify({ error: 'Invalid cohort ID' }),
         {

@@ -5,14 +5,14 @@
 
 export interface Course {
   id: number;
-  name: string;
+  title: string;
   slug: string;
   description: string;
   track: 'animal-advocacy' | 'climate' | 'ai-safety' | 'general';
   difficulty: 'beginner' | 'intermediate' | 'advanced';
   thumbnail_url: string;
-  estimated_hours: number;
-  published: boolean;
+  default_duration_weeks: number;
+  is_published: boolean;
   created_by: string; // UUID
   created_at: string; // ISO timestamp
   updated_at: string;
@@ -21,7 +21,7 @@ export interface Course {
 export interface Module {
   id: number;
   course_id: number;
-  name: string;
+  title: string;
   description: string;
   order_index: number;
   created_at: string;
@@ -30,12 +30,11 @@ export interface Module {
 export interface Lesson {
   id: number;
   module_id: number;
-  name: string;
+  title: string;
   slug: string;
-  video_path: string;
-  video_size_bytes: number;
-  video_duration_seconds: number;
-  text_content: string;
+  video_url: string;
+  duration_minutes: number;
+  content: string;
   resources: Array<{
     name: string;
     path: string;
@@ -48,14 +47,14 @@ export interface Lesson {
 // Mock Course 1: n8n Basics (beginner, published)
 export const mockCourse: Course = {
   id: 1,
-  name: 'n8n Workflow Automation Basics',
+  title: 'n8n Workflow Automation Basics',
   slug: 'n8n-basics',
   description: 'Learn to build no-code automation workflows for animal advocacy campaigns',
   track: 'animal-advocacy',
   difficulty: 'beginner',
   thumbnail_url: 'thumbnails/course-1-n8n-basics.jpg',
-  estimated_hours: 8,
-  published: true,
+  default_duration_weeks: 2,
+  is_published: true,
   created_by: '550e8400-e29b-41d4-a716-446655440000', // mockTeacher.id
   created_at: '2025-01-20T00:00:00Z',
   updated_at: '2025-01-20T00:00:00Z',
@@ -64,14 +63,14 @@ export const mockCourse: Course = {
 // Mock Course 2: Advanced n8n (intermediate, unpublished)
 export const mockCourseUnpublished: Course = {
   id: 2,
-  name: 'Advanced n8n Workflows',
+  title: 'Advanced n8n Workflows',
   slug: 'n8n-advanced',
   description: 'Build complex multi-step automation workflows',
   track: 'animal-advocacy',
   difficulty: 'intermediate',
   thumbnail_url: 'thumbnails/course-2-n8n-advanced.jpg',
-  estimated_hours: 12,
-  published: false, // Draft course
+  default_duration_weeks: 3,
+  is_published: false, // Draft course
   created_by: '550e8400-e29b-41d4-a716-446655440000',
   created_at: '2025-01-25T00:00:00Z',
   updated_at: '2025-01-25T00:00:00Z',
@@ -81,7 +80,7 @@ export const mockCourseUnpublished: Course = {
 export const mockModule: Module = {
   id: 1,
   course_id: 1,
-  name: 'Introduction to n8n',
+  title: 'Introduction to n8n',
   description: 'Get started with n8n workflow builder and core concepts',
   order_index: 1,
   created_at: '2025-01-20T00:00:00Z',
@@ -91,7 +90,7 @@ export const mockModule: Module = {
 export const mockModule2: Module = {
   id: 2,
   course_id: 1,
-  name: 'Building Your First Workflow',
+  title: 'Building Your First Workflow',
   description: 'Create a simple automation workflow from scratch',
   order_index: 2,
   created_at: '2025-01-20T00:00:00Z',
@@ -101,12 +100,11 @@ export const mockModule2: Module = {
 export const mockLesson: Lesson = {
   id: 1,
   module_id: 1,
-  name: 'What is n8n?',
+  title: 'What is n8n?',
   slug: 'what-is-n8n',
-  video_path: 'videos/course-1/lesson-1.mp4',
-  video_size_bytes: 31457280, // 30MB
-  video_duration_seconds: 420, // 7 minutes
-  text_content: '# Introduction to n8n\n\nn8n is a **workflow automation tool** that helps activists build powerful automations without code.\n\n## Why n8n for advocacy?\n\n- Free and open source\n- 400+ integrations\n- Visual workflow builder\n- Self-hostable',
+  video_url: 'videos/course-1/lesson-1.mp4',
+  duration_minutes: 7,
+  content: '# Introduction to n8n\n\nn8n is a **workflow automation tool** that helps activists build powerful automations without code.\n\n## Why n8n for advocacy?\n\n- Free and open source\n- 400+ integrations\n- Visual workflow builder\n- Self-hostable',
   resources: [
     {
       name: 'Starter Workflow Template.json',
@@ -127,12 +125,11 @@ export const mockLesson: Lesson = {
 export const mockLesson2: Lesson = {
   id: 2,
   module_id: 1,
-  name: 'Installing n8n',
+  title: 'Installing n8n',
   slug: 'installing-n8n',
-  video_path: 'videos/course-1/lesson-2.mp4',
-  video_size_bytes: 41943040, // 40MB
-  video_duration_seconds: 600, // 10 minutes
-  text_content: '# Installing n8n\n\nLearn how to set up n8n locally using Docker.',
+  video_url: 'videos/course-1/lesson-2.mp4',
+  duration_minutes: 10,
+  content: '# Installing n8n\n\nLearn how to set up n8n locally using Docker.',
   resources: [
     {
       name: 'docker-compose.yml',
@@ -148,12 +145,11 @@ export const mockLesson2: Lesson = {
 export const mockLesson3: Lesson = {
   id: 3,
   module_id: 2,
-  name: 'Your First Workflow',
+  title: 'Your First Workflow',
   slug: 'first-workflow',
-  video_path: 'videos/course-1/lesson-3.mp4',
-  video_size_bytes: 52428800, // 50MB
-  video_duration_seconds: 900, // 15 minutes
-  text_content: '# Building Your First Workflow\n\nCreate a simple email automation.',
+  video_url: 'videos/course-1/lesson-3.mp4',
+  duration_minutes: 15,
+  content: '# Building Your First Workflow\n\nCreate a simple email automation.',
   resources: [],
   order_index: 1,
   created_at: '2025-01-20T00:00:00Z',
@@ -188,28 +184,28 @@ export const mockCourses: Course[] = [
   mockCourse,
   {
     id: 3,
-    name: 'Advocacy Campaign Automation',
+    title: 'Advocacy Campaign Automation',
     slug: 'campaign-automation',
     description: 'Automate social media campaigns and email outreach',
     track: 'animal-advocacy',
     difficulty: 'intermediate',
     thumbnail_url: 'thumbnails/course-3-campaigns.jpg',
-    estimated_hours: 10,
-    published: true,
+    default_duration_weeks: 3,
+    is_published: true,
     created_by: '550e8400-e29b-41d4-a716-446655440000',
     created_at: '2025-01-22T00:00:00Z',
     updated_at: '2025-01-22T00:00:00Z',
   },
   {
     id: 4,
-    name: 'Climate Data Analysis',
+    title: 'Climate Data Analysis',
     slug: 'climate-data',
     description: 'Build workflows to analyze climate data',
     track: 'climate',
     difficulty: 'advanced',
     thumbnail_url: 'thumbnails/course-4-climate.jpg',
-    estimated_hours: 15,
-    published: true,
+    default_duration_weeks: 4,
+    is_published: true,
     created_by: '550e8400-e29b-41d4-a716-446655440000',
     created_at: '2025-01-23T00:00:00Z',
     updated_at: '2025-01-23T00:00:00Z',

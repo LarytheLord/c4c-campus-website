@@ -132,12 +132,12 @@ export default function SearchResults({ results, query, total }: SearchResultsPr
                 {result.metadata.difficulty.charAt(0).toUpperCase() + result.metadata.difficulty.slice(1)}
               </span>
             )}
-            {result.metadata.estimated_hours && (
+            {result.metadata.default_duration_weeks && (
               <span className="flex items-center gap-1">
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                {result.metadata.estimated_hours} hours
+                {result.metadata.default_duration_weeks} weeks
               </span>
             )}
             {result.metadata.course_name && (

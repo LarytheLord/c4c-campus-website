@@ -94,18 +94,23 @@ export const GET: APIRoute = async ({ request, url }) => {
       });
     }
 
-    // Get total lessons in the course
-    const { data: lessons, error: lessonsError } = await supabase
-      .from('lessons')
-      .select('id, module_id')
-      .in('module_id',
-        supabase
-          .from('modules')
-          .select('id')
-          .eq('course_id', cohort.course_id)
-      );
+    // Get total lessons in the course - two-step approach to avoid subquery issues
+    const { data: modules, error: modulesError } = await supabase
+      .from('modules')
+      .select('id')
+      .eq('course_id', cohort.course_id);
 
-    const totalLessons = lessons?.length || 0;
+    const moduleIds = modules?.map(m => m.id) || [];
+
+    let totalLessons = 0;
+    if (moduleIds.length > 0) {
+      const { data: lessons, error: lessonsError } = await supabase
+        .from('lessons')
+        .select('id')
+        .in('module_id', moduleIds);
+
+      totalLessons = lessons?.length || 0;
+    }
 
     // Get all enrollments for this cohort with student info
     const { data: enrollments, error: enrollError } = await supabase
@@ -130,25 +135,51 @@ export const GET: APIRoute = async ({ request, url }) => {
 
     const studentsList = enrollments || [];
 
-    // Get lesson progress for all students
+    // Get lesson progress for all students in this cohort
+    // Include lesson_id, completed, completed_at, last_accessed_at for accurate cohort-scoped aggregation
     const userIds = studentsList.map(e => e.user_id);
     const { data: progressData } = await supabase
       .from('lesson_progress')
-      .select('user_id, time_spent_seconds, completed, completed_at')
-      .in('user_id', userIds)
+      .select('user_id, lesson_id, time_spent_seconds, completed, completed_at, last_accessed_at')
+      .in('user_id', userIds.length > 0 ? userIds : ['00000000-0000-0000-0000-000000000000']) // Avoid empty array
       .eq('cohort_id', cohortId);
 
-    // Calculate progress metrics for each student
+    // Calculate progress metrics for each student using lesson_progress data directly
+    // This provides accurate cohort-scoped progress instead of relying solely on enrollment.completed_lessons
     const now = new Date();
     const students: StudentWithProgress[] = studentsList.map((enrollment: any) => {
       const userProgress = progressData?.filter(p => p.user_id === enrollment.user_id) || [];
+
+      // Derive completed_lessons from lesson_progress rows (count distinct lesson_id where completed=true)
+      const completedLessonIds = new Set(
+        userProgress.filter(p => p.completed).map(p => p.lesson_id)
+      );
+      const derivedCompletedLessons = completedLessonIds.size;
+
+      // Use derived value, fallback to enrollment field if no progress rows exist
+      const completedLessons = userProgress.length > 0 ? derivedCompletedLessons : (enrollment.completed_lessons || 0);
+
       const timeSpentSeconds = userProgress.reduce((sum, p) => sum + (p.time_spent_seconds || 0), 0);
       const timeSpentHours = Math.round((timeSpentSeconds / 3600) * 10) / 10;
       const completionPercentage = totalLessons > 0
-        ? Math.round((enrollment.completed_lessons / totalLessons) * 100)
+        ? Math.round((completedLessons / totalLessons) * 100)
         : 0;
 
-      const lastActivity = new Date(enrollment.last_activity_at);
+      // Determine last activity from lesson_progress (most recent completed_at or last_accessed_at)
+      // Fall back to enrollment.last_activity_at if no progress data
+      let lastActivityAt = enrollment.last_activity_at;
+      if (userProgress.length > 0) {
+        const progressTimestamps = userProgress
+          .map(p => p.completed_at || p.last_accessed_at)
+          .filter(Boolean)
+          .map(ts => new Date(ts).getTime());
+        if (progressTimestamps.length > 0) {
+          const mostRecent = Math.max(...progressTimestamps);
+          lastActivityAt = new Date(mostRecent).toISOString();
+        }
+      }
+
+      const lastActivity = new Date(lastActivityAt);
       const daysSinceActivity = Math.floor((now.getTime() - lastActivity.getTime()) / (1000 * 60 * 60 * 24));
 
       const isStruggling = completionPercentage < 20 || daysSinceActivity > 7;
@@ -159,10 +190,10 @@ export const GET: APIRoute = async ({ request, url }) => {
         email: enrollment.applications.email,
         enrolled_at: enrollment.enrolled_at,
         status: enrollment.status,
-        completed_lessons: enrollment.completed_lessons,
+        completed_lessons: completedLessons,
         total_lessons: totalLessons,
         completion_percentage: completionPercentage,
-        last_activity_at: enrollment.last_activity_at,
+        last_activity_at: lastActivityAt,
         time_spent_hours: timeSpentHours,
         is_struggling: isStruggling,
         days_since_activity: daysSinceActivity
@@ -189,7 +220,7 @@ export const GET: APIRoute = async ({ request, url }) => {
       : 0;
 
     const analytics: CohortAnalytics = {
-      cohort_id: parseInt(cohortId),
+      cohort_id: cohortId, // UUID string, not parsed as number
       cohort_name: cohort.name,
       course_name: cohort.courses.title,
       total_students: students.length,

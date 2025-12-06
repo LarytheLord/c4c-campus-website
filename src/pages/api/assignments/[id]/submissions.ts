@@ -1,6 +1,8 @@
 /**
  * API: List Assignment Submissions
- * GET - List all submissions for assignment (teachers only)
+ * GET - List submissions for assignment
+ *   - Teachers: See all submissions for assignments they created
+ *   - Students: See only their own submissions
  */
 
 import type { APIRoute } from 'astro';
@@ -13,7 +15,8 @@ const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY!;
 
 /**
- * GET - List all submissions for an assignment
+ * GET - List submissions for an assignment
+ * Teachers see all submissions; students see only their own
  */
 export const GET: APIRoute = async ({ request, params }) => {
   try {
@@ -48,11 +51,13 @@ export const GET: APIRoute = async ({ request, params }) => {
       );
     }
 
-    // Verify teacher owns this assignment's course
-    const { data: assignment } = await supabase
+    // Get assignment with course ownership info
+    const { data: assignment, error: assignmentError } = await supabase
       .from('assignments')
       .select(`
         id,
+        title,
+        max_points,
         lessons(
           id,
           modules(
@@ -64,22 +69,57 @@ export const GET: APIRoute = async ({ request, params }) => {
       .eq('id', assignmentId)
       .single();
 
-    if (!assignment || (assignment.lessons as any)?.modules?.courses?.created_by !== user.id) {
+    if (assignmentError || !assignment) {
       return new Response(
-        JSON.stringify({ error: 'Access denied' }),
-        { status: 403, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Assignment not found' }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    // Get all submissions for this assignment
-    const { data: submissions, error: submissionsError } = await supabase
+    // Check if user is the teacher (course creator)
+    const isTeacher = (assignment.lessons as any)?.modules?.courses?.created_by === user.id;
+
+    // Get user's role from profile
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    const isAdmin = profile?.role === 'admin';
+    const canViewAll = isTeacher || isAdmin;
+
+    // Build query based on role
+    let query = supabase
       .from('assignment_submissions')
       .select(`
-        *,
-        profiles:user_id(id, full_name, email)
+        id,
+        assignment_id,
+        user_id,
+        submission_number,
+        file_url,
+        file_name,
+        file_size_bytes,
+        file_type,
+        submitted_at,
+        is_late,
+        status,
+        score,
+        feedback,
+        graded_by,
+        graded_at,
+        created_at,
+        updated_at
       `)
       .eq('assignment_id', assignmentId)
-      .order('submitted_at', { ascending: false });
+      .order('submission_number', { ascending: false });
+
+    // Students can only see their own submissions
+    if (!canViewAll) {
+      query = query.eq('user_id', user.id);
+    }
+
+    const { data: submissions, error: submissionsError } = await query;
 
     if (submissionsError) {
       console.error('Database error:', submissionsError);
@@ -89,23 +129,38 @@ export const GET: APIRoute = async ({ request, params }) => {
       );
     }
 
-    // Get submission statistics
-    const { data: stats } = await supabase
-      .rpc('get_assignment_stats', {
-        assignment_id_param: parseInt(assignmentId)
-      });
+    // For teachers, include profile info
+    let enrichedSubmissions = submissions || [];
+    if (canViewAll && submissions && submissions.length > 0) {
+      const userIds = [...new Set(submissions.map(s => s.user_id))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', userIds);
+
+      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+      enrichedSubmissions = submissions.map(s => ({
+        ...s,
+        profiles: profileMap.get(s.user_id) || null
+      }));
+    }
+
+    // Get submission statistics (teachers only)
+    let stats = null;
+    if (canViewAll) {
+      const { data: statsData } = await supabase
+        .rpc('get_assignment_stats', {
+          assignment_id_param: assignmentId
+        });
+      stats = statsData;
+    }
 
     return new Response(
       JSON.stringify({
         success: true,
-        data: submissions,
-        stats: stats || {
-          total_submissions: 0,
-          graded_submissions: 0,
-          average_grade: null,
-          late_submissions: 0,
-          on_time_submissions: 0
-        }
+        data: enrichedSubmissions,
+        stats: stats || undefined,
+        role: canViewAll ? 'teacher' : 'student'
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );

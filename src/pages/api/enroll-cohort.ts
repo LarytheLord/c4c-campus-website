@@ -81,63 +81,6 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
 
-    // Check if already enrolled in this cohort
-    const { data: existingCohortEnrollment } = await supabase
-      .from('cohort_enrollments')
-      .select('id, status')
-      .eq('user_id', user.id)
-      .eq('cohort_id', cohortId)
-      .single();
-
-    if (existingCohortEnrollment) {
-      return new Response(
-        JSON.stringify({
-          error: 'Already enrolled in this cohort',
-          enrollment: existingCohortEnrollment,
-        }),
-        {
-          status: 409,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
-    // Check capacity limits
-    const { data: currentEnrollments, error: countError } = await supabase
-      .from('cohort_enrollments')
-      .select('id', { count: 'exact', head: true })
-      .eq('cohort_id', cohortId)
-      .eq('status', 'active');
-
-    if (countError) {
-      console.error('Error checking enrollment capacity:', countError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to check enrollment capacity' }),
-        {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
-    // Get the count from the response
-    const enrollmentCount = currentEnrollments || 0;
-
-    // Check if cohort is full
-    if (cohort.max_students && enrollmentCount >= cohort.max_students) {
-      return new Response(
-        JSON.stringify({
-          error: 'Cohort is full',
-          max_students: cohort.max_students,
-          current_enrollments: enrollmentCount
-        }),
-        {
-          status: 409,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
     // Check if course is published
     const { data: course, error: courseError } = await supabase
       .from('courses')
@@ -155,23 +98,69 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
 
-    // Create cohort enrollment
+    // Use atomic enrollment function to prevent race conditions
     const { data: cohortEnrollment, error: cohortEnrollError } = await supabase
-      .from('cohort_enrollments')
-      .insert([
-        {
-          user_id: user.id,
-          cohort_id: cohortId,
-          status: 'active',
-        },
-      ])
-      .select()
-      .single();
+      .rpc('enroll_in_cohort', {
+        p_cohort_id: cohortId,
+        p_user_id: user.id,
+      });
 
     if (cohortEnrollError) {
       console.error('Cohort enrollment error:', cohortEnrollError);
+
+      // Parse error code from message prefix (e.g., "COHORT_NOT_FOUND: ...")
+      const errorMessage = cohortEnrollError.message || '';
+      const errorCodeMatch = errorMessage.match(/^([A-Z_]+):/);
+      const errorCodeFromMessage = errorCodeMatch ? errorCodeMatch[1] : null;
+
+      // Handle specific error codes from the database function
+      // Error codes: P0002=COHORT_NOT_FOUND, P0003=COHORT_NOT_OPEN, P0004=COHORT_FULL, 23505=ALREADY_ENROLLED
+      if (cohortEnrollError.code === '23505' || errorCodeFromMessage === 'ALREADY_ENROLLED') {
+        return new Response(
+          JSON.stringify({ error: 'Already enrolled in this cohort', code: 'ALREADY_ENROLLED' }),
+          {
+            status: 409,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      if (cohortEnrollError.code === 'P0002' || errorCodeFromMessage === 'COHORT_NOT_FOUND') {
+        return new Response(
+          JSON.stringify({ error: 'Cohort not found', code: 'COHORT_NOT_FOUND' }),
+          {
+            status: 404,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      if (cohortEnrollError.code === 'P0003' || errorCodeFromMessage === 'COHORT_NOT_OPEN') {
+        return new Response(
+          JSON.stringify({ error: 'Cohort is not open for enrollment', code: 'COHORT_NOT_OPEN' }),
+          {
+            status: 403,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      if (cohortEnrollError.code === 'P0004' || errorCodeFromMessage === 'COHORT_FULL') {
+        return new Response(
+          JSON.stringify({
+            error: 'Cohort is full',
+            code: 'COHORT_FULL',
+            max_students: cohort.max_students,
+          }),
+          {
+            status: 409,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
       return new Response(
-        JSON.stringify({ error: 'Failed to enroll in cohort: ' + cohortEnrollError.message }),
+        JSON.stringify({ error: 'Failed to enroll in cohort', code: 'ENROLLMENT_FAILED' }),
         {
           status: 500,
           headers: { 'Content-Type': 'application/json' },

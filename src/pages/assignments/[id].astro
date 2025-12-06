@@ -90,6 +90,7 @@ const { id } = Astro.params;
     import SubmissionStatus from '@/components/student/SubmissionStatus';
     import FileUploader from '@/components/student/FileUploader';
     import SubmissionHistory from '@/components/student/SubmissionHistory';
+    import { getAssignmentStatus, getStatusBadgeHtml, type AssignmentStatus } from '@/lib/assignment-status';
 
     const supabase = createClient(
       import.meta.env.PUBLIC_SUPABASE_URL,
@@ -98,6 +99,7 @@ const { id } = Astro.params;
 
     const assignmentId = window.location.pathname.split('/')[2];
     let assignment: AssignmentWithSubmission | null = null;
+    let assignmentStatus: AssignmentStatus | null = null;
 
     async function loadAssignment() {
       try {
@@ -116,7 +118,7 @@ const { id } = Astro.params;
             lessons(
               id, name,
               modules(
-                id, name,
+                id, title,
                 courses(id, name, created_by)
               )
             )
@@ -144,6 +146,9 @@ const { id } = Astro.params;
           user_submission: submission || null
         };
 
+        // Compute assignment status using the centralized helper
+        assignmentStatus = getAssignmentStatus(assignment!, new Date());
+
         renderAssignment();
         hideLoading();
       } catch (error) {
@@ -164,7 +169,7 @@ const { id } = Astro.params;
 
       const metaEl = document.getElementById('assignment-meta');
       if (metaEl) {
-        metaEl.textContent = `${course?.name || 'Unknown Course'} • ${lesson?.name || 'Unknown Lesson'}`;
+        metaEl.textContent = `${course?.title || 'Unknown Course'} • ${lesson?.name || 'Unknown Lesson'}`;
       }
 
       const descEl = document.getElementById('assignment-description');
@@ -208,18 +213,14 @@ const { id } = Astro.params;
         }
       }
 
-      // Submission Status
+      // Submission Status - use computed status from helper
       const statusContainer = document.getElementById('submission-status-container');
-      if (statusContainer) {
-        const now = new Date();
-        const dueDate = assignment.due_date ? new Date(assignment.due_date) : null;
-        const isPastDue = dueDate ? now > dueDate : false;
-
+      if (statusContainer && assignmentStatus) {
         const root = createRoot(statusContainer);
         root.render(createElement(SubmissionStatus, {
           submission: assignment.user_submission,
           maxPoints: assignment.max_points,
-          isPastDue,
+          isPastDue: assignmentStatus.isPastDue,
           lateAllowed: assignment.allow_late_submissions
         }));
       }
@@ -236,50 +237,29 @@ const { id } = Astro.params;
     }
 
     function renderStatusBadge() {
-      if (!assignment) return;
+      if (!assignment || !assignmentStatus) return;
 
       const badgeEl = document.getElementById('status-badge');
       if (!badgeEl) return;
 
-      const now = new Date();
-      const dueDate = assignment.due_date ? new Date(assignment.due_date) : null;
-      const isPastDue = dueDate && now > dueDate;
-      const hasSubmission = assignment.user_submission !== null;
-
-      let badge = '';
-      if (!hasSubmission) {
-        if (isPastDue && !assignment.allow_late_submissions) {
-          badge = '<span class="px-4 py-2 bg-red-100 text-red-700 text-sm font-medium rounded-full">Closed</span>';
-        } else if (isPastDue) {
-          badge = '<span class="px-4 py-2 bg-orange-100 text-orange-700 text-sm font-medium rounded-full">Late</span>';
-        } else {
-          badge = '<span class="px-4 py-2 bg-blue-100 text-blue-700 text-sm font-medium rounded-full">Not Submitted</span>';
-        }
-      } else if (assignment.user_submission?.status === 'graded') {
-        const points = assignment.user_submission.points_earned || assignment.user_submission.grade || 0;
-        badge = `<span class="px-4 py-2 bg-green-100 text-green-700 text-sm font-medium rounded-full">Graded: ${points}/${assignment.max_points}</span>`;
-      } else {
-        badge = '<span class="px-4 py-2 bg-yellow-100 text-yellow-700 text-sm font-medium rounded-full">Submitted</span>';
-      }
-
-      badgeEl.innerHTML = badge;
+      // Use the centralized getStatusBadgeHtml helper for consistent styling
+      // The helper uses score from user_submission (not legacy grade/points_earned)
+      badgeEl.innerHTML = getStatusBadgeHtml(assignmentStatus).replace(
+        'px-3 py-1',
+        'px-4 py-2'
+      );
     }
 
     function renderSubmissionForm() {
-      if (!assignment) return;
-
-      const now = new Date();
-      const dueDate = assignment.due_date ? new Date(assignment.due_date) : null;
-      const isPastDue = dueDate && now > dueDate;
-      const hasSubmission = assignment.user_submission !== null;
-      const canSubmit = !isPastDue || assignment.allow_late_submissions;
-      const canResubmit = assignment.allow_resubmission && hasSubmission &&
-        assignment.user_submission && assignment.user_submission.submission_number < assignment.max_submissions;
+      if (!assignment || !assignmentStatus) return;
 
       const formContainer = document.getElementById('submission-form-container');
       if (!formContainer) return;
 
-      if (!canSubmit && !hasSubmission) {
+      // Use computed status from the helper
+      const { hasSubmission, canSubmit, canResubmit, isLateButAllowed, currentSubmissionNumber, isClosed } = assignmentStatus;
+
+      if (isClosed && !hasSubmission) {
         formContainer.innerHTML = `
           <div class="bg-gray-50 border border-gray-300 rounded-lg p-8 text-center">
             <div class="text-6xl mb-4">🔒</div>
@@ -290,11 +270,11 @@ const { id } = Astro.params;
         return;
       }
 
-      if (!hasSubmission || canResubmit) {
+      if (canSubmit) {
         const formRoot = createRoot(formContainer);
         formRoot.render(createElement('div', { className: 'bg-white rounded-lg shadow-sm border border-gray-200 p-6' }, [
           createElement('h2', { key: 'title', className: 'text-2xl font-bold mb-4' },
-            hasSubmission ? `Resubmission #${(assignment.user_submission?.submission_number || 0) + 1}` : 'Submit Your Work'
+            canResubmit ? `Resubmission #${currentSubmissionNumber + 1}` : 'Submit Your Work'
           ),
           createElement(FileUploader, {
             key: 'uploader',
@@ -311,7 +291,7 @@ const { id } = Astro.params;
         ]));
 
         // Late warning
-        if (isPastDue && assignment.allow_late_submissions && !hasSubmission) {
+        if (isLateButAllowed && !hasSubmission) {
           const warning = document.createElement('div');
           warning.className = 'mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg text-sm text-orange-700';
           warning.innerHTML = `<strong>⚠️ Late Submission:</strong> A ${assignment.late_penalty_percent}% penalty will be applied to your grade.`;

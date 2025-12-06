@@ -17,12 +17,11 @@ import type { Lesson } from '@/types';
 const mockLesson: Lesson = {
   id: 1,
   module_id: 1,
-  name: 'Introduction to n8n',
+  title: 'Introduction to n8n',
   slug: 'intro-to-n8n',
-  video_path: 'videos/course-1/lesson-1.mp4',
-  video_size_bytes: 31457280,
-  video_duration_seconds: 420, // 7 minutes
-  text_content: '# Introduction\n\nWelcome to n8n!',
+  video_url: 'videos/course-1/lesson-1.mp4',
+  duration_minutes: 7,
+  content: '# Introduction\n\nWelcome to n8n!',
   resources: [
     { name: 'workflow-template.json', path: '/resources/template.json', url: '/resources/template.json', size: 2048 }
   ],

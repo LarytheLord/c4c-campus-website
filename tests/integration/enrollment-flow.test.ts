@@ -54,11 +54,11 @@ describe('Enrollment Flow Integration Tests', () => {
   beforeEach(async () => {
     // Create test course and module for each test
     const { data: course } = await supabaseAdmin.from('courses').insert({
-      name: 'Enrollment Test Course',
+      title: 'Enrollment Test Course',
       slug: 'enrollment-test-' + Date.now(),
       track: 'animal-advocacy',
       difficulty: 'beginner',
-      published: true,
+      is_published: true,
       created_by: teacherClient.userId,
     }).select().single();
     testCourseId = course.id;
@@ -186,11 +186,11 @@ describe('Enrollment Flow Integration Tests', () => {
     test('should display only cohorts for published courses', async () => {
       // Arrange - Create unpublished course
       const { data: unpublishedCourse } = await supabaseAdmin.from('courses').insert({
-        name: 'Unpublished Course',
+        title: 'Unpublished Course',
         slug: 'unpublished-' + Date.now(),
         track: 'climate',
         difficulty: 'intermediate',
-        published: false,
+        is_published: false,
         created_by: teacherClient.userId,
       }).select().single();
 
@@ -1135,11 +1135,11 @@ describe('Enrollment Flow Integration Tests', () => {
     test('should track prerequisite completion if needed', async () => {
       // Arrange - Create prerequisite course
       const { data: prereqCourse } = await supabaseAdmin.from('courses').insert({
-        name: 'Prerequisite Course',
+        title: 'Prerequisite Course',
         slug: 'prereq-' + Date.now(),
         track: 'general',
         difficulty: 'beginner',
-        published: true,
+        is_published: true,
         created_by: teacherClient.userId,
       }).select().single();
 

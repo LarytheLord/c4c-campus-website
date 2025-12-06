@@ -14,12 +14,12 @@ describe('validateCourseInput', () => {
   test('should return valid when all required fields present', () => {
     // Arrange
     const input = {
-      name: 'n8n Workflow Automation',
+      title: 'n8n Workflow Automation',
       slug: 'n8n-basics',
       description: 'Learn n8n from scratch',
       track: 'animal-advocacy' as const,
       difficulty: 'beginner' as const,
-      estimated_hours: 8,
+      default_duration_weeks: 2,
     };
 
     // Act
@@ -103,15 +103,15 @@ describe('validateCourseInput', () => {
     );
   });
 
-  // Edge case - negative estimated_hours
-  test('should return error when estimated_hours negative', () => {
+  // Edge case - negative default_duration_weeks
+  test('should return error when default_duration_weeks negative', () => {
     // Arrange
     const input = {
-      name: 'Test Course',
+      title: 'Test Course',
       slug: 'test',
       track: 'animal-advocacy',
       difficulty: 'beginner',
-      estimated_hours: -5,
+      default_duration_weeks: -5,
     };
 
     // Act
@@ -119,7 +119,7 @@ describe('validateCourseInput', () => {
 
     // Assert
     expect(result.valid).toBe(false);
-    expect(result.errors).toContain('Estimated hours must be positive');
+    expect(result.errors).toContain('Duration weeks must be a positive integer');
   });
 
   // Edge case - non-integer estimated_hours

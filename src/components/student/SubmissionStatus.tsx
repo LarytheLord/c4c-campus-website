@@ -4,12 +4,15 @@
  */
 
 import type { Submission } from '@/types/assignment';
+import type { AssignmentStatus } from '@/lib/assignment-status';
 
 interface SubmissionStatusProps {
   submission: Submission | null;
   maxPoints: number;
   isPastDue?: boolean;
   lateAllowed?: boolean;
+  /** Optional: Use pre-computed status from getAssignmentStatus() */
+  status?: AssignmentStatus;
 }
 
 export default function SubmissionStatus({
@@ -111,8 +114,8 @@ export default function SubmissionStatus({
   }
 
   // Graded
-  const grade = submission.points_earned || submission.grade || 0;
-  const percentage = (grade / maxPoints) * 100;
+  const scoreValue = submission.score || 0;
+  const percentage = (scoreValue / maxPoints) * 100;
 
   let gradeColor = 'gray';
   let gradeIcon = '📊';
@@ -153,7 +156,7 @@ export default function SubmissionStatus({
       {/* Grade Display */}
       <div className="text-center mb-4">
         <div className={`text-6xl font-bold text-${gradeColor}-700 mb-1`}>
-          {grade}
+          {scoreValue}
         </div>
         <div className="text-gray-600 text-lg">
           out of {maxPoints} points
@@ -184,9 +187,9 @@ export default function SubmissionStatus({
           </span>
         </div>
 
-        {submission.is_late && submission.grade !== submission.points_earned && (
+        {submission.is_late && (
           <div className="bg-orange-100 text-orange-700 px-3 py-2 rounded text-center">
-            ⚠️ Late penalty applied
+            ⚠️ Late submission
           </div>
         )}
 

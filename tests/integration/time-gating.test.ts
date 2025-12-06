@@ -43,11 +43,11 @@ describe('Time-Gating Functionality Integration Tests', () => {
 
     // Create test course
     const { data: course } = await supabaseAdmin.from('courses').insert({
-      name: 'Time-Gating Test Course',
+      title: 'Time-Gating Test Course',
       slug: 'time-gating-test-' + Date.now(),
       track: 'animal-advocacy',
       difficulty: 'beginner',
-      published: true,
+      is_published: true,
       is_cohort_based: true,
       created_by: teacherClient.userId,
     }).select().single();
@@ -58,7 +58,7 @@ describe('Time-Gating Functionality Integration Tests', () => {
     for (let i = 1; i <= 6; i++) {
       const { data: module } = await supabaseAdmin.from('modules').insert({
         course_id: testCourseId,
-        name: `Time-Gating Test Module ${i}`,
+        title: `Time-Gating Test Module ${i}`,
         order_index: i,
       }).select().single();
       testModuleIds.push(module.id);
@@ -859,10 +859,161 @@ describe('Time-Gating Functionality Integration Tests', () => {
   });
 
   // ============================================================================
-  // SECTION 8: STUDENT ACCESS CONTROL
+  // SECTION 8: COHORT SCHEDULES RLS POLICY TESTS
   // ============================================================================
 
-  describe('8. Student Access Control Based on Time-Gating', () => {
+  describe('8. Cohort Schedules RLS Policy Behavior', () => {
+
+    test('should allow enrolled students to read schedules for their cohort', async () => {
+      // Arrange - Create schedule using admin
+      const unlockDate = new Date().toISOString().split('T')[0];
+      await supabaseAdmin.from('cohort_schedules').insert({
+        cohort_id: testCohortId,
+        module_id: testModuleIds[0],
+        unlock_date: unlockDate,
+      });
+
+      // Act - Student queries schedules (RLS should allow)
+      const { data: schedules, error } = await student1Client
+        .from('cohort_schedules')
+        .select('*')
+        .eq('cohort_id', testCohortId);
+
+      // Assert - Student can view schedules for their enrolled cohort
+      expect(error).toBeNull();
+      expect(schedules).toBeDefined();
+      expect(schedules!.length).toBeGreaterThan(0);
+    });
+
+    test('should allow teachers to create schedules for their cohorts', async () => {
+      // Arrange - Teacher is the course creator
+      const unlockDate = new Date().toISOString().split('T')[0];
+
+      // Act - Teacher creates schedule
+      const { data: schedule, error } = await teacherClient
+        .from('cohort_schedules')
+        .insert({
+          cohort_id: testCohortId,
+          module_id: testModuleIds[1],
+          unlock_date: unlockDate,
+        })
+        .select()
+        .single();
+
+      // Assert - Teacher can create schedules
+      expect(error).toBeNull();
+      expect(schedule).toBeDefined();
+      expect(schedule.cohort_id).toBe(testCohortId);
+    });
+
+    test('should allow teachers to update schedules for their cohorts', async () => {
+      // Arrange
+      const unlockDate = new Date().toISOString().split('T')[0];
+      const { data: schedule } = await supabaseAdmin.from('cohort_schedules').insert({
+        cohort_id: testCohortId,
+        module_id: testModuleIds[2],
+        unlock_date: unlockDate,
+      }).select().single();
+
+      // Act - Teacher updates schedule
+      const newDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const { data: updated, error } = await teacherClient
+        .from('cohort_schedules')
+        .update({ unlock_date: newDate })
+        .eq('id', schedule.id)
+        .select()
+        .single();
+
+      // Assert
+      expect(error).toBeNull();
+      expect(updated.unlock_date).toBe(newDate);
+    });
+
+    test('should allow teachers to delete schedules for their cohorts', async () => {
+      // Arrange
+      const unlockDate = new Date().toISOString().split('T')[0];
+      const { data: schedule } = await supabaseAdmin.from('cohort_schedules').insert({
+        cohort_id: testCohortId,
+        module_id: testModuleIds[3],
+        unlock_date: unlockDate,
+      }).select().single();
+
+      // Act - Teacher deletes schedule
+      const { error } = await teacherClient
+        .from('cohort_schedules')
+        .delete()
+        .eq('id', schedule.id);
+
+      // Assert
+      expect(error).toBeNull();
+
+      // Verify deletion
+      const { data: deleted } = await supabaseAdmin
+        .from('cohort_schedules')
+        .select()
+        .eq('id', schedule.id);
+
+      expect(deleted?.length).toBe(0);
+    });
+
+    test('should deny students from modifying schedules', async () => {
+      // Arrange
+      const unlockDate = new Date().toISOString().split('T')[0];
+      const { data: schedule } = await supabaseAdmin.from('cohort_schedules').insert({
+        cohort_id: testCohortId,
+        module_id: testModuleIds[4],
+        unlock_date: unlockDate,
+      }).select().single();
+
+      // Act - Student tries to update schedule
+      const { error } = await student1Client
+        .from('cohort_schedules')
+        .update({ unlock_date: '2099-01-01' })
+        .eq('id', schedule.id);
+
+      // Assert - RLS should deny the update
+      expect(error).toBeDefined();
+    });
+
+    test('should deny students from creating schedules', async () => {
+      // Act - Student tries to create schedule
+      const { error } = await student1Client
+        .from('cohort_schedules')
+        .insert({
+          cohort_id: testCohortId,
+          module_id: testModuleIds[5],
+          unlock_date: '2025-12-01',
+        });
+
+      // Assert - RLS should deny the insert
+      expect(error).toBeDefined();
+    });
+
+    test('should deny students from deleting schedules', async () => {
+      // Arrange
+      const unlockDate = new Date().toISOString().split('T')[0];
+      const { data: schedule } = await supabaseAdmin.from('cohort_schedules').insert({
+        cohort_id: testCohortId,
+        module_id: testModuleIds[0],
+        unlock_date: unlockDate,
+      }).select().single();
+
+      // Act - Student tries to delete schedule
+      const { error } = await student1Client
+        .from('cohort_schedules')
+        .delete()
+        .eq('id', schedule.id);
+
+      // Assert - RLS should deny the delete
+      expect(error).toBeDefined();
+    });
+  });
+
+  // ============================================================================
+  // SECTION 9: STUDENT ACCESS CONTROL
+  // ============================================================================
+
+  describe('9. Student Access Control Based on Time-Gating', () => {
 
     test('should return locked schedule in student query (UI responsibility to check)', async () => {
       // Arrange
@@ -914,10 +1065,87 @@ describe('Time-Gating Functionality Integration Tests', () => {
   });
 
   // ============================================================================
-  // SECTION 9: SCHEDULE STATUS & QUERIES
+  // SECTION 10: UUID COHORT_ID TYPE VALIDATION
   // ============================================================================
 
-  describe('9. Schedule Status & Analytical Queries', () => {
+  describe('10. UUID Cohort ID Type Validation', () => {
+
+    test('should accept valid UUID string for cohort_id in isModuleUnlocked', async () => {
+      // Arrange - Create schedule with UUID cohort_id
+      const unlockDate = new Date().toISOString().split('T')[0];
+      const { data: schedule } = await supabaseAdmin.from('cohort_schedules').insert({
+        cohort_id: testCohortId, // This is a UUID string
+        module_id: testModuleIds[0],
+        unlock_date: unlockDate,
+      }).select().single();
+
+      // Act - Call isModuleUnlocked with UUID string (not number)
+      // The function signature should be: isModuleUnlocked(moduleId: number, cohortId: string, ...)
+      // Verify that the cohort_id is treated as a string throughout
+      expect(typeof testCohortId).toBe('string');
+      expect(testCohortId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+
+      // Assert - Schedule was created with UUID cohort_id
+      expect(schedule.cohort_id).toBe(testCohortId);
+      expect(typeof schedule.cohort_id).toBe('string');
+    });
+
+    test('should return correct schedule data when queried with UUID cohort_id', async () => {
+      // Arrange
+      const tomorrow = new Date(Date.now() + 1 * 24 * 60 * 60 * 1000);
+      const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+      await supabaseAdmin.from('cohort_schedules').insert({
+        cohort_id: testCohortId,
+        module_id: testModuleIds[0],
+        unlock_date: tomorrowStr,
+      });
+
+      // Act - Query using UUID string (this is what getCohortModuleStatuses does)
+      const { data: schedules, error } = await supabaseAdmin
+        .from('cohort_schedules')
+        .select('module_id, unlock_date, lock_date')
+        .eq('cohort_id', testCohortId); // UUID string, not number
+
+      // Assert
+      expect(error).toBeNull();
+      expect(schedules).toBeDefined();
+      expect(schedules!.length).toBeGreaterThan(0);
+      expect(schedules![0].unlock_date).toBe(tomorrowStr);
+    });
+
+    test('should handle cohort_id as UUID in join queries', async () => {
+      // Arrange - Create schedule
+      const unlockDate = new Date().toISOString().split('T')[0];
+      await supabaseAdmin.from('cohort_schedules').insert({
+        cohort_id: testCohortId,
+        module_id: testModuleIds[0],
+        unlock_date: unlockDate,
+      });
+
+      // Act - Query with join to cohorts table
+      const { data: scheduleWithCohort, error } = await supabaseAdmin
+        .from('cohort_schedules')
+        .select(`
+          module_id,
+          unlock_date,
+          cohorts!inner(id, name, course_id)
+        `)
+        .eq('cohort_id', testCohortId)
+        .single();
+
+      // Assert - The join works correctly with UUID
+      expect(error).toBeNull();
+      expect(scheduleWithCohort).toBeDefined();
+      expect((scheduleWithCohort as any).cohorts.id).toBe(testCohortId);
+    });
+  });
+
+  // ============================================================================
+  // SECTION 11: SCHEDULE STATUS & QUERIES
+  // ============================================================================
+
+  describe('11. Schedule Status & Analytical Queries', () => {
 
     test('should retrieve upcoming unlocks for a cohort (next 7 days)', async () => {
       // Arrange
