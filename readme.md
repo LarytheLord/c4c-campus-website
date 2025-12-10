@@ -58,12 +58,17 @@ SITE_URL=https://your-domain.com
 ```
 
 ### Database Setup
+`schema.sql` is everything. Single command:
 
-Run `schema.sql` in your Supabase SQL Editor.
+```bash
+npm run db:schema-apply  # Backup + destructive reset + validate
+```
+
+See [docs/DATABASE.md](docs/DATABASE.md) for details/troubleshooting.
 
 ### Schema-TypeScript Sync Process
 
-**IMPORTANT:** The database schema (`schema.sql`) is the single source of truth. TypeScript types must always match the schema.
+**IMPORTANT:** The database schema (`schema.sql`) is the single source of truth. TypeScript types must always match the schema. See [docs/DATABASE.md](docs/DATABASE.md) for detailed schema management workflows.
 
 #### When Modifying the Database Schema:
 

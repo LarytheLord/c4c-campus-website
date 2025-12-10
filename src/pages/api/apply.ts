@@ -25,6 +25,21 @@ export const POST: APIRoute = async ({ request }) => {
 
     const { email, password, confirmPassword, program, ...applicationData } = formData;
 
+    // Normalize and validate scholarship fields
+    let scholarshipRequested = Boolean(applicationData.scholarshipRequested);
+    let scholarshipCategory: string | null = applicationData.scholarshipCategory?.trim() ?? null;
+    if (!scholarshipCategory) {
+      scholarshipCategory = null;
+    }
+
+    // If scholarship is requested but category is missing, reject the request
+    if (scholarshipRequested && !scholarshipCategory) {
+      return new Response(
+        JSON.stringify({ error: 'Scholarship category is required when requesting a scholarship' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Validate passwords match
     if (password !== confirmPassword) {
       return new Response(
@@ -99,6 +114,9 @@ export const POST: APIRoute = async ({ request }) => {
         motivation: applicationData.motivation,
         technical_experience: applicationData.technicalExperience,
         commitment: applicationData.commitment,
+        // Scholarship fields (using normalized values)
+        scholarship_requested: scholarshipRequested,
+        scholarship_category: scholarshipCategory,
         // Accelerator specific fields
         track: applicationData.track,
         project_name: applicationData.projectName,

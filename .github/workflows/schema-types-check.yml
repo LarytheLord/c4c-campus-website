@@ -6,11 +6,23 @@ on:
     paths:
       - 'schema.sql'
       - 'src/types/**'
+      - 'src/pages/api/**'
+      - 'src/components/**'
+      - 'src/lib/**'
+      - 'scripts/check-schema-types.js'
+      - 'scripts/scan-field-names.js'
+      - 'scripts/detect-case-mismatches.js'
   pull_request:
     branches: [main, develop]
     paths:
       - 'schema.sql'
       - 'src/types/**'
+      - 'src/pages/api/**'
+      - 'src/components/**'
+      - 'src/lib/**'
+      - 'scripts/check-schema-types.js'
+      - 'scripts/scan-field-names.js'
+      - 'scripts/detect-case-mismatches.js'
 
 jobs:
   check-schema-types:
@@ -41,6 +53,14 @@ jobs:
 
       - name: Check schema-types synchronization
         run: npm run db:types:check
+
+      # Field-name and case checks run as separate steps for clear error reporting.
+      # For local development, use `npm run db:validate:all` to run all checks together.
+      - name: Scan codebase for field name mismatches
+        run: npm run db:field-names:check
+
+      - name: Detect case convention mismatches
+        run: npm run db:case:check
 
       - name: Run TypeScript type check
         run: npm run check

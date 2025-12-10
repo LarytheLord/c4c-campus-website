@@ -28,7 +28,7 @@ describe('CourseCard Component', () => {
     render(<CourseCard course={mockCourse} />);
     
     // Assert
-    expect(screen.getByText(/animal-advocacy/i)).toBeInTheDocument();
+    expect(screen.getByText(/animal_advocacy/i)).toBeInTheDocument();
     expect(screen.getByText(/beginner/i)).toBeInTheDocument();
   });
   

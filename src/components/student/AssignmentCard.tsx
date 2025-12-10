@@ -73,11 +73,11 @@ export default function AssignmentCard({ assignment, onSubmissionComplete }: Ass
 
       {/* Assignment Details */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4 text-sm">
-        {dueDate && (
+        {assignment.due_date && (
           <div className="flex items-center gap-2">
             <span className="text-gray-600">Due:</span>
             <span className={`font-medium ${isPastDue ? 'text-red-600' : 'text-gray-900'}`}>
-              {formatDate(assignment.due_date!)}
+              {formatDate(assignment.due_date)}
             </span>
           </div>
         )}

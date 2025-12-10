@@ -332,7 +332,7 @@ import TeacherLayout from '../../../layouts/TeacherLayout.astro';
     async function loadCohort() {
       const { data, error } = await supabase
         .from('cohorts')
-        .select('*, courses(name, slug, id)')
+        .select('*, courses(title, slug, id)')
         .eq('id', cohortId)
         .single();
 

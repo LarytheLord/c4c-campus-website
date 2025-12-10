@@ -283,7 +283,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       try {
         const { data: enrollments } = await supabase
           .from('enrollments')
-          .select('course_id, courses(name)');
+          .select('course_id, courses(title)');
 
         // Count enrollments per course
         const courseCounts: { [key: string]: number } = {};
@@ -344,7 +344,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       try {
         const { data: courses } = await supabase
           .from('courses')
-          .select('id, name')
+          .select('id, title')
           .limit(10);
 
         if (!courses) return;
@@ -442,7 +442,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       try {
         const { data: cohorts } = await supabase
           .from('cohorts')
-          .select('id, name, start_date, status, course_id, courses(name)')
+          .select('id, name, start_date, status, course_id, courses(title)')
           .eq('status', 'active');
 
         loadingEl?.classList.add('hidden');
@@ -477,7 +477,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
         tbody.innerHTML = cohortStats.map(cohort => `
           <tr class="border-b border-border">
             <td class="p-3 font-medium">${cohort.name}</td>
-            <td class="p-3 text-text-muted">${(cohort.courses as any)?.name || 'Unknown'}</td>
+            <td class="p-3 text-text-muted">${(cohort.courses as any)?.title || 'Unknown'}</td>
             <td class="p-3">${cohort.studentCount}</td>
             <td class="p-3">${cohort.avgCompletion} lessons</td>
             <td class="p-3">

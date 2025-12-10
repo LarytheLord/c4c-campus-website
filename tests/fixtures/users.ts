@@ -78,7 +78,7 @@ export const mockProgressCompleted = {
   completed: true,
   time_spent_seconds: 450, // 7.5min (re-watched some parts)
   watch_count: 2,
-  last_accessed: '2025-01-22T10:37:00Z',
+  last_accessed_at: '2025-01-22T10:37:00Z',
   completed_at: '2025-01-22T10:37:00Z',
 };
 
@@ -91,7 +91,7 @@ export const mockProgressPartial = {
   completed: false,
   time_spent_seconds: 315, // Watched 5min 15s (some rewinding)
   watch_count: 1,
-  last_accessed: '2025-01-23T14:22:00Z',
+  last_accessed_at: '2025-01-23T14:22:00Z',
   completed_at: null,
 };
 
@@ -104,7 +104,7 @@ export const mockProgressJustStarted = {
   completed: false,
   time_spent_seconds: 12,
   watch_count: 1,
-  last_accessed: '2025-01-24T09:05:00Z',
+  last_accessed_at: '2025-01-24T09:05:00Z',
   completed_at: null,
 };
 

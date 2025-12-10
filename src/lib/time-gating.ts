@@ -51,11 +51,11 @@ function getTodayDateOnly(): Date {
 
 /**
  * Checks if a module is unlocked for a specific cohort.
- * @param moduleId - UUID string matching schema.sql modules.id
+ * @param moduleId - BIGINT matching schema.sql modules.id (BIGSERIAL primary key)
  * @param cohortId - UUID string matching schema.sql cohorts.id
  */
 export async function isModuleUnlocked(
-  moduleId: string, // UUID - must be string to match schema.sql modules.id
+  moduleId: number, // BIGINT - matches schema.sql modules.id (BIGSERIAL)
   cohortId: string, // UUID - must be string to match schema.sql cohorts.id
   supabase: SupabaseClient,
   teacherOverride: boolean = false
@@ -134,12 +134,12 @@ export async function isModuleUnlocked(
  * ensuring consistency with isModuleUnlocked() date comparisons.
  * This is a date-only value representing the calendar date, not a wall-clock time.
  *
- * @param moduleId - UUID string matching schema.sql modules.id
+ * @param moduleId - BIGINT matching schema.sql modules.id (BIGSERIAL primary key)
  * @param cohortId - UUID string matching schema.sql cohorts.id
  * @returns Date normalized to UTC midnight, or null if no schedule exists
  */
 export async function getUnlockDate(
-  moduleId: string, // UUID - must be string to match schema.sql modules.id
+  moduleId: number, // BIGINT - matches schema.sql modules.id (BIGSERIAL)
   cohortId: string, // UUID - must be string to match schema.sql cohorts.id
   supabase: SupabaseClient
 ): Promise<Date | null> {
@@ -168,11 +168,11 @@ export async function getUnlockDate(
 
 /**
  * Checks if a user can access a specific lesson.
- * @param lessonId - UUID string matching schema.sql lessons.id
+ * @param lessonId - BIGINT matching schema.sql lessons.id (BIGSERIAL primary key)
  * @param userId - UUID string matching the user's ID
  */
 export async function canAccessLesson(
-  lessonId: string, // UUID - must be string to match schema.sql lessons.id
+  lessonId: number, // BIGINT - matches schema.sql lessons.id (BIGSERIAL)
   userId: string,
   supabase: SupabaseClient,
   teacherOverride: boolean = false
@@ -286,12 +286,13 @@ export async function canAccessLesson(
 /**
  * Gets the status of all modules for a cohort.
  * @param cohortId - UUID string matching schema.sql cohorts.id
+ * @returns Map with module_id (number) as key and ModuleUnlockStatus as value
  */
 export async function getCohortModuleStatuses(
   cohortId: string, // UUID - must be string to match schema.sql cohorts.id
   supabase: SupabaseClient,
   teacherOverride: boolean = false
-): Promise<Map<string, ModuleUnlockStatus>> {
+): Promise<Map<number, ModuleUnlockStatus>> {
   if (!cohortId) {
     throw new Error('cohortId is required');
   }
@@ -299,7 +300,7 @@ export async function getCohortModuleStatuses(
     throw new Error('Supabase client is required');
   }
 
-  const statuses = new Map<string, ModuleUnlockStatus>();
+  const statuses = new Map<number, ModuleUnlockStatus>();
 
   if (teacherOverride) {
     return statuses;
@@ -333,7 +334,7 @@ export async function getCohortModuleStatuses(
       reason = 'locked';
     }
 
-    // module_id is a UUID string per schema.sql
+    // module_id is a BIGINT (number) per schema.sql
     statuses.set(schedule.module_id, {
       isUnlocked,
       unlockDate,

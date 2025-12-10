@@ -18,7 +18,7 @@ export interface EnrollmentCheckResult {
     id: number;
     user_id: string;
     course_id: number;
-    cohort_id?: string;
+    cohort_id: string | null;
     enrolled_at: string;
     progress_percentage: number;
   } | null;

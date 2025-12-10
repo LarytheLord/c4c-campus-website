@@ -121,22 +121,6 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
         <!-- Content will be inserted here -->
       </div>
 
-      <!-- Review Notes Section -->
-      <div class="mt-8 pt-6 border-t border-border">
-        <h4 class="text-lg font-semibold mb-4">Review Notes</h4>
-        <div id="notes-list" class="space-y-3 mb-4">
-          <!-- Notes will be inserted here -->
-        </div>
-        <div class="flex gap-3">
-          <textarea
-            id="new-note-input"
-            placeholder="Add a review note..."
-            class="flex-1 border border-border rounded-lg px-4 py-2 bg-background min-h-[80px]"
-          ></textarea>
-          <button id="add-note-btn" class="btn btn-primary self-start">Add Note</button>
-        </div>
-      </div>
-
       <!-- Actions -->
       <div class="flex gap-3 justify-end mt-6 pt-6 border-t border-border">
         <div class="flex-1">
@@ -408,68 +392,6 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       }
     }
 
-    async function loadReviewNotes(applicationId: string) {
-      try {
-        const response = await fetch(`/api/admin/review-notes?application_id=${applicationId}`, {
-          credentials: 'include'
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          renderNotes(data.notes || []);
-        }
-      } catch (error) {
-        console.error('Error loading notes:', error);
-      }
-    }
-
-    function renderNotes(notes: any[]) {
-      const container = document.getElementById('notes-list')!;
-
-      if (notes.length === 0) {
-        container.innerHTML = '<p class="text-sm text-text-muted">No review notes yet</p>';
-        return;
-      }
-
-      container.innerHTML = notes.map(note => `
-        <div class="border border-border rounded-lg p-3">
-          <div class="flex justify-between items-start mb-2">
-            <div>
-              <span class="text-sm font-semibold">${note.reviewer_name}</span>
-              <span class="text-xs text-text-muted ml-2">${new Date(note.created_at).toLocaleString()}</span>
-            </div>
-            ${note.is_internal ? '<span class="text-xs px-2 py-1 bg-gray-500/10 text-gray-500 rounded">Internal</span>' : ''}
-          </div>
-          <p class="text-sm">${note.note}</p>
-        </div>
-      `).join('');
-    }
-
-    async function addReviewNote(applicationId: string, note: string) {
-      try {
-        const response = await fetch('/api/admin/review-notes', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            application_id: applicationId,
-            note,
-            is_internal: true
-          })
-        });
-
-        if (response.ok) {
-          await loadReviewNotes(applicationId);
-          (document.getElementById('new-note-input') as HTMLTextAreaElement).value = '';
-        } else {
-          throw new Error('Failed to add note');
-        }
-      } catch (error) {
-        console.error('Error adding note:', error);
-        alert('Failed to add note. Please try again.');
-      }
-    }
-
     async function showApplicationDetails(appId: string) {
       const app = allApplications.find(a => a.id === appId);
       if (!app) return;
@@ -535,9 +457,79 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
             <p class="text-text-muted">${app.interests.join(', ')}</p>
           </div>
         ` : ''}
+
+        ${app.program === 'accelerator' ? `
+          <div class="border-t border-border my-6"></div>
+          <h4 class="font-semibold text-lg mb-4">Accelerator Program Details</h4>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            ${app.track ? `
+              <div>
+                <h4 class="font-semibold mb-1">Track</h4>
+                <p class="text-text-muted">${app.track.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</p>
+              </div>
+            ` : ''}
+            ${app.project_name ? `
+              <div>
+                <h4 class="font-semibold mb-1">Project Name</h4>
+                <p class="text-text-muted">${app.project_name}</p>
+              </div>
+            ` : ''}
+            <div>
+              <h4 class="font-semibold mb-1">Team Size</h4>
+              <p class="text-text-muted">${app.team_size != null ? app.team_size : 'Not specified'}</p>
+            </div>
+            ${app.current_stage ? `
+              <div>
+                <h4 class="font-semibold mb-1">Current Stage</h4>
+                <p class="text-text-muted">${app.current_stage}</p>
+              </div>
+            ` : ''}
+            ${app.funding ? `
+              <div>
+                <h4 class="font-semibold mb-1">Funding Type</h4>
+                <p class="text-text-muted">${app.funding}</p>
+              </div>
+            ` : ''}
+          </div>
+
+          ${app.project_description ? `
+            <div class="mt-6">
+              <h4 class="font-semibold mb-2">Project Description</h4>
+              <p class="text-text-muted">${app.project_description}</p>
+            </div>
+          ` : ''}
+
+          ${app.prototype_link ? `
+            <div class="mt-4">
+              <h4 class="font-semibold mb-2">Prototype Link</h4>
+              <p><a href="${app.prototype_link}" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">${app.prototype_link}</a></p>
+            </div>
+          ` : ''}
+
+          ${app.tech_stack ? `
+            <div class="mt-4">
+              <h4 class="font-semibold mb-2">Tech Stack</h4>
+              <p class="text-text-muted">${app.tech_stack}</p>
+            </div>
+          ` : ''}
+
+          ${app.target_users ? `
+            <div class="mt-4">
+              <h4 class="font-semibold mb-2">Target Users</h4>
+              <p class="text-text-muted">${app.target_users}</p>
+            </div>
+          ` : ''}
+
+          ${app.production_needs ? `
+            <div class="mt-4">
+              <h4 class="font-semibold mb-2">Production Needs</h4>
+              <p class="text-text-muted">${app.production_needs}</p>
+            </div>
+          ` : ''}
+        ` : ''}
       `;
 
-      await loadReviewNotes(appId);
       document.getElementById('detail-modal')?.classList.remove('hidden');
     }
 
@@ -580,14 +572,6 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 
     document.getElementById('close-modal')?.addEventListener('click', hideModal);
     document.getElementById('modal-close')?.addEventListener('click', hideModal);
-
-    document.getElementById('add-note-btn')?.addEventListener('click', () => {
-      const noteInput = document.getElementById('new-note-input') as HTMLTextAreaElement;
-      const note = noteInput.value.trim();
-      if (note && currentApplication) {
-        addReviewNote(currentApplication.id, note);
-      }
-    });
 
     document.getElementById('modal-approve')?.addEventListener('click', async () => {
       if (currentApplication) {

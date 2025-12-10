@@ -93,7 +93,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       </div>
 
       <!-- Full-Time Accelerator -->
-      <div id="incubator" class="program-detail mb-16 max-w-4xl mx-auto hidden">
+      <div id="accelerator" class="program-detail mb-16 max-w-4xl mx-auto hidden">
         <div class="card border-t-4 border-accent">
           <div class="text-5xl mb-4">🚀</div>
           <h2 class="text-3xl font-bold mb-4">Full-Time Accelerator</h2>
@@ -118,7 +118,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
               <ul class="text-sm text-text-muted space-y-2">
                 <li>→ <strong>Duration:</strong> 10 weeks (1 week in-person, 8 weeks remote, 1 week in-person)</li>
                 <li>→ <strong>Location:</strong> Remote + in-person sessions in Bengaluru</li>
-                <li>→ <strong>We provide:</strong> Living costs and accommodation covered for the duration</li>
+                <li>→ <strong>We provide:</strong> Living costs and accommodation covered during the 2 in-person weeks in Bengaluru</li>
                 <li>→ <strong>Developers/year:</strong> 200</li>
               </ul>
             </div>
@@ -130,7 +130,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             </p>
           </div>
 
-          <a href="/apply#incubator" class="btn btn-accent btn-lg">Apply to Accelerator</a>
+          <a href="/apply#accelerator" class="btn btn-accent btn-lg">Apply to Accelerator</a>
         </div>
       </div>
 
@@ -244,8 +244,8 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         }
       }
 
-      // Highlight selected button - handle incubator/accelerator alias
-      const buttonId = programId === 'incubator' ? 'btn-accelerator' : `btn-${programId}`;
+      // Highlight selected button
+      const buttonId = programId === 'accelerator' ? 'btn-accelerator' : `btn-${programId}`;
       const selectedBtn = document.getElementById(buttonId);
       if (selectedBtn) {
         selectedBtn.classList.add('active-program');
@@ -255,19 +255,23 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     // Add click handlers
     document.getElementById('btn-bootcamp')?.addEventListener('click', () => showProgram('bootcamp'));
     document.getElementById('btn-hackathons')?.addEventListener('click', () => showProgram('hackathons'));
-    document.getElementById('btn-accelerator')?.addEventListener('click', () => showProgram('incubator'));
+    document.getElementById('btn-accelerator')?.addEventListener('click', () => showProgram('accelerator'));
 
     // Check if there's a hash in the URL and show that program
     const hash = window.location.hash.substring(1); // Remove the #
     const programMap: Record<string, string> = {
       'bootcamp': 'bootcamp',
       'hackathons': 'hackathons',
-      'incubator': 'incubator',
-      'accelerator': 'incubator'
+      'incubator': 'accelerator',    // Legacy alias for backward compatibility
+      'accelerator': 'accelerator'
     };
 
     if (hash && programMap[hash]) {
       showProgram(programMap[hash], true);
+      // Normalize legacy #incubator URL to canonical #accelerator
+      if (hash === 'incubator' && programMap[hash] === 'accelerator') {
+        history.replaceState(null, '', '#accelerator');
+      }
     } else {
       // Show first program by default without scrolling
       showProgram('bootcamp', false);

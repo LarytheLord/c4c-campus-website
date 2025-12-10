@@ -177,7 +177,7 @@ import Leaderboard from '../../components/Leaderboard';
       // Fetch cohorts for these courses
       const { data, error } = await supabase
         .from('cohorts')
-        .select('*, courses(name)')
+        .select('*, courses(title)')
         .in('course_id', courseIds)
         .order('created_at', { ascending: false });
 

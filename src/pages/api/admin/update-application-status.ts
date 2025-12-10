@@ -6,7 +6,24 @@ export const prerender = false;
 
 const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
-const resend = new Resend(import.meta.env.RESEND_API_KEY);
+const resendApiKey = import.meta.env.RESEND_API_KEY;
+const resend = new Resend(resendApiKey);
+
+function checkConfiguration(): { valid: boolean; error?: string } {
+  if (!supabaseUrl) {
+    console.error('[update-application-status] Missing PUBLIC_SUPABASE_URL');
+    return { valid: false, error: 'Server configuration error' };
+  }
+  if (!supabaseServiceKey) {
+    console.error('[update-application-status] Missing SUPABASE_SERVICE_ROLE_KEY');
+    return { valid: false, error: 'Server configuration error' };
+  }
+  if (!resendApiKey) {
+    console.error('[update-application-status] Missing RESEND_API_KEY');
+    return { valid: false, error: 'Server configuration error' };
+  }
+  return { valid: true };
+}
 
 async function verifyAdminAccess(request: Request) {
   const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
@@ -16,6 +33,7 @@ async function verifyAdminAccess(request: Request) {
   const authCookieMatch = cookies.match(/sb-[^=]+-auth-token=([^;]+)/);
 
   let accessToken: string | null = null;
+  let refreshToken: string | null = null;
 
   if (authCookieMatch) {
     try {
@@ -27,20 +45,32 @@ async function verifyAdminAccess(request: Request) {
         tokenData = JSON.parse(atob(decoded));
       }
       accessToken = tokenData.access_token || tokenData[0];
+      refreshToken = tokenData.refresh_token || tokenData[1];
     } catch (e) {
       console.error('Failed to parse auth cookie', e);
     }
   }
 
   if (!accessToken) {
+    console.warn('[update-application-status] Auth failed: No access token found in cookies');
     return { authorized: false, error: 'Unauthorized', status: 401 };
   }
 
-  // Verify the token and get user
-  const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken);
-  if (authError || !user) {
+  // Verify the token and get user via setSession
+  const { data: { session }, error: authError } = await supabase.auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken || ''
+  });
+
+  if (authError || !session) {
+    console.warn('[update-application-status] Auth failed: setSession error', {
+      errorCode: authError?.code,
+      errorMessage: authError?.message
+    });
     return { authorized: false, error: 'Unauthorized', status: 401 };
   }
+
+  const user = session.user;
 
   // Check if user is admin
   const { data: application } = await supabase
@@ -50,6 +80,10 @@ async function verifyAdminAccess(request: Request) {
     .single();
 
   if (!application || application.role !== 'admin') {
+    console.warn('[update-application-status] Auth failed: Admin role check failed', {
+      userId: user.id,
+      currentRole: application?.role ?? 'no application found'
+    });
     return { authorized: false, error: 'Forbidden: Admin access required', status: 403 };
   }
 
@@ -116,6 +150,15 @@ function generateEmailTemplate(heading: string, bodyContent: string, ctaButton?:
 
 export const POST: APIRoute = async ({ request }) => {
   try {
+    // Configuration sanity check
+    const configCheck = checkConfiguration();
+    if (!configCheck.valid) {
+      return new Response(
+        JSON.stringify({ error: configCheck.error }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Verify admin access
     const authResult = await verifyAdminAccess(request);
     if (!authResult.authorized) {
@@ -142,24 +185,85 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
 
-    // Build update object - include role update for approved status
+    // Build base update object
     const updateData: Record<string, any> = {
       status,
       decision_note: decision_note || null,
       reviewed_at: new Date().toISOString()
     };
 
-    // Set role to 'student' when approving
-    if (status === 'approved') {
-      updateData.role = 'student';
-    }
+    // For approved status, we need to set role to 'student' only for applications
+    // that don't already have a role (to avoid demoting admins/teachers)
+    let updatedApps: any[] | null = null;
+    let updateError: any = null;
 
-    // Update applications in database
-    const { data: updatedApps, error: updateError } = await supabaseAdmin
-      .from('applications')
-      .update(updateData)
-      .in('id', application_ids)
-      .select('id, email, name, program');
+    if (status === 'approved') {
+      // First, fetch applications to check their current roles
+      // Only set role to 'student' for those with null role
+      const { data: existingApps, error: fetchError } = await supabaseAdmin
+        .from('applications')
+        .select('id, role')
+        .in('id', application_ids);
+
+      if (fetchError) {
+        console.error('Failed to fetch applications for role check:', fetchError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch applications' }),
+          { status: 500, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Separate applications by whether they need role assignment
+      const needsRoleAssignment = existingApps?.filter(a => a.role === null).map(a => a.id) ?? [];
+      const hasExistingRole = existingApps?.filter(a => a.role !== null).map(a => a.id) ?? [];
+
+      // Update applications that need role assignment (set role to 'student')
+      if (needsRoleAssignment.length > 0) {
+        const { error } = await supabaseAdmin
+          .from('applications')
+          .update({ ...updateData, role: 'student' })
+          .in('id', needsRoleAssignment);
+
+        if (error) {
+          console.error('Database update error (with role):', error);
+          updateError = error;
+        }
+      }
+
+      // Update applications that already have a role (don't change their role)
+      if (hasExistingRole.length > 0 && !updateError) {
+        const { error } = await supabaseAdmin
+          .from('applications')
+          .update(updateData)
+          .in('id', hasExistingRole);
+
+        if (error) {
+          console.error('Database update error (without role):', error);
+          updateError = error;
+        }
+      }
+
+      // Fetch the updated applications for email sending
+      if (!updateError) {
+        const { data, error } = await supabaseAdmin
+          .from('applications')
+          .select('id, email, name, program')
+          .in('id', application_ids);
+
+        updatedApps = data;
+        updateError = error;
+      }
+    } else {
+      // For non-approved statuses, simple update without role change
+      const { data, error } = await supabaseAdmin
+        .from('applications')
+        .update(updateData)
+        .in('id', application_ids)
+        .select('id, email, name, program');
+
+      updatedApps = data;
+      updateError = error;
+    }
 
     if (updateError) {
       console.error('Database update error:', updateError);

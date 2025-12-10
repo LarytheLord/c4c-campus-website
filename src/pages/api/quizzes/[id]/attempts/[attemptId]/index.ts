@@ -138,8 +138,7 @@ export const GET: APIRoute = async ({ request, params }) => {
       questionsForResponse = questionsForResponse.map(q => ({
         ...q,
         correct_answer: undefined,
-        correct_answers_json: undefined,
-        explanation: undefined,
+        answer_explanation: undefined,
       }));
     }
 

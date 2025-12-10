@@ -12,6 +12,18 @@ const supabaseServiceKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
 
 export const prerender = false;
 
+function checkConfiguration(): { valid: boolean; error?: string } {
+  if (!supabaseUrl) {
+    console.error('[reviewers] Missing PUBLIC_SUPABASE_URL');
+    return { valid: false, error: 'Server configuration error' };
+  }
+  if (!supabaseServiceKey) {
+    console.error('[reviewers] Missing SUPABASE_SERVICE_ROLE_KEY');
+    return { valid: false, error: 'Server configuration error' };
+  }
+  return { valid: true };
+}
+
 async function verifyAdminAccess(supabase: any, userId: string) {
   const { data: application } = await supabase
     .from('applications')
@@ -24,30 +36,69 @@ async function verifyAdminAccess(supabase: any, userId: string) {
 
 export const GET: APIRoute = async ({ request }) => {
   try {
+    // Configuration sanity check
+    const configCheck = checkConfiguration();
+    if (!configCheck.valid) {
+      return new Response(JSON.stringify({ error: configCheck.error }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
     const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
 
     const cookies = request.headers.get('cookie') || '';
-    const accessToken = cookies.split(';')
-      .find(c => c.trim().startsWith('sb-access-token='))
-      ?.split('=')[1];
+    const authCookieMatch = cookies.match(/sb-[^=]+-auth-token=([^;]+)/);
+    let accessToken: string | null = null;
+    let refreshToken: string | null = null;
+
+    if (authCookieMatch) {
+      try {
+        const decoded = decodeURIComponent(authCookieMatch[1]);
+        let tokenData;
+        try {
+          tokenData = JSON.parse(decoded);
+        } catch {
+          tokenData = JSON.parse(atob(decoded));
+        }
+        accessToken = tokenData.access_token || tokenData[0];
+        refreshToken = tokenData.refresh_token || tokenData[1];
+      } catch (e) {
+        console.error('[reviewers] Failed to parse auth cookie', e);
+      }
+    }
 
     if (!accessToken) {
+      console.warn('[reviewers] Auth failed: No access token found in cookies');
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken);
-    if (authError || !user) {
+    const { data: { session }, error: authError } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken || ''
+    });
+
+    if (authError || !session) {
+      console.warn('[reviewers] Auth failed: setSession error', {
+        errorCode: authError?.code,
+        errorMessage: authError?.message
+      });
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' }
       });
     }
+
+    const user = session.user;
 
     const isAdmin = await verifyAdminAccess(supabase, user.id);
     if (!isAdmin) {
+      console.warn('[reviewers] Auth failed: Admin role check failed', {
+        userId: user.id
+      });
       return new Response(JSON.stringify({ error: 'Forbidden: Admin access required' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json' }

@@ -33,7 +33,7 @@ describe('Course Creation API+DB Integration', () => {
       title: 'Integration Test Course',
       slug: 'integration-test-course',
       description: 'Testing full workflow',
-      track: 'animal-advocacy' as const,
+      track: 'animal_advocacy' as const,
       difficulty: 'beginner' as const,
       default_duration_weeks: 1,
       is_published: false,
@@ -49,7 +49,7 @@ describe('Course Creation API+DB Integration', () => {
 
     expect(courseError).toBeNull();
     expect(course).toBeDefined();
-    expect(course.name).toBe(courseData.name);
+    expect(course.title).toBe(courseData.title);
     testCourseId = course.id;
 
     // Act & Assert - Step 2: Add module to course
@@ -119,9 +119,9 @@ describe('Course Creation API+DB Integration', () => {
   test('should cascade delete modules and lessons when course deleted', async () => {
     // Arrange - Create course with module and lesson
     const { data: course } = await teacherClient.client.from('courses').insert({
-      name: 'Delete Test',
+      title: 'Delete Test',
       slug: 'delete-test',
-      track: 'animal-advocacy',
+      track: 'animal_advocacy',
       difficulty: 'beginner',
       created_by: teacherClient.userId,
     }).select().single();
@@ -163,9 +163,9 @@ describe('Course Creation API+DB Integration', () => {
   test('should respect order_index for modules and lessons', async () => {
     // Arrange - Create course with multiple modules
     const { data: course } = await teacherClient.client.from('courses').insert({
-      name: 'Order Test',
+      title: 'Order Test',
       slug: 'order-test',
-      track: 'animal-advocacy',
+      track: 'animal_advocacy',
       difficulty: 'beginner',
       created_by: teacherClient.userId,
     }).select().single();
@@ -216,7 +216,7 @@ describe('Course Creation API+DB Integration', () => {
   test('should reject course without required fields', async () => {
     // Arrange - Missing track
     const invalidCourse = {
-      name: 'Invalid Course',
+      title: 'Invalid Course',
       slug: 'invalid',
       difficulty: 'beginner',
       created_by: teacherClient.userId,
@@ -236,18 +236,18 @@ describe('Course Creation API+DB Integration', () => {
   test('should prevent duplicate slugs', async () => {
     // Arrange - Create first course
     await teacherClient.client.from('courses').insert({
-      name: 'First',
+      title: 'First',
       slug: 'duplicate-slug',
-      track: 'animal-advocacy',
+      track: 'animal_advocacy',
       difficulty: 'beginner',
       created_by: teacherClient.userId,
     });
 
     // Act - Try to create second with same slug
     const { error } = await teacherClient.client.from('courses').insert({
-      name: 'Second',
+      title: 'Second',
       slug: 'duplicate-slug', // Same slug
-      track: 'animal-advocacy',
+      track: 'animal_advocacy',
       difficulty: 'beginner',
       created_by: teacherClient.userId,
     });

@@ -39,7 +39,7 @@ describe('Cohort Enrollment Integration Tests', () => {
     const { data: course } = await supabaseAdmin.from('courses').insert({
       title: 'Enrollment Test Course',
       slug: 'enrollment-test-' + Date.now(),
-      track: 'animal-advocacy',
+      track: 'animal_advocacy',
       difficulty: 'beginner',
       is_published: true,
       created_by: teacherClient.userId,

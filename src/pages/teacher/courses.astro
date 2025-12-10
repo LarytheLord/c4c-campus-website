@@ -421,6 +421,48 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
     </div>
   </div>
 
+  <!-- Module Edit Modal -->
+  <div id="module-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg max-w-md w-full shadow-xl">
+      <div class="p-6">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-2xl font-bold" id="module-modal-title">Add Module</h2>
+          <button id="close-module-modal" class="text-text-muted hover:text-text-primary">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <form id="module-form" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium mb-2">Module Name*</label>
+            <input type="text" id="module-name" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" required />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium mb-2">Description</label>
+            <textarea id="module-description" rows="3" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white"></textarea>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium mb-2">Order</label>
+            <input type="number" id="module-order" min="1" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" />
+          </div>
+
+          <div class="flex gap-3 pt-4">
+            <button type="submit" class="btn btn-primary flex-1">
+              Save Module
+            </button>
+            <button type="button" id="cancel-module-modal" class="btn btn-ghost flex-1">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <script>
     import { createClient } from '@supabase/supabase-js';
 
@@ -432,6 +474,8 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
     let courses: any[] = [];
     let cohorts: any[] = [];
     let editingCourse: any = null;
+    let editingModule: any = null;
+    let currentModules: any[] = [];
     let activeTab = 'courses';
 
     // Modal helper functions
@@ -791,32 +835,17 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
         }
       });
 
-      // Add Module button
-      document.getElementById('add-module-btn')?.addEventListener('click', async () => {
+      // Add Module button - opens modal for new module
+      document.getElementById('add-module-btn')?.addEventListener('click', () => {
         if (!editingCourse) return;
-
-        showPrompt('Enter module name:', async (moduleName) => {
-          const moduleOrder = document.querySelectorAll('#modules-list .module-item').length + 1;
-
-          const { data, error } = await supabase
-            .from('modules')
-            .insert([{
-              course_id: editingCourse.id,
-              title: moduleName,
-              order_index: moduleOrder
-            }])
-            .select()
-            .single();
-
-          if (error) {
-            showNotification('Error', 'Error creating module: ' + error.message, 'error');
-            return;
-          }
-
-          showNotification('Success', 'Module added successfully!', 'success');
-          loadModules(editingCourse.id);
-        });
+        editingModule = null;
+        showModuleModal();
       });
+
+      // Module modal event listeners
+      document.getElementById('close-module-modal')?.addEventListener('click', closeModuleModal);
+      document.getElementById('cancel-module-modal')?.addEventListener('click', closeModuleModal);
+      document.getElementById('module-form')?.addEventListener('submit', handleModuleSubmit);
 
       // Delete Course button
       document.getElementById('delete-course-btn')?.addEventListener('click', async () => {
@@ -910,14 +939,14 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
       // Show delete button
       document.getElementById('delete-course-btn')?.classList.remove('hidden');
 
-      // Load modules
-      loadModules(courseId);
+      // Load modules - course IDs are UUID strings
+      loadModules(editingCourse.id);
 
       // Switch to edit tab
       switchTab('edit');
     }
 
-    async function loadModules(courseId: number) {
+    async function loadModules(courseId: string) {
       const modulesList = document.getElementById('modules-list');
       if (!modulesList) return;
 
@@ -935,8 +964,12 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
 
       if (!modules || modules.length === 0) {
         modulesList.innerHTML = '<p class="text-text-muted text-center py-8">No modules yet. Add your first module to start building content.</p>';
+        currentModules = [];
         return;
       }
+
+      // Store modules for editing
+      currentModules = modules;
 
       modulesList.innerHTML = modules.map(module => `
         <div class="module-item border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
@@ -948,10 +981,22 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
                 <p class="text-sm text-text-muted">Order: ${module.order_index}</p>
               </div>
             </div>
-            <button class="btn btn-sm btn-error delete-module" data-id="${module.id}">Delete</button>
+            <div class="flex gap-2">
+              <button class="btn btn-sm btn-ghost edit-module" data-id="${module.id}">Edit</button>
+              <button class="btn btn-sm btn-error delete-module" data-id="${module.id}">Delete</button>
+            </div>
           </div>
         </div>
       `).join('');
+
+      // Add event listeners for edit buttons
+      modulesList.querySelectorAll('.edit-module').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const moduleId = (btn as HTMLElement).getAttribute('data-id');
+          if (!moduleId) return;
+          editModule(parseInt(moduleId));
+        });
+      });
 
       // Add event listeners for delete buttons
       modulesList.querySelectorAll('.delete-module').forEach(btn => {
@@ -974,6 +1019,97 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
           });
         });
       });
+    }
+
+    function editModule(moduleId: number) {
+      editingModule = currentModules.find(m => m.id === moduleId);
+      if (!editingModule) {
+        showNotification('Error', 'Module not found', 'error');
+        return;
+      }
+      showModuleModal();
+    }
+
+    function showModuleModal() {
+      const modal = document.getElementById('module-modal');
+      const titleEl = document.getElementById('module-modal-title');
+      const nameInput = document.getElementById('module-name') as HTMLInputElement;
+      const descInput = document.getElementById('module-description') as HTMLTextAreaElement;
+      const orderInput = document.getElementById('module-order') as HTMLInputElement;
+
+      if (editingModule) {
+        if (titleEl) titleEl.textContent = 'Edit Module';
+        if (nameInput) nameInput.value = editingModule.title || '';
+        if (descInput) descInput.value = editingModule.description || '';
+        if (orderInput) orderInput.value = editingModule.order_index?.toString() || '';
+      } else {
+        if (titleEl) titleEl.textContent = 'Add Module';
+        if (nameInput) nameInput.value = '';
+        if (descInput) descInput.value = '';
+        if (orderInput) orderInput.value = (currentModules.length + 1).toString();
+      }
+
+      modal?.classList.remove('hidden');
+    }
+
+    function closeModuleModal() {
+      document.getElementById('module-modal')?.classList.add('hidden');
+      editingModule = null;
+    }
+
+    async function handleModuleSubmit(e: Event) {
+      e.preventDefault();
+
+      if (!editingCourse) {
+        showNotification('Error', 'No course selected', 'error');
+        return;
+      }
+
+      const moduleData = {
+        title: (document.getElementById('module-name') as HTMLInputElement).value.trim(),
+        description: (document.getElementById('module-description') as HTMLTextAreaElement).value.trim() || null,
+        order_index: parseInt((document.getElementById('module-order') as HTMLInputElement).value) || 1,
+        course_id: editingCourse.id
+      };
+
+      if (!moduleData.title) {
+        showNotification('Error', 'Module name is required', 'error');
+        return;
+      }
+
+      if (editingModule) {
+        // Update existing module
+        const { error } = await supabase
+          .from('modules')
+          .update({
+            title: moduleData.title,
+            description: moduleData.description,
+            order_index: moduleData.order_index
+          })
+          .eq('id', editingModule.id);
+
+        if (error) {
+          showNotification('Error', 'Error updating module: ' + error.message, 'error');
+          return;
+        }
+
+        showNotification('Success', 'Module updated successfully!', 'success');
+      } else {
+        // Create new module
+        const { error } = await supabase
+          .from('modules')
+          .insert([moduleData]);
+
+        if (error) {
+          showNotification('Error', 'Error creating module: ' + error.message, 'error');
+          return;
+        }
+
+        showNotification('Success', 'Module created successfully!', 'success');
+      }
+
+      closeModuleModal();
+      loadModules(editingCourse.id);
     }
 
     function showCourseModal() {

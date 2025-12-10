@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "description": "C4C Campus - AI Development Accelerator for Animal Liberation",
   "scripts": {
+    "prepare": "husky || true",
     "dev": "astro dev",
     "start": "astro dev",
     "build": "astro build",
@@ -28,7 +29,15 @@
     "analyze:bundle": "astro build --verbose",
     "perf:audit": "lighthouse http://localhost:4321 --output=html --output-path=./docs/performance/lighthouse-report.html",
     "db:types": "npx supabase gen types typescript --local > src/types/generated.ts",
-    "db:types:check": "node scripts/check-schema-types.js"
+    "db:types:check": "node scripts/check-schema-types.js",
+    "db:types:check:full": "node scripts/check-schema-types.js --with-field-scan",
+    "db:field-names:check": "node scripts/scan-field-names.js",
+    "db:case:check": "node scripts/detect-case-mismatches.js",
+    "db:validate": "node scripts/validate-schema.js",
+    "db:validate:all": "npm run db:types:check && npm run db:field-names:check && npm run db:case:check",
+    "db:reset": "echo '⚠️ DESTRUCTIVE: Deletes ALL data. Backup first: npm run db:backup' && echo 'Press Ctrl+C to cancel (5s countdown)...' && sleep 5 && psql $DATABASE_URL < schema.sql",
+    "db:backup": "pg_dump $DATABASE_URL > backup_$(date +%Y%m%d_%H%M%S).sql",
+    "db:schema-apply": "npm run db:backup && npm run db:reset && npm run db:validate"
   },
   "dependencies": {
     "@astrojs/node": "^9.5.0",
@@ -85,6 +94,8 @@
     "axe-core": "^4.11.0",
     "jsdom": "^27.0.1",
     "pa11y": "^9.0.1",
+    "pg": "^8.16.3",
+    "husky": "^9.1.7",
     "puppeteer": "^24.27.0",
     "typescript": "^5.6.3",
     "vitest": "^4.0.4"

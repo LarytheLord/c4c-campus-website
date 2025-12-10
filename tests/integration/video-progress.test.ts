@@ -34,7 +34,7 @@ describe('Enrollment + Progress + Resume Integration', () => {
 
     const { data: module, error: moduleError } = await supabaseAdmin.from('modules').insert({
       course_id: testCourseId,
-      name: 'Module 1',
+      title: 'Module 1',
       order_index: 1,
     }).select().single();
 

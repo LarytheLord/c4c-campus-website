@@ -15,8 +15,7 @@ interface Submission {
   submission_number: number;
   submitted_at: string;
   is_late: boolean;
-  grade: number | null;
-  points_earned: number | null;
+  score: number | null;
   feedback: string | null;
   status: string;
   graded_at: string | null;
@@ -268,10 +267,10 @@ export default function SubmissionsList({
                         Submitted: {new Date(submission.submitted_at).toLocaleString()}
                       </p>
 
-                      {submission.grade !== null && (
+                      {submission.score !== null && (
                         <div className="mt-2 flex items-center gap-3">
                           <span className="text-lg font-bold text-green-600">
-                            {submission.points_earned || submission.grade} / {maxPoints}
+                            {submission.score} / {maxPoints}
                           </span>
                           {submission.graded_at && (
                             <span className="text-xs text-gray-500">
@@ -292,12 +291,12 @@ export default function SubmissionsList({
                       <button
                         onClick={() => setGradingSubmission(submission)}
                         className={`px-3 py-2 rounded transition-colors text-sm font-medium ${
-                          submission.grade !== null
+                          submission.score !== null
                             ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
                             : 'bg-blue-500 text-white hover:bg-blue-600'
                         }`}
                       >
-                        {submission.grade !== null ? 'Edit Grade' : 'Grade'}
+                        {submission.score !== null ? 'Edit Grade' : 'Grade'}
                       </button>
                     </div>
                   </div>

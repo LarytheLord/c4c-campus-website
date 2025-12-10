@@ -6,18 +6,31 @@
  * It can be run as part of CI to ensure type definitions stay in sync.
  *
  * Usage:
- *   npm run db:types:check
+ *   npm run db:types:check           # Basic type structure validation
+ *   npm run db:types:check:full      # Includes field name scanning (local convenience)
  *
  * The script will:
  * 1. Verify generated.ts exists and has expected structure
  * 2. Parse schema.sql to extract table definitions
  * 3. Compare against TypeScript type definitions
  * 4. Report any mismatches
+ * 5. Optionally run field name scanner for codebase-wide validation
+ *
+ * Options:
+ *   --with-field-scan  Also scan codebase for field name mismatches (local convenience)
+ *
+ * CI Note:
+ *   In CI, field-name and case checks run as separate steps for clearer reporting.
+ *   The --with-field-scan option is primarily for local development convenience
+ *   when you want to run all checks with a single command.
+ *
+ * @see docs/DATABASE.md for full documentation
  */
 
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { spawn } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,6 +38,10 @@ const __dirname = path.dirname(__filename);
 const SCHEMA_PATH = path.join(__dirname, '..', 'schema.sql');
 const TYPES_DIR = path.join(__dirname, '..', 'src', 'types');
 const GENERATED_PATH = path.join(TYPES_DIR, 'generated.ts');
+
+// Parse command line arguments
+const args = process.argv.slice(2);
+const WITH_FIELD_SCAN = args.includes('--with-field-scan');
 
 // Core LMS tables that must be kept in sync
 const LMS_TABLES = [
@@ -258,7 +275,42 @@ function checkTypeFile(filePath, schemaTypes) {
   return { exists: true, issues };
 }
 
-function main() {
+/**
+ * Run the field name scanner as a child process
+ * Returns the exit code from the scanner
+ */
+function runFieldNameScanner() {
+  return new Promise((resolve) => {
+    console.log('\n--- Field Name Usage Check ---');
+    console.log('Scanning codebase for field name references...\n');
+
+    const scannerPath = path.join(__dirname, 'scan-field-names.js');
+
+    // Check if scanner exists
+    if (!fs.existsSync(scannerPath)) {
+      console.log('[SKIP] Field name scanner not found');
+      console.log('  Create scripts/scan-field-names.js to enable this check');
+      resolve(0);
+      return;
+    }
+
+    const child = spawn('node', [scannerPath], {
+      stdio: 'inherit',
+      cwd: path.join(__dirname, '..'),
+    });
+
+    child.on('close', (code) => {
+      resolve(code || 0);
+    });
+
+    child.on('error', (err) => {
+      console.log(`[ERROR] Failed to run field name scanner: ${err.message}`);
+      resolve(1);
+    });
+  });
+}
+
+async function main() {
   console.log('Schema-Types Synchronization Check\n');
   console.log('='.repeat(50));
 
@@ -321,6 +373,15 @@ function main() {
     }
   }
 
+  // Run field name scanner if requested
+  let fieldScanIssues = 0;
+  if (WITH_FIELD_SCAN) {
+    fieldScanIssues = await runFieldNameScanner();
+    if (fieldScanIssues > 0) {
+      totalIssues += fieldScanIssues;
+    }
+  }
+
   // Summary
   console.log('\n' + '='.repeat(50));
   if (totalIssues > 0) {
@@ -330,11 +391,17 @@ function main() {
     console.log('2. Update manual type definitions to match schema.sql');
     console.log('3. Ensure all UUID columns use "string" type');
     console.log('4. Ensure types extend/compose generated types where appropriate');
+    if (fieldScanIssues > 0) {
+      console.log('5. Fix field name mismatches (use snake_case for database fields)');
+    }
     process.exit(1);
   } else {
     console.log('\nPassed: No critical issues found');
     console.log('\nNote: Types are using generated.ts as the source of truth.');
     console.log('After schema changes, regenerate types with: npm run db:types');
+    if (!WITH_FIELD_SCAN) {
+      console.log('\nTip: Run with --with-field-scan to check field names in code');
+    }
     process.exit(0);
   }
 }

@@ -15,14 +15,6 @@
  * @see https://supabase.com/docs/reference/cli/supabase-gen-types-typescript
  */
 
-// ============================================================================
-// PLACEHOLDER TYPES - Replace with actual Supabase-generated types
-// ============================================================================
-// When you run `npm run db:types` against a live Supabase instance or local
-// database, this file will be replaced with the actual generated types.
-// The types below are placeholder definitions that match the schema.sql
-// structure to allow the codebase to compile before generation.
-
 export type Json =
   | string
   | number
@@ -34,6 +26,178 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      // ======================================================================
+      // AUTHENTICATION & USER MANAGEMENT
+      // ======================================================================
+      applications: {
+        Row: {
+          id: string; // UUID
+          user_id: string | null;
+          program: 'bootcamp' | 'accelerator' | 'hackathon';
+          status: 'pending' | 'approved' | 'rejected' | 'waitlisted';
+          role: 'student' | 'teacher' | 'admin' | null;
+          name: string;
+          email: string;
+          whatsapp: string | null;
+          location: string | null;
+          discord: string | null;
+          interests: string[] | null;
+          motivation: string | null;
+          technical_experience: string | null;
+          commitment: string | null;
+          track: string | null;
+          project_name: string | null;
+          project_description: string | null;
+          prototype_link: string | null;
+          tech_stack: string | null;
+          target_users: string | null;
+          production_needs: string | null;
+          team_size: number | null;
+          current_stage: 'Prototype/MVP' | 'Beta with users' | 'Live in production' | null;
+          funding: 'For-profit' | 'Non-profit' | 'Not sure yet' | null;
+          assigned_reviewer_id: string | null;
+          assignment_date: string | null;
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          program: 'bootcamp' | 'accelerator' | 'hackathon';
+          status?: 'pending' | 'approved' | 'rejected' | 'waitlisted';
+          role?: 'student' | 'teacher' | 'admin' | null;
+          name: string;
+          email: string;
+          whatsapp?: string | null;
+          location?: string | null;
+          discord?: string | null;
+          interests?: string[] | null;
+          motivation?: string | null;
+          technical_experience?: string | null;
+          commitment?: string | null;
+          track?: string | null;
+          project_name?: string | null;
+          project_description?: string | null;
+          prototype_link?: string | null;
+          tech_stack?: string | null;
+          target_users?: string | null;
+          production_needs?: string | null;
+          team_size?: number | null;
+          current_stage?: 'Prototype/MVP' | 'Beta with users' | 'Live in production' | null;
+          funding?: 'For-profit' | 'Non-profit' | 'Not sure yet' | null;
+          assigned_reviewer_id?: string | null;
+          assignment_date?: string | null;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string | null;
+          program?: 'bootcamp' | 'accelerator' | 'hackathon';
+          status?: 'pending' | 'approved' | 'rejected' | 'waitlisted';
+          role?: 'student' | 'teacher' | 'admin' | null;
+          name?: string;
+          email?: string;
+          whatsapp?: string | null;
+          location?: string | null;
+          discord?: string | null;
+          interests?: string[] | null;
+          motivation?: string | null;
+          technical_experience?: string | null;
+          commitment?: string | null;
+          track?: string | null;
+          project_name?: string | null;
+          project_description?: string | null;
+          prototype_link?: string | null;
+          tech_stack?: string | null;
+          target_users?: string | null;
+          production_needs?: string | null;
+          team_size?: number | null;
+          current_stage?: 'Prototype/MVP' | 'Beta with users' | 'Live in production' | null;
+          funding?: 'For-profit' | 'Non-profit' | 'Not sure yet' | null;
+          assigned_reviewer_id?: string | null;
+          assignment_date?: string | null;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      profiles: {
+        Row: {
+          id: string; // UUID (references auth.users)
+          email: string | null;
+          full_name: string | null;
+          display_name: string | null;
+          avatar_url: string | null;
+          bio: string | null;
+          role: 'student' | 'teacher' | 'admin';
+          timezone: string;
+          preferences: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          email?: string | null;
+          full_name?: string | null;
+          display_name?: string | null;
+          avatar_url?: string | null;
+          bio?: string | null;
+          role?: 'student' | 'teacher' | 'admin';
+          timezone?: string;
+          preferences?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          email?: string | null;
+          full_name?: string | null;
+          display_name?: string | null;
+          avatar_url?: string | null;
+          bio?: string | null;
+          role?: 'student' | 'teacher' | 'admin';
+          timezone?: string;
+          preferences?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      auth_logs: {
+        Row: {
+          id: string; // UUID
+          user_id: string | null;
+          event_type: string;
+          ip_address: string | null;
+          user_agent: string | null;
+          details: Json | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          event_type: string;
+          ip_address?: string | null;
+          user_agent?: string | null;
+          details?: Json | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string | null;
+          event_type?: string;
+          ip_address?: string | null;
+          user_agent?: string | null;
+          details?: Json | null;
+          created_at?: string;
+        };
+      };
+
       // ======================================================================
       // COURSE STRUCTURE TABLES
       // ======================================================================
@@ -205,7 +369,7 @@ export type Database = {
       cohort_enrollments: {
         Row: {
           id: string; // UUID
-          cohort_id: string;
+          cohort_id: string; // UUID - NOT NULL (CASCADE delete)
           user_id: string;
           enrolled_at: string;
           status: 'active' | 'completed' | 'dropped' | 'paused';
@@ -237,7 +401,7 @@ export type Database = {
       cohort_schedules: {
         Row: {
           id: string; // UUID
-          cohort_id: string;
+          cohort_id: string; // UUID - NOT NULL (CASCADE delete)
           module_id: number;
           unlock_date: string;
           lock_date: string | null;
@@ -265,7 +429,7 @@ export type Database = {
           id: number;
           user_id: string;
           lesson_id: number;
-          cohort_id: string | null;
+          cohort_id: string | null; // UUID - nullable (SET NULL on delete)
           completed: boolean;
           completed_at: string | null;
           video_position_seconds: number;
@@ -306,7 +470,7 @@ export type Database = {
           id: number;
           user_id: string;
           course_id: number;
-          cohort_id: string | null;
+          cohort_id: string | null; // UUID - nullable (SET NULL on delete)
           enrolled_at: string;
           completed_at: string | null;
           status: 'active' | 'completed' | 'dropped' | 'paused';
@@ -331,6 +495,115 @@ export type Database = {
           completed_at?: string | null;
           status?: 'active' | 'completed' | 'dropped' | 'paused';
           progress_percentage?: number;
+        };
+      };
+
+      // ======================================================================
+      // DISCUSSIONS & FORUMS TABLES
+      // ======================================================================
+      lesson_discussions: {
+        Row: {
+          id: string; // UUID
+          lesson_id: number;
+          cohort_id: string; // UUID - NOT NULL (CASCADE delete)
+          user_id: string;
+          parent_id: string | null; // UUID - self-reference for threading
+          content: string;
+          is_teacher_response: boolean;
+          is_pinned: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          lesson_id: number;
+          cohort_id: string;
+          user_id: string;
+          parent_id?: string | null;
+          content: string;
+          is_teacher_response?: boolean;
+          is_pinned?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          lesson_id?: number;
+          cohort_id?: string;
+          user_id?: string;
+          parent_id?: string | null;
+          content?: string;
+          is_teacher_response?: boolean;
+          is_pinned?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      course_forums: {
+        Row: {
+          id: string; // UUID
+          course_id: number;
+          cohort_id: string; // UUID - NOT NULL (CASCADE delete)
+          user_id: string;
+          title: string;
+          content: string;
+          is_pinned: boolean;
+          is_locked: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          course_id: number;
+          cohort_id: string;
+          user_id: string;
+          title: string;
+          content: string;
+          is_pinned?: boolean;
+          is_locked?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          course_id?: number;
+          cohort_id?: string;
+          user_id?: string;
+          title?: string;
+          content?: string;
+          is_pinned?: boolean;
+          is_locked?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      forum_replies: {
+        Row: {
+          id: string; // UUID
+          forum_post_id: string;
+          user_id: string;
+          content: string;
+          is_teacher_response: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          forum_post_id: string;
+          user_id: string;
+          content: string;
+          is_teacher_response?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          forum_post_id?: string;
+          user_id?: string;
+          content?: string;
+          is_teacher_response?: boolean;
+          created_at?: string;
+          updated_at?: string;
         };
       };
 
@@ -442,7 +715,7 @@ export type Database = {
           id: string; // UUID
           quiz_id: string;
           user_id: string;
-          cohort_id: string | null;
+          cohort_id: string | null; // UUID - nullable (SET NULL on delete)
           attempt_number: number;
           started_at: string;
           submitted_at: string | null;
@@ -659,10 +932,552 @@ export type Database = {
           created_at?: string;
         };
       };
+
+      // ======================================================================
+      // MESSAGING & NOTIFICATIONS TABLES
+      // ======================================================================
+      message_threads: {
+        Row: {
+          id: string; // UUID
+          participant_ids: string[];
+          subject: string | null;
+          last_message_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          participant_ids: string[];
+          subject?: string | null;
+          last_message_at?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          participant_ids?: string[];
+          subject?: string | null;
+          last_message_at?: string;
+          created_at?: string;
+        };
+      };
+      messages: {
+        Row: {
+          id: string; // UUID
+          thread_id: string;
+          sender_id: string;
+          content: string;
+          attachments: string[] | null;
+          read_by: string[];
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          thread_id: string;
+          sender_id: string;
+          content: string;
+          attachments?: string[] | null;
+          read_by?: string[];
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          thread_id?: string;
+          sender_id?: string;
+          content?: string;
+          attachments?: string[] | null;
+          read_by?: string[];
+          created_at?: string;
+        };
+      };
+      notifications: {
+        Row: {
+          id: string; // UUID
+          user_id: string;
+          type: string;
+          title: string;
+          content: string | null;
+          link: string | null;
+          is_read: boolean;
+          metadata: Json | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          type: string;
+          title: string;
+          content?: string | null;
+          link?: string | null;
+          is_read?: boolean;
+          metadata?: Json | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          type?: string;
+          title?: string;
+          content?: string | null;
+          link?: string | null;
+          is_read?: boolean;
+          metadata?: Json | null;
+          created_at?: string;
+        };
+      };
+      announcements: {
+        Row: {
+          id: string; // UUID
+          title: string;
+          content: string;
+          scope: 'platform' | 'course' | 'cohort';
+          target_id: string | null;
+          priority: 'low' | 'normal' | 'high' | 'urgent';
+          published: boolean;
+          publish_at: string | null;
+          expires_at: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          content: string;
+          scope: 'platform' | 'course' | 'cohort';
+          target_id?: string | null;
+          priority?: 'low' | 'normal' | 'high' | 'urgent';
+          published?: boolean;
+          publish_at?: string | null;
+          expires_at?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          title?: string;
+          content?: string;
+          scope?: 'platform' | 'course' | 'cohort';
+          target_id?: string | null;
+          priority?: 'low' | 'normal' | 'high' | 'urgent';
+          published?: boolean;
+          publish_at?: string | null;
+          expires_at?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+      };
+
+      // ======================================================================
+      // AI TEACHING ASSISTANT TABLES
+      // ======================================================================
+      ai_conversations: {
+        Row: {
+          id: string; // UUID
+          user_id: string;
+          course_id: number | null;
+          lesson_id: number | null;
+          title: string | null;
+          model: string;
+          status: 'active' | 'archived';
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          course_id?: number | null;
+          lesson_id?: number | null;
+          title?: string | null;
+          model?: string;
+          status?: 'active' | 'archived';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          course_id?: number | null;
+          lesson_id?: number | null;
+          title?: string | null;
+          model?: string;
+          status?: 'active' | 'archived';
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      ai_messages: {
+        Row: {
+          id: string; // UUID
+          conversation_id: string;
+          role: 'user' | 'assistant' | 'system';
+          content: string;
+          tokens_used: number;
+          cost: number;
+          metadata: Json | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          conversation_id: string;
+          role: 'user' | 'assistant' | 'system';
+          content: string;
+          tokens_used?: number;
+          cost?: number;
+          metadata?: Json | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          conversation_id?: string;
+          role?: 'user' | 'assistant' | 'system';
+          content?: string;
+          tokens_used?: number;
+          cost?: number;
+          metadata?: Json | null;
+          created_at?: string;
+        };
+      };
+      ai_usage_logs: {
+        Row: {
+          id: string; // UUID
+          user_id: string | null;
+          model: string;
+          tokens_used: number;
+          cost: number;
+          operation: string | null;
+          metadata: Json | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          model: string;
+          tokens_used: number;
+          cost: number;
+          operation?: string | null;
+          metadata?: Json | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string | null;
+          model?: string;
+          tokens_used?: number;
+          cost?: number;
+          operation?: string | null;
+          metadata?: Json | null;
+          created_at?: string;
+        };
+      };
+
+      // ======================================================================
+      // CERTIFICATE TABLES
+      // ======================================================================
+      certificate_templates: {
+        Row: {
+          id: string; // UUID
+          name: string;
+          description: string | null;
+          template_html: string;
+          template_variables: string[] | null;
+          is_default: boolean;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          description?: string | null;
+          template_html: string;
+          template_variables?: string[] | null;
+          is_default?: boolean;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          description?: string | null;
+          template_html?: string;
+          template_variables?: string[] | null;
+          is_default?: boolean;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      certificates: {
+        Row: {
+          id: string; // UUID
+          user_id: string;
+          course_id: number | null;
+          template_id: string | null;
+          certificate_code: string;
+          issued_date: string;
+          expiry_date: string | null;
+          student_name: string;
+          course_title: string;
+          completion_date: string | null;
+          final_grade: string | null;
+          pdf_url: string | null;
+          metadata: Json | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          course_id?: number | null;
+          template_id?: string | null;
+          certificate_code: string;
+          issued_date?: string;
+          expiry_date?: string | null;
+          student_name: string;
+          course_title: string;
+          completion_date?: string | null;
+          final_grade?: string | null;
+          pdf_url?: string | null;
+          metadata?: Json | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          course_id?: number | null;
+          template_id?: string | null;
+          certificate_code?: string;
+          issued_date?: string;
+          expiry_date?: string | null;
+          student_name?: string;
+          course_title?: string;
+          completion_date?: string | null;
+          final_grade?: string | null;
+          pdf_url?: string | null;
+          metadata?: Json | null;
+          created_at?: string;
+        };
+      };
+
+      // ======================================================================
+      // PAYMENT TABLES
+      // ======================================================================
+      payments: {
+        Row: {
+          id: string; // UUID
+          user_id: string | null;
+          stripe_payment_id: string;
+          stripe_customer_id: string | null;
+          amount: number;
+          currency: string;
+          status: 'pending' | 'succeeded' | 'failed' | 'refunded';
+          payment_type: 'one_time' | 'subscription' | 'course_fee' | null;
+          course_id: number | null;
+          description: string | null;
+          metadata: Json | null;
+          paid_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          stripe_payment_id: string;
+          stripe_customer_id?: string | null;
+          amount: number;
+          currency?: string;
+          status: 'pending' | 'succeeded' | 'failed' | 'refunded';
+          payment_type?: 'one_time' | 'subscription' | 'course_fee' | null;
+          course_id?: number | null;
+          description?: string | null;
+          metadata?: Json | null;
+          paid_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string | null;
+          stripe_payment_id?: string;
+          stripe_customer_id?: string | null;
+          amount?: number;
+          currency?: string;
+          status?: 'pending' | 'succeeded' | 'failed' | 'refunded';
+          payment_type?: 'one_time' | 'subscription' | 'course_fee' | null;
+          course_id?: number | null;
+          description?: string | null;
+          metadata?: Json | null;
+          paid_at?: string | null;
+          created_at?: string;
+        };
+      };
+      subscriptions: {
+        Row: {
+          id: string; // UUID
+          user_id: string;
+          stripe_subscription_id: string;
+          stripe_customer_id: string;
+          plan: 'free' | 'pro_monthly' | 'pro_yearly' | 'enterprise';
+          status: 'active' | 'canceled' | 'past_due' | 'unpaid';
+          current_period_start: string;
+          current_period_end: string;
+          cancel_at_period_end: boolean;
+          canceled_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          stripe_subscription_id: string;
+          stripe_customer_id: string;
+          plan: 'free' | 'pro_monthly' | 'pro_yearly' | 'enterprise';
+          status: 'active' | 'canceled' | 'past_due' | 'unpaid';
+          current_period_start: string;
+          current_period_end: string;
+          cancel_at_period_end?: boolean;
+          canceled_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          stripe_subscription_id?: string;
+          stripe_customer_id?: string;
+          plan?: 'free' | 'pro_monthly' | 'pro_yearly' | 'enterprise';
+          status?: 'active' | 'canceled' | 'past_due' | 'unpaid';
+          current_period_start?: string;
+          current_period_end?: string;
+          cancel_at_period_end?: boolean;
+          canceled_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+
+      // ======================================================================
+      // MEDIA LIBRARY TABLE
+      // ======================================================================
+      media_library: {
+        Row: {
+          id: string; // UUID
+          file_name: string;
+          file_path: string;
+          file_type: string;
+          mime_type: string | null;
+          file_size_bytes: number;
+          folder: string;
+          uploaded_by: string | null;
+          alt_text: string | null;
+          caption: string | null;
+          tags: string[] | null;
+          is_public: boolean;
+          usage_count: number;
+          is_in_use: boolean;
+          malware_scan_status: 'pending' | 'clean' | 'infected' | 'failed';
+          malware_scan_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          file_name: string;
+          file_path: string;
+          file_type: string;
+          mime_type?: string | null;
+          file_size_bytes: number;
+          folder?: string;
+          uploaded_by?: string | null;
+          alt_text?: string | null;
+          caption?: string | null;
+          tags?: string[] | null;
+          is_public?: boolean;
+          usage_count?: number;
+          is_in_use?: boolean;
+          malware_scan_status?: 'pending' | 'clean' | 'infected' | 'failed';
+          malware_scan_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          file_name?: string;
+          file_path?: string;
+          file_type?: string;
+          mime_type?: string | null;
+          file_size_bytes?: number;
+          folder?: string;
+          uploaded_by?: string | null;
+          alt_text?: string | null;
+          caption?: string | null;
+          tags?: string[] | null;
+          is_public?: boolean;
+          usage_count?: number;
+          is_in_use?: boolean;
+          malware_scan_status?: 'pending' | 'clean' | 'infected' | 'failed';
+          malware_scan_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+
+      // ======================================================================
+      // ANALYTICS TABLE
+      // ======================================================================
+      analytics_events: {
+        Row: {
+          id: string; // UUID
+          user_id: string | null;
+          event_type: string;
+          event_data: Json | null;
+          session_id: string | null;
+          ip_address: string | null;
+          user_agent: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          event_type: string;
+          event_data?: Json | null;
+          session_id?: string | null;
+          ip_address?: string | null;
+          user_agent?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string | null;
+          event_type?: string;
+          event_data?: Json | null;
+          session_id?: string | null;
+          ip_address?: string | null;
+          user_agent?: string | null;
+          created_at?: string;
+        };
+      };
     };
+
+    // ========================================================================
+    // VIEWS (Materialized Views)
+    // ========================================================================
     Views: {
-      [_ in never]: never;
+      student_roster_view: {
+        Row: {
+          cohort_id: string | null;
+          user_id: string | null;
+          name: string | null;
+          email: string | null;
+          enrolled_at: string | null;
+          status: string | null;
+          last_activity_at: string | null;
+          completed_lessons: number | null;
+          discussion_posts: number | null;
+          forum_posts: number | null;
+        };
+      };
     };
+
+    // ========================================================================
+    // FUNCTIONS
+    // ========================================================================
     Functions: {
       is_admin: {
         Args: { user_uuid?: string };
@@ -672,9 +1487,56 @@ export type Database = {
         Args: { user_uuid?: string };
         Returns: boolean;
       };
+      get_user_role: {
+        Args: { check_user_id: string };
+        Returns: string;
+      };
+      is_course_completed: {
+        Args: { check_user_id: string; check_course_id: number };
+        Returns: boolean;
+      };
+      get_course_completion_date: {
+        Args: { check_user_id: string; check_course_id: number };
+        Returns: string;
+      };
+      generate_certificate_number: {
+        Args: Record<string, never>;
+        Returns: string;
+      };
+      generate_verification_code: {
+        Args: Record<string, never>;
+        Returns: string;
+      };
+      enroll_in_cohort: {
+        Args: { p_cohort_id: string; p_user_id: string };
+        Returns: Database['public']['Tables']['cohort_enrollments']['Row'];
+      };
+      approve_application: {
+        Args: { application_id: string };
+        Returns: undefined;
+      };
+      reject_application: {
+        Args: { application_id: string };
+        Returns: undefined;
+      };
+      waitlist_application: {
+        Args: { application_id: string };
+        Returns: undefined;
+      };
       can_user_submit: {
         Args: { assignment_id_param: string; user_id_param: string };
         Returns: boolean;
+      };
+      create_assignment_submission: {
+        Args: {
+          p_assignment_id: string;
+          p_user_id: string;
+          p_file_url: string;
+          p_file_name: string;
+          p_file_size_bytes: number;
+          p_file_type: string;
+        };
+        Returns: Database['public']['Tables']['assignment_submissions']['Row'];
       };
       get_assignment_stats: {
         Args: { assignment_id_param: string };
@@ -686,11 +1548,12 @@ export type Database = {
           on_time_submissions: number;
         }[];
       };
-      enroll_in_cohort: {
-        Args: { p_cohort_id: string; p_user_id: string };
-        Returns: Database['public']['Tables']['cohort_enrollments']['Row'];
+      refresh_student_roster_view: {
+        Args: Record<string, never>;
+        Returns: undefined;
       };
     };
+
     Enums: {
       [_ in never]: never;
     };
@@ -704,6 +1567,23 @@ export type Database = {
 // HELPER TYPES - Convenience aliases for common table types
 // ============================================================================
 
+// Authentication & User Management
+/** Row type for applications table */
+export type ApplicationRow = Database['public']['Tables']['applications']['Row'];
+export type ApplicationInsert = Database['public']['Tables']['applications']['Insert'];
+export type ApplicationUpdate = Database['public']['Tables']['applications']['Update'];
+
+/** Row type for profiles table */
+export type ProfileRow = Database['public']['Tables']['profiles']['Row'];
+export type ProfileInsert = Database['public']['Tables']['profiles']['Insert'];
+export type ProfileUpdate = Database['public']['Tables']['profiles']['Update'];
+
+/** Row type for auth_logs table */
+export type AuthLogRow = Database['public']['Tables']['auth_logs']['Row'];
+export type AuthLogInsert = Database['public']['Tables']['auth_logs']['Insert'];
+export type AuthLogUpdate = Database['public']['Tables']['auth_logs']['Update'];
+
+// Course Structure
 /** Row type for courses table */
 export type CourseRow = Database['public']['Tables']['courses']['Row'];
 export type CourseInsert = Database['public']['Tables']['courses']['Insert'];
@@ -719,6 +1599,7 @@ export type LessonRow = Database['public']['Tables']['lessons']['Row'];
 export type LessonInsert = Database['public']['Tables']['lessons']['Insert'];
 export type LessonUpdate = Database['public']['Tables']['lessons']['Update'];
 
+// Cohort System
 /** Row type for cohorts table */
 export type CohortRow = Database['public']['Tables']['cohorts']['Row'];
 export type CohortInsert = Database['public']['Tables']['cohorts']['Insert'];
@@ -728,6 +1609,11 @@ export type CohortUpdate = Database['public']['Tables']['cohorts']['Update'];
 export type CohortEnrollmentRow = Database['public']['Tables']['cohort_enrollments']['Row'];
 export type CohortEnrollmentInsert = Database['public']['Tables']['cohort_enrollments']['Insert'];
 export type CohortEnrollmentUpdate = Database['public']['Tables']['cohort_enrollments']['Update'];
+
+/** Row type for cohort_schedules table */
+export type CohortScheduleRow = Database['public']['Tables']['cohort_schedules']['Row'];
+export type CohortScheduleInsert = Database['public']['Tables']['cohort_schedules']['Insert'];
+export type CohortScheduleUpdate = Database['public']['Tables']['cohort_schedules']['Update'];
 
 /** Row type for lesson_progress table */
 export type LessonProgressRow = Database['public']['Tables']['lesson_progress']['Row'];
@@ -739,6 +1625,23 @@ export type EnrollmentRow = Database['public']['Tables']['enrollments']['Row'];
 export type EnrollmentInsert = Database['public']['Tables']['enrollments']['Insert'];
 export type EnrollmentUpdate = Database['public']['Tables']['enrollments']['Update'];
 
+// Discussions & Forums
+/** Row type for lesson_discussions table */
+export type LessonDiscussionRow = Database['public']['Tables']['lesson_discussions']['Row'];
+export type LessonDiscussionInsert = Database['public']['Tables']['lesson_discussions']['Insert'];
+export type LessonDiscussionUpdate = Database['public']['Tables']['lesson_discussions']['Update'];
+
+/** Row type for course_forums table */
+export type CourseForumRow = Database['public']['Tables']['course_forums']['Row'];
+export type CourseForumInsert = Database['public']['Tables']['course_forums']['Insert'];
+export type CourseForumUpdate = Database['public']['Tables']['course_forums']['Update'];
+
+/** Row type for forum_replies table */
+export type ForumReplyRow = Database['public']['Tables']['forum_replies']['Row'];
+export type ForumReplyInsert = Database['public']['Tables']['forum_replies']['Insert'];
+export type ForumReplyUpdate = Database['public']['Tables']['forum_replies']['Update'];
+
+// Quizzes
 /** Row type for quizzes table */
 export type QuizRow = Database['public']['Tables']['quizzes']['Row'];
 export type QuizInsert = Database['public']['Tables']['quizzes']['Insert'];
@@ -754,6 +1657,7 @@ export type QuizAttemptRow = Database['public']['Tables']['quiz_attempts']['Row'
 export type QuizAttemptInsert = Database['public']['Tables']['quiz_attempts']['Insert'];
 export type QuizAttemptUpdate = Database['public']['Tables']['quiz_attempts']['Update'];
 
+// Assignments
 /** Row type for assignments table */
 export type AssignmentRow = Database['public']['Tables']['assignments']['Row'];
 export type AssignmentInsert = Database['public']['Tables']['assignments']['Insert'];
@@ -768,3 +1672,78 @@ export type AssignmentSubmissionUpdate = Database['public']['Tables']['assignmen
 export type AssignmentRubricRow = Database['public']['Tables']['assignment_rubrics']['Row'];
 export type AssignmentRubricInsert = Database['public']['Tables']['assignment_rubrics']['Insert'];
 export type AssignmentRubricUpdate = Database['public']['Tables']['assignment_rubrics']['Update'];
+
+// Messaging & Notifications
+/** Row type for message_threads table */
+export type MessageThreadRow = Database['public']['Tables']['message_threads']['Row'];
+export type MessageThreadInsert = Database['public']['Tables']['message_threads']['Insert'];
+export type MessageThreadUpdate = Database['public']['Tables']['message_threads']['Update'];
+
+/** Row type for messages table */
+export type MessageRow = Database['public']['Tables']['messages']['Row'];
+export type MessageInsert = Database['public']['Tables']['messages']['Insert'];
+export type MessageUpdate = Database['public']['Tables']['messages']['Update'];
+
+/** Row type for notifications table */
+export type NotificationRow = Database['public']['Tables']['notifications']['Row'];
+export type NotificationInsert = Database['public']['Tables']['notifications']['Insert'];
+export type NotificationUpdate = Database['public']['Tables']['notifications']['Update'];
+
+/** Row type for announcements table */
+export type AnnouncementRow = Database['public']['Tables']['announcements']['Row'];
+export type AnnouncementInsert = Database['public']['Tables']['announcements']['Insert'];
+export type AnnouncementUpdate = Database['public']['Tables']['announcements']['Update'];
+
+// AI Teaching Assistant
+/** Row type for ai_conversations table */
+export type AiConversationRow = Database['public']['Tables']['ai_conversations']['Row'];
+export type AiConversationInsert = Database['public']['Tables']['ai_conversations']['Insert'];
+export type AiConversationUpdate = Database['public']['Tables']['ai_conversations']['Update'];
+
+/** Row type for ai_messages table */
+export type AiMessageRow = Database['public']['Tables']['ai_messages']['Row'];
+export type AiMessageInsert = Database['public']['Tables']['ai_messages']['Insert'];
+export type AiMessageUpdate = Database['public']['Tables']['ai_messages']['Update'];
+
+/** Row type for ai_usage_logs table */
+export type AiUsageLogRow = Database['public']['Tables']['ai_usage_logs']['Row'];
+export type AiUsageLogInsert = Database['public']['Tables']['ai_usage_logs']['Insert'];
+export type AiUsageLogUpdate = Database['public']['Tables']['ai_usage_logs']['Update'];
+
+// Certificates
+/** Row type for certificate_templates table */
+export type CertificateTemplateRow = Database['public']['Tables']['certificate_templates']['Row'];
+export type CertificateTemplateInsert = Database['public']['Tables']['certificate_templates']['Insert'];
+export type CertificateTemplateUpdate = Database['public']['Tables']['certificate_templates']['Update'];
+
+/** Row type for certificates table */
+export type CertificateRow = Database['public']['Tables']['certificates']['Row'];
+export type CertificateInsert = Database['public']['Tables']['certificates']['Insert'];
+export type CertificateUpdate = Database['public']['Tables']['certificates']['Update'];
+
+// Payments
+/** Row type for payments table */
+export type PaymentRow = Database['public']['Tables']['payments']['Row'];
+export type PaymentInsert = Database['public']['Tables']['payments']['Insert'];
+export type PaymentUpdate = Database['public']['Tables']['payments']['Update'];
+
+/** Row type for subscriptions table */
+export type SubscriptionRow = Database['public']['Tables']['subscriptions']['Row'];
+export type SubscriptionInsert = Database['public']['Tables']['subscriptions']['Insert'];
+export type SubscriptionUpdate = Database['public']['Tables']['subscriptions']['Update'];
+
+// Media Library
+/** Row type for media_library table */
+export type MediaLibraryRow = Database['public']['Tables']['media_library']['Row'];
+export type MediaLibraryInsert = Database['public']['Tables']['media_library']['Insert'];
+export type MediaLibraryUpdate = Database['public']['Tables']['media_library']['Update'];
+
+// Analytics
+/** Row type for analytics_events table */
+export type AnalyticsEventRow = Database['public']['Tables']['analytics_events']['Row'];
+export type AnalyticsEventInsert = Database['public']['Tables']['analytics_events']['Insert'];
+export type AnalyticsEventUpdate = Database['public']['Tables']['analytics_events']['Update'];
+
+// Views
+/** Row type for student_roster_view materialized view */
+export type StudentRosterViewRow = Database['public']['Views']['student_roster_view']['Row'];

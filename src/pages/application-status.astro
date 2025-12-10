@@ -174,7 +174,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
     <!-- Edit Application Modal -->
     <div id="edit-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-surface rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div class="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-xl">
         <div class="p-6">
           <div class="flex items-center justify-between mb-6">
             <h2 class="text-2xl font-bold">Edit Application</h2>
@@ -412,6 +412,13 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       e.preventDefault();
 
       const form = e.target as HTMLFormElement;
+      const submitBtn = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+      const originalBtnText = submitBtn.textContent;
+
+      // Disable button and show loading state
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Saving...';
+
       const formData = new FormData(form);
 
       const updates: any = {
@@ -426,17 +433,30 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         updates.commitment = formData.get('commitment');
       }
 
-      const { error } = await supabase
+      const { error, count } = await supabase
         .from('applications')
         .update(updates)
-        .eq('id', userApplication.id);
+        .eq('id', userApplication.id)
+        .select('id', { count: 'exact' });
 
       if (error) {
         alert('Error updating application: ' + error.message);
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalBtnText;
+        return;
+      }
+
+      // Check if any rows were actually updated
+      if (count === 0) {
+        alert('Unable to update application. Please try again or contact support.');
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalBtnText;
         return;
       }
 
       alert('Application updated successfully!');
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalBtnText;
       closeEditModal();
 
       // Reload application

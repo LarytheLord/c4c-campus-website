@@ -13,6 +13,11 @@ import type {
   LessonProgressRow,
   CohortRow,
   CohortEnrollmentRow,
+  CohortScheduleRow,
+  LessonDiscussionRow,
+  CourseForumRow,
+  ForumReplyRow,
+  ProfileRow,
   Json,
 } from './generated';
 
@@ -167,16 +172,11 @@ export interface CohortEnrollment extends Omit<CohortEnrollmentRow, 'progress'> 
 
 /**
  * Cohort Schedule - Module unlock dates for cohorts
- * Reference: schema.sql
+ * Reference: schema.sql cohort_schedules table
+ *
+ * Uses the generated CohortScheduleRow type directly.
  */
-export interface CohortSchedule {
-  id: string; // UUID
-  cohort_id: string; // UUID
-  module_id: number;
-  unlock_date: string; // ISO date string
-  lock_date: string | null; // ISO date string
-  created_at: string;
-}
+export type CohortSchedule = CohortScheduleRow;
 
 /**
  * Student with Progress - Extended student info with progress data
@@ -266,51 +266,29 @@ export interface DashboardExportData {
 
 /**
  * Lesson Discussion - Threaded comments on lessons
- * Reference: tests/integration/discussion-schema.test.ts
+ * Reference: schema.sql lesson_discussions table
+ *
+ * Uses the generated LessonDiscussionRow type directly.
+ * Note: cohort_id is NOT NULL (CASCADE delete behavior)
  */
-export interface LessonDiscussion {
-  id: string; // UUID
-  lesson_id: number;
-  cohort_id: string; // UUID
-  user_id: string; // UUID
-  parent_id: string | null; // UUID for threaded replies
-  content: string;
-  is_teacher_response: boolean;
-  is_pinned: boolean;
-  created_at: string;
-  updated_at: string;
-}
+export type LessonDiscussion = LessonDiscussionRow;
 
 /**
  * Course Forum Post - General discussion topics
- * Reference: tests/integration/discussion-schema.test.ts
+ * Reference: schema.sql course_forums table
+ *
+ * Uses the generated CourseForumRow type directly.
+ * Note: cohort_id is NOT NULL (CASCADE delete behavior)
  */
-export interface CourseForumPost {
-  id: string; // UUID
-  course_id: number;
-  cohort_id: string; // UUID
-  user_id: string; // UUID
-  title: string;
-  content: string;
-  is_pinned: boolean;
-  is_locked: boolean;
-  created_at: string;
-  updated_at: string;
-}
+export type CourseForumPost = CourseForumRow;
 
 /**
  * Forum Reply - Replies to forum posts
- * Reference: tests/integration/discussion-schema.test.ts
+ * Reference: schema.sql forum_replies table
+ *
+ * Uses the generated ForumReplyRow type directly.
  */
-export interface ForumReply {
-  id: string; // UUID
-  forum_post_id: string; // UUID
-  user_id: string; // UUID
-  content: string;
-  is_teacher_response: boolean;
-  created_at: string;
-  updated_at: string;
-}
+export type ForumReply = ForumReplyRow;
 
 /**
  * User Profile - Basic user information for display

@@ -286,8 +286,8 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       // Load ALL courses in the system
       const { data, error } = await supabase
         .from('courses')
-        .select('id, name, slug')
-        .order('name', { ascending: true });
+        .select('id, title, slug')
+        .order('title', { ascending: true });
 
       if (error) {
         console.error('Error loading courses:', error);
@@ -320,7 +320,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
         .from('cohorts')
         .select(`
           *,
-          courses(name, slug),
+          courses(title, slug),
           cohort_enrollments(count)
         `)
         .order('created_at', { ascending: false });
@@ -597,7 +597,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       if (!currentCohortStudents) return;
 
       document.getElementById('students-modal-title')!.textContent = `Students - ${currentCohortStudents.name}`;
-      document.getElementById('students-modal-subtitle')!.textContent = currentCohortStudents.courses?.name || 'Unknown Course';
+      document.getElementById('students-modal-subtitle')!.textContent = currentCohortStudents.courses?.title || 'Unknown Course';
       document.getElementById('students-modal')?.classList.remove('hidden');
 
       await loadStudents(cohortId);

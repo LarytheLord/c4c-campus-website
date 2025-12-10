@@ -69,7 +69,7 @@ import TeacherLayout from '../../../layouts/TeacherLayout.astro';
         .from('cohorts')
         .select(`
           *,
-          courses(name, slug),
+          courses(title, slug),
           cohort_enrollments(count)
         `)
         .eq('created_by', userId)

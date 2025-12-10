@@ -8,7 +8,7 @@ export interface Course {
   title: string;
   slug: string;
   description: string;
-  track: 'animal-advocacy' | 'climate' | 'ai-safety' | 'general';
+  track: 'animal_advocacy' | 'climate' | 'ai_safety' | 'general';
   difficulty: 'beginner' | 'intermediate' | 'advanced';
   thumbnail_url: string;
   default_duration_weeks: number;
@@ -50,7 +50,7 @@ export const mockCourse: Course = {
   title: 'n8n Workflow Automation Basics',
   slug: 'n8n-basics',
   description: 'Learn to build no-code automation workflows for animal advocacy campaigns',
-  track: 'animal-advocacy',
+  track: 'animal_advocacy',
   difficulty: 'beginner',
   thumbnail_url: 'thumbnails/course-1-n8n-basics.jpg',
   default_duration_weeks: 2,
@@ -66,7 +66,7 @@ export const mockCourseUnpublished: Course = {
   title: 'Advanced n8n Workflows',
   slug: 'n8n-advanced',
   description: 'Build complex multi-step automation workflows',
-  track: 'animal-advocacy',
+  track: 'animal_advocacy',
   difficulty: 'intermediate',
   thumbnail_url: 'thumbnails/course-2-n8n-advanced.jpg',
   default_duration_weeks: 3,
@@ -187,7 +187,7 @@ export const mockCourses: Course[] = [
     title: 'Advocacy Campaign Automation',
     slug: 'campaign-automation',
     description: 'Automate social media campaigns and email outreach',
-    track: 'animal-advocacy',
+    track: 'animal_advocacy',
     difficulty: 'intermediate',
     thumbnail_url: 'thumbnails/course-3-campaigns.jpg',
     default_duration_weeks: 3,

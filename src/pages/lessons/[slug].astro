@@ -436,7 +436,7 @@ export const prerender = false;
             statusColor = 'border-blue-200 bg-blue-50';
           }
         } else if (submission.status === 'graded') {
-          const points = submission.points_earned || submission.grade || 0;
+          const points = submission.score || 0;
           statusBadge = `<span class="px-3 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">Graded: ${points}/${assignment.max_points}</span>`;
           statusColor = 'border-green-200 bg-green-50';
         } else {

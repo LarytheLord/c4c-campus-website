@@ -54,7 +54,6 @@ export const POST: APIRoute = async ({ request }) => {
       { field: 'lessonId', required: true, type: 'number', min: 1 },
       { field: 'title', required: true, type: 'string', minLength: 1, maxLength: 200 },
       { field: 'description', required: false, type: 'string', maxLength: 2000 },
-      { field: 'instructions', required: false, type: 'string', maxLength: 5000 },
       { field: 'timeLimit', required: false, type: 'number', min: 1 },
       { field: 'passingScore', required: false, type: 'number', min: 0, max: 100 },
       { field: 'maxAttempts', required: false, type: 'number', min: 0 },
@@ -103,7 +102,6 @@ export const POST: APIRoute = async ({ request }) => {
     // Sanitize inputs
     const sanitizedTitle = sanitizeHTML(body.title, []);
     const sanitizedDescription = body.description ? sanitizeHTML(body.description) : null;
-    const sanitizedInstructions = body.instructions ? sanitizeHTML(body.instructions) : null;
 
     // Validate quiz data
     const quizValidation = validateQuiz({

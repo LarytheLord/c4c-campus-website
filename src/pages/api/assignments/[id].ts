@@ -55,8 +55,8 @@ export const GET: APIRoute = async ({ request, params }) => {
       .from('assignments')
       .select(`
         *,
-        lessons(id, name, module_id),
-        assignment_submissions(id, user_id, status, grade, submitted_at)
+        lessons(id, title, module_id),
+        assignment_submissions(id, user_id, status, score, submitted_at)
       `)
       .eq('id', assignmentId)
       .single();

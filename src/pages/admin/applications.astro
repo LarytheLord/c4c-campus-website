@@ -73,6 +73,13 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
                 <option value="accelerator">Accelerator</option>
                 <option value="hackathon">Hackathon</option>
               </select>
+
+              <!-- Scholarship Filter -->
+              <select id="scholarship-filter" class="border border-border rounded-lg px-4 py-2 bg-background">
+                <option value="">All Scholarship</option>
+                <option value="requested">Scholarship Requested</option>
+                <option value="none">No Scholarship</option>
+              </select>
             </div>
 
             <!-- Bulk Actions -->
@@ -198,13 +205,17 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       const searchTerm = (document.getElementById('search-input') as HTMLInputElement).value.toLowerCase();
       const statusFilter = (document.getElementById('status-filter') as HTMLSelectElement).value;
       const programFilter = (document.getElementById('program-filter') as HTMLSelectElement).value;
+      const scholarshipFilter = (document.getElementById('scholarship-filter') as HTMLSelectElement).value;
 
       filteredApplications = allApplications.filter(app => {
         const matchesSearch = app.name.toLowerCase().includes(searchTerm) ||
                              app.email.toLowerCase().includes(searchTerm);
         const matchesStatus = !statusFilter || app.status === statusFilter;
         const matchesProgram = !programFilter || app.program === programFilter;
-        return matchesSearch && matchesStatus && matchesProgram;
+        const matchesScholarship = !scholarshipFilter ||
+                                   (scholarshipFilter === 'requested' && app.scholarship_requested) ||
+                                   (scholarshipFilter === 'none' && !app.scholarship_requested);
+        return matchesSearch && matchesStatus && matchesProgram && matchesScholarship;
       });
 
       renderApplications();
@@ -245,13 +256,18 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
                     <p class="text-sm text-text-muted">${app.email}</p>
                     ${app.whatsapp ? `<p class="text-sm text-text-muted">WhatsApp: ${app.whatsapp}</p>` : ''}
                   </div>
-                  <div class="flex gap-2 items-start flex-shrink-0">
+                  <div class="flex gap-2 items-start flex-shrink-0 flex-wrap">
                     <span class="px-2 py-1 rounded text-xs font-medium bg-primary/10 text-primary">
                       ${programBadge}
                     </span>
                     <span class="px-2 py-1 rounded text-xs font-medium border ${statusColor}">
                       ${app.status}
                     </span>
+                    ${app.scholarship_requested ? `
+                      <span class="px-2 py-1 rounded text-xs font-medium bg-purple-500/10 text-purple-500 border border-purple-500/20">
+                        🎓 ${app.scholarship_category || 'Scholarship (category not specified)'}
+                      </span>
+                    ` : ''}
                   </div>
                 </div>
 
@@ -475,6 +491,12 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
               <p class="text-text-muted">${app.interests.join(', ')}</p>
             </div>
           ` : ''}
+          ${app.scholarship_requested ? `
+            <div>
+              <h4 class="font-semibold mb-1">Scholarship Request</h4>
+              <p class="text-text-muted">${app.scholarship_category ? `Category: ${app.scholarship_category}` : 'Scholarship requested (category not specified)'}</p>
+            </div>
+          ` : ''}
         </div>
       `;
 
@@ -500,6 +522,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     document.getElementById('search-input')?.addEventListener('input', filterApplications);
     document.getElementById('status-filter')?.addEventListener('change', filterApplications);
     document.getElementById('program-filter')?.addEventListener('change', filterApplications);
+    document.getElementById('scholarship-filter')?.addEventListener('change', filterApplications);
 
     document.getElementById('bulk-approve-btn')?.addEventListener('click', () => bulkUpdateStatus('approved'));
     document.getElementById('bulk-reject-btn')?.addEventListener('click', () => bulkUpdateStatus('rejected'));

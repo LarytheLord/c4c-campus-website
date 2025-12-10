@@ -178,11 +178,11 @@ export const POST: APIRoute = async ({ request, params }) => {
             yourAnswer: ans.answer,
             correctAnswer:
               quiz.show_correct_answers
-                ? question?.correct_answer || question?.correct_answers_json
+                ? question?.correct_answer
                 : undefined,
             isCorrect: ans.is_correct,
             pointsEarned: ans.points_earned,
-            explanation: quiz.show_correct_answers ? question?.explanation : undefined,
+            explanation: quiz.show_correct_answers ? question?.answer_explanation : undefined,
           };
         }),
       };

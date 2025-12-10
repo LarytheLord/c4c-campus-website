@@ -260,9 +260,6 @@ export const PUT: APIRoute = async ({ request, params }) => {
     if (body.description !== undefined) {
       updates.description = body.description ? sanitizeHTML(body.description) : null;
     }
-    if (body.instructions !== undefined) {
-      updates.instructions = body.instructions ? sanitizeHTML(body.instructions) : null;
-    }
     if (body.timeLimit !== undefined) {
       updates.time_limit_minutes = body.timeLimit; // Use correct schema column name
     }
