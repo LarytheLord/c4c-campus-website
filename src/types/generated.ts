@@ -45,6 +45,8 @@ export type Database = {
           motivation: string | null;
           technical_experience: string | null;
           commitment: string | null;
+          scholarship_requested: boolean | null;
+          scholarship_category: 'SC' | 'OBC' | 'EWS' | 'DNT' | 'Transgender' | null;
           track: string | null;
           project_name: string | null;
           project_description: string | null;
@@ -77,6 +79,8 @@ export type Database = {
           motivation?: string | null;
           technical_experience?: string | null;
           commitment?: string | null;
+          scholarship_requested?: boolean | null;
+          scholarship_category?: 'SC' | 'OBC' | 'EWS' | 'DNT' | 'Transgender' | null;
           track?: string | null;
           project_name?: string | null;
           project_description?: string | null;
@@ -109,6 +113,8 @@ export type Database = {
           motivation?: string | null;
           technical_experience?: string | null;
           commitment?: string | null;
+          scholarship_requested?: boolean | null;
+          scholarship_category?: 'SC' | 'OBC' | 'EWS' | 'DNT' | 'Transgender' | null;
           track?: string | null;
           project_name?: string | null;
           project_description?: string | null;

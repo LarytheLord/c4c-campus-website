@@ -26,7 +26,9 @@ export const POST: APIRoute = async ({ request }) => {
     const { email, password, confirmPassword, program, ...applicationData } = formData;
 
     // Normalize and validate scholarship fields
-    let scholarshipRequested = Boolean(applicationData.scholarshipRequested);
+    // Use strict boolean coercion: only actual true or string 'true' counts as positive
+    const rawScholarshipValue = applicationData.scholarshipRequested;
+    let scholarshipRequested = rawScholarshipValue === true || rawScholarshipValue === 'true';
     let scholarshipCategory: string | null = applicationData.scholarshipCategory?.trim() ?? null;
     if (!scholarshipCategory) {
       scholarshipCategory = null;
