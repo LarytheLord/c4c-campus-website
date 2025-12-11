@@ -761,11 +761,80 @@ async function handleFormSubmit(e, program) {
       toast.success(result.message || 'Application submitted! Check your email to verify your account.', 'Application Received');
       form.reset();
     } else {
-      toast.error(result.error || 'Failed to submit application. Please try again.', 'Submission Failed');
+      // Enhanced error handling based on API error codes
+      const errorCode = result.code;
+      const errorMessage = result.error || result.message || 'Failed to submit application. Please try again.';
+      let shouldResetForm = false;
+
+      switch (errorCode) {
+        // Authentication errors
+        case 'EMAIL_ALREADY_EXISTS':
+          toast.error(
+            `${errorMessage} <a href="/login" style="text-decoration: underline; font-weight: 600;">Go to Login →</a>`,
+            'Account Already Exists'
+          );
+          break;
+
+        case 'WEAK_PASSWORD':
+          toast.error(errorMessage, 'Password Requirements Not Met');
+          break;
+
+        case 'INVALID_EMAIL':
+          toast.error(errorMessage, 'Invalid Email');
+          break;
+
+        case 'SIGNUPS_DISABLED':
+          toast.error(errorMessage, 'Registration Unavailable');
+          break;
+
+        case 'RATE_LIMIT_EXCEEDED':
+          toast.warning(errorMessage, 'Too Many Attempts');
+          break;
+
+        // Application errors
+        case 'APPLICATION_ALREADY_EXISTS':
+          toast.info(errorMessage, 'Application Already Submitted');
+          shouldResetForm = true;
+          break;
+
+        // Validation errors
+        case 'INVALID_PROGRAM':
+        case 'INVALID_SCHOLARSHIP_CATEGORY':
+        case 'INVALID_CURRENT_STAGE':
+        case 'INVALID_FUNDING':
+          toast.error(errorMessage, 'Invalid Input');
+          break;
+
+        case 'MISSING_REQUIRED_FIELDS':
+          toast.error(errorMessage, 'Missing Information');
+          break;
+
+        case 'SCHOLARSHIP_CATEGORY_REQUIRED':
+          toast.error(errorMessage, 'Scholarship Category Required');
+          break;
+
+        // Server errors
+        case 'PERMISSION_ERROR':
+        case 'DATABASE_ERROR':
+        case 'UNKNOWN_ERROR':
+        case 'UNEXPECTED_ERROR':
+          toast.error(errorMessage, 'System Error');
+          break;
+
+        // Default fallback
+        default:
+          console.error('Unhandled error code:', errorCode, 'Status:', response.status);
+          toast.error(errorMessage, 'Submission Failed');
+      }
+
+      // Only reset form for specific cases (e.g., application already exists)
+      if (shouldResetForm) {
+        form.reset();
+      }
     }
   } catch (error) {
     console.error('Submission error:', error);
-    toast.error('An error occurred. Please try again later.', 'Error');
+    toast.error('An error occurred. Please try again later or contact us at coders4causes@outlook.com', 'Error');
   } finally {
     submitButton.disabled = false;
     submitButton.textContent = program === 'bootcamp' ? 'Submit Bootcamp Application' : 'Submit Accelerator Application';
