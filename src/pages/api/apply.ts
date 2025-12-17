@@ -341,7 +341,10 @@ export const POST: APIRoute = async ({ request }) => {
         production_needs: applicationData.productionNeeds,
         team_size: applicationData.teamSize ? parseInt(applicationData.teamSize) : null,
         current_stage: applicationData.currentStage,
-        funding: applicationData.funding
+        funding: applicationData.funding,
+        // Diversity and career fields (both programs)
+        protected_class: applicationData.protectedClass,
+        career_goals: applicationData.careerGoals
       });
 
     if (dbError) {
