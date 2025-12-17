@@ -61,6 +61,10 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           </div>
 
           <form id="bootcamp-form" class="space-y-6">
+            <div id="bootcamp-start-notice" class="bg-primary/10 border-l-4 border-primary p-4 rounded-r-lg mb-6">
+              <p class="font-bold text-primary">Next bootcamp starts February 8, 2026</p>
+            </div>
+
             <!-- Personal Info -->
             <div>
               <label for="bootcamp-name" class="block font-bold mb-2">Name *</label>
@@ -172,6 +176,36 @@ import BaseLayout from '../layouts/BaseLayout.astro';
                 <option>Need to discuss timing</option>
                 <option>No, but interested in future cohorts</option>
               </select>
+            </div>
+
+            <div>
+              <label for="bootcamp-protected-class" class="block font-bold mb-2">Do you identify as part of a protected class? *</label>
+              <select id="bootcamp-protected-class" name="protectedClass" required class="w-full px-4 py-3 border border-border rounded-lg">
+                <option value="">Select...</option>
+                <option>Scheduled Castes (SCs)</option>
+                <option>Other Backward Classes (OBCs)</option>
+                <option>Economically Weaker Sections (EWS)</option>
+                <option>Denotified Tribes (DNTs)</option>
+                <option>The Transgender community</option>
+                <option>A class covered in the UK Equality Act 2010</option>
+                <option>Prefer not to say</option>
+                <option>None of the above</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="bootcamp-career-goals" class="block font-bold mb-2">What do you want to get out of this for your career path? *</label>
+              <textarea id="bootcamp-career-goals" name="careerGoals" rows="4" required class="w-full px-4 py-3 border border-border rounded-lg"
+                placeholder="e.g., career change into impact space, developing career in AI, additional projects for portfolio, entrepreneurship, community of like-minded builders"></textarea>
+            </div>
+
+            <div>
+              <label class="flex items-start gap-3">
+                <input type="checkbox" required class="mt-1" />
+                <span class="text-sm text-text-muted">
+                  I consent for my data to be used for analysis purposes. We don't sell your data to third parties.
+                </span>
+              </label>
             </div>
 
             <button type="submit" class="btn btn-primary btn-lg w-full">Submit Bootcamp Application</button>
@@ -323,7 +357,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
             <!-- Commitment -->
             <div>
-              <label class="block font-bold mb-2">Can you commit to the 10-week program (1 week in-person, 8 weeks remote, 1 week in-person in Bengaluru)? *</label>
+              <label class="block font-bold mb-2">Can you commit to the 10-week program (with a minimum of 3 weeks in-person in Bengaluru)? *</label>
               <select name="commitment" required class="w-full px-4 py-3 border border-border rounded-lg">
                 <option value="">Select...</option>
                 <option>Yes, I can commit to the full program</option>
@@ -343,10 +377,40 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             </div>
 
             <div>
+              <label for="accelerator-protected-class" class="block font-bold mb-2">Do you identify as part of a protected class? *</label>
+              <select id="accelerator-protected-class" name="protectedClass" required class="w-full px-4 py-3 border border-border rounded-lg">
+                <option value="">Select...</option>
+                <option>Scheduled Castes (SCs)</option>
+                <option>Other Backward Classes (OBCs)</option>
+                <option>Economically Weaker Sections (EWS)</option>
+                <option>Denotified Tribes (DNTs)</option>
+                <option>The Transgender community</option>
+                <option>A class covered in the UK Equality Act 2010</option>
+                <option>Prefer not to say</option>
+                <option>None of the above</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="accelerator-career-goals" class="block font-bold mb-2">What do you want to get out of this for your career path? *</label>
+              <textarea id="accelerator-career-goals" name="careerGoals" rows="4" required class="w-full px-4 py-3 border border-border rounded-lg"
+                placeholder="e.g., career change into impact space, developing career in AI, additional projects for portfolio, entrepreneurship, community of like-minded builders"></textarea>
+            </div>
+
+            <div>
               <label class="flex items-start gap-3">
                 <input type="checkbox" required class="mt-1" />
                 <span class="text-sm text-text-muted">
                   I understand C4C will cover living costs and accommodation during the in-person weeks in Bengaluru for participants traveling from out of town.
+                </span>
+              </label>
+            </div>
+
+            <div>
+              <label class="flex items-start gap-3">
+                <input type="checkbox" required class="mt-1" />
+                <span class="text-sm text-text-muted">
+                  I consent for my data to be used for analysis purposes. We don't sell your data to third parties.
                 </span>
               </label>
             </div>
@@ -390,16 +454,39 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           <div class="mb-8">
             <h3 class="text-2xl font-bold mb-4">Upcoming Hackathons</h3>
 
-            <div class="card border-l-4 border-gray-400 bg-gray-50">
-              <div class="text-center py-6">
-                <div class="text-4xl mb-3">📅</div>
-                <h4 class="text-xl font-bold mb-2">No Upcoming Hackathons Scheduled</h4>
-                <p class="text-base text-text-muted mb-4">
-                  We're currently planning our next round of global hackathons. Join our Discord to be the first to know when new events are announced!
-                </p>
-                <a href="https://discord.gg/qewprMy7G6" target="_blank" rel="noopener noreferrer" class="btn btn-info">
-                  Join Discord for Updates →
-                </a>
+            <div class="card border-l-4 border-info bg-info/5">
+              <div class="py-6 px-6">
+                <div class="text-4xl mb-4 text-center">�</div>
+                <h4 class="text-2xl font-bold mb-4 text-center">Bengaluru Hackathon - January 2026</h4>
+                
+                <div class="space-y-3 mb-6">
+                  <div>
+                    <p class="text-sm font-semibold text-text-muted">Location:</p>
+                    <p class="text-base">Code for Compassion Campus, The Yard, Carlton Towers, Indiranagar, Bengaluru, India</p>
+                  </div>
+                  
+                  <div class="grid md:grid-cols-2 gap-3">
+                    <div>
+                      <p class="text-sm font-semibold text-text-muted">Date:</p>
+                      <p class="text-base">January 16, 2026</p>
+                    </div>
+                    <div>
+                      <p class="text-sm font-semibold text-text-muted">Time:</p>
+                      <p class="text-base">9:00 AM – Late Evening</p>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <p class="text-sm font-semibold text-text-muted">Application Deadline:</p>
+                    <p class="text-base font-bold text-accent">January 10, 2026</p>
+                  </div>
+                </div>
+                
+                <div class="text-center">
+                  <a href="https://docs.google.com/forms/d/e/1FAIpQLSciSZdXBq8cxcknHYKqPg7SfbU21aJUutozWvvGmjYcwiHu7A/viewform" target="_blank" rel="noopener noreferrer" class="btn btn-info btn-lg">
+                    Apply Now →
+                  </a>
+                </div>
               </div>
             </div>
           </div>
@@ -834,4 +921,14 @@ scholarshipCheckbox?.addEventListener('change', (e) => {
     }
   }
 });
+
+// Hide bootcamp start notice on or after February 8, 2026
+const bootcampStartNotice = document.getElementById('bootcamp-start-notice');
+if (bootcampStartNotice) {
+  const today = new Date();
+  const startDate = new Date('2026-02-08');
+  if (today >= startDate) {
+    bootcampStartNotice.style.display = 'none';
+  }
+}
 </script>

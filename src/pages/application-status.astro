@@ -329,14 +329,13 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       `;
 
       if (userApplication.program === 'bootcamp') {
-        const interestsDisplay = userApplication.interests?.map((i: string) => escapeHtml(i)).join(', ') || '-';
         html += `
           <div class="mt-4">
-            <label class="text-sm font-medium text-text-muted">Interests</label>
-            <p class="mt-1">${interestsDisplay}</p>
+            <label class="text-sm font-medium text-text-muted">Which track?</label>
+            <p class="mt-1">${escapeHtml(userApplication.track) || '-'}</p>
           </div>
           <div class="mt-4">
-            <label class="text-sm font-medium text-text-muted">Motivation</label>
+            <label class="text-sm font-medium text-text-muted">Why do you want to learn to engineer compassion?</label>
             <p class="mt-1 whitespace-pre-wrap">${escapeHtml(userApplication.motivation) || '-'}</p>
           </div>
           <div class="mt-4">
@@ -344,8 +343,16 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             <p class="mt-1 whitespace-pre-wrap">${escapeHtml(userApplication.technical_experience) || '-'}</p>
           </div>
           <div class="mt-4">
-            <label class="text-sm font-medium text-text-muted">Commitment</label>
+            <label class="text-sm font-medium text-text-muted">Can you commit to 10 weeks (Saturdays, 2.5 hours each)?</label>
             <p class="mt-1 whitespace-pre-wrap">${escapeHtml(userApplication.commitment) || '-'}</p>
+          </div>
+          <div class="mt-4">
+            <label class="text-sm font-medium text-text-muted">Protected Class</label>
+            <p class="mt-1">${escapeHtml(userApplication.protected_class) || '-'}</p>
+          </div>
+          <div class="mt-4">
+            <label class="text-sm font-medium text-text-muted">Career Goals</label>
+            <p class="mt-1 whitespace-pre-wrap">${escapeHtml(userApplication.career_goals) || '-'}</p>
           </div>
         `;
       } else if (userApplication.program === 'accelerator') {
@@ -391,12 +398,20 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             <p class="mt-1">${escapeHtml(userApplication.current_stage) || '-'}</p>
           </div>
           <div class="mt-4">
-            <label class="text-sm font-medium text-text-muted">Can you commit to the 10-week program (1 week in-person, 8 weeks remote, 1 week in-person in Bengaluru)?</label>
+            <label class="text-sm font-medium text-text-muted">Can you commit to the 10-week program (with a minimum of 3 weeks in-person in Bengaluru)?</label>
             <p class="mt-1">${escapeHtml(userApplication.commitment) || '-'}</p>
           </div>
           <div class="mt-4">
             <label class="text-sm font-medium text-text-muted">Are you building a for-profit or non-profit?</label>
             <p class="mt-1">${escapeHtml(userApplication.funding) || '-'}</p>
+          </div>
+          <div class="mt-4">
+            <label class="text-sm font-medium text-text-muted">Protected Class</label>
+            <p class="mt-1">${escapeHtml(userApplication.protected_class) || '-'}</p>
+          </div>
+          <div class="mt-4">
+            <label class="text-sm font-medium text-text-muted">Career Goals</label>
+            <p class="mt-1 whitespace-pre-wrap">${escapeHtml(userApplication.career_goals) || '-'}</p>
           </div>
         `;
       }
@@ -487,6 +502,24 @@ import BaseLayout from '../layouts/BaseLayout.astro';
               <option value="Transgender" ${userApplication.scholarship_category === 'Transgender' ? 'selected' : ''}>Transgender</option>
             </select>
           </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">Do you identify as part of a protected class? *</label>
+            <select name="protectedClass" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+              <option value="">Select...</option>
+              <option ${userApplication.protected_class === 'Scheduled Castes (SCs)' ? 'selected' : ''}>Scheduled Castes (SCs)</option>
+              <option ${userApplication.protected_class === 'Other Backward Classes (OBCs)' ? 'selected' : ''}>Other Backward Classes (OBCs)</option>
+              <option ${userApplication.protected_class === 'Economically Weaker Sections (EWS)' ? 'selected' : ''}>Economically Weaker Sections (EWS)</option>
+              <option ${userApplication.protected_class === 'Denotified Tribes (DNTs)' ? 'selected' : ''}>Denotified Tribes (DNTs)</option>
+              <option ${userApplication.protected_class === 'The Transgender community' ? 'selected' : ''}>The Transgender community</option>
+              <option ${userApplication.protected_class === 'A class covered in the UK Equality Act 2010' ? 'selected' : ''}>A class covered in the UK Equality Act 2010</option>
+              <option ${userApplication.protected_class === 'Prefer not to say' ? 'selected' : ''}>Prefer not to say</option>
+              <option ${userApplication.protected_class === 'None of the above' ? 'selected' : ''}>None of the above</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">What do you want to get out of this for your career path? *</label>
+            <textarea name="careerGoals" rows="4" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="e.g., career change into impact space, developing career in AI, additional projects for portfolio, entrepreneurship, community of like-minded builders">${escapeHtml(userApplication.career_goals) || ''}</textarea>
+          </div>
         `;
       } else if (userApplication.program === 'accelerator') {
         // Accelerator-specific fields
@@ -549,7 +582,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium mb-2">Can you commit to the 10-week program (1 week in-person, 8 weeks remote, 1 week in-person in Bengaluru)? *</label>
+            <label class="block text-sm font-medium mb-2">Can you commit to the 10-week program (with a minimum of 3 weeks in-person in Bengaluru)? *</label>
             <select name="commitment" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
               <option value="">Select...</option>
               <option ${userApplication.commitment === 'Yes, I can commit to the full program' ? 'selected' : ''}>Yes, I can commit to the full program</option>
@@ -565,6 +598,24 @@ import BaseLayout from '../layouts/BaseLayout.astro';
               <option ${userApplication.funding === 'Non-profit' ? 'selected' : ''}>Non-profit</option>
               <option ${userApplication.funding === 'Not sure yet' ? 'selected' : ''}>Not sure yet</option>
             </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">Do you identify as part of a protected class? *</label>
+            <select name="protectedClass" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+              <option value="">Select...</option>
+              <option ${userApplication.protected_class === 'Scheduled Castes (SCs)' ? 'selected' : ''}>Scheduled Castes (SCs)</option>
+              <option ${userApplication.protected_class === 'Other Backward Classes (OBCs)' ? 'selected' : ''}>Other Backward Classes (OBCs)</option>
+              <option ${userApplication.protected_class === 'Economically Weaker Sections (EWS)' ? 'selected' : ''}>Economically Weaker Sections (EWS)</option>
+              <option ${userApplication.protected_class === 'Denotified Tribes (DNTs)' ? 'selected' : ''}>Denotified Tribes (DNTs)</option>
+              <option ${userApplication.protected_class === 'The Transgender community' ? 'selected' : ''}>The Transgender community</option>
+              <option ${userApplication.protected_class === 'A class covered in the UK Equality Act 2010' ? 'selected' : ''}>A class covered in the UK Equality Act 2010</option>
+              <option ${userApplication.protected_class === 'Prefer not to say' ? 'selected' : ''}>Prefer not to say</option>
+              <option ${userApplication.protected_class === 'None of the above' ? 'selected' : ''}>None of the above</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">What do you want to get out of this for your career path? *</label>
+            <textarea name="careerGoals" rows="4" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="e.g., career change into impact space, developing career in AI, additional projects for portfolio, entrepreneurship, community of like-minded builders">${escapeHtml(userApplication.career_goals) || ''}</textarea>
           </div>
         `;
       }
@@ -622,6 +673,8 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         updates.commitment = formData.get('commitment');
         updates.scholarship_requested = formData.get('scholarshipRequested') === 'on';
         updates.scholarship_category = updates.scholarship_requested ? formData.get('scholarshipCategory') : null;
+        updates.protected_class = formData.get('protectedClass');
+        updates.career_goals = formData.get('careerGoals');
       } else if (userApplication.program === 'accelerator') {
         updates.track = formData.get('track');
         updates.project_name = formData.get('projectName');
@@ -635,6 +688,8 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         updates.current_stage = formData.get('currentStage');
         updates.commitment = formData.get('commitment');
         updates.funding = formData.get('funding');
+        updates.protected_class = formData.get('protectedClass');
+        updates.career_goals = formData.get('careerGoals');
       }
 
       const { data, error } = await supabase
