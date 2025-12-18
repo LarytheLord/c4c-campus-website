@@ -29,7 +29,7 @@ describe('CourseBuilder Component', () => {
     render(<CourseBuilder onSave={mockOnSave} onPublish={mockOnPublish} />);
     
     // Assert
-    expect(screen.getByLabelText(/course name/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/course title/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/description/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/track/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/difficulty/i)).toBeInTheDocument();
@@ -65,7 +65,7 @@ describe('CourseBuilder Component', () => {
     
     // Assert - Shows validation error
     await waitFor(() => {
-      expect(screen.getByText(/course name is required/i)).toBeInTheDocument();
+      expect(screen.getByText(/course title is required/i)).toBeInTheDocument();
     });
     expect(mockOnSave).not.toHaveBeenCalled();
   });
@@ -76,7 +76,7 @@ describe('CourseBuilder Component', () => {
     render(<CourseBuilder onSave={mockOnSave} onPublish={mockOnPublish} />);
     
     // Act - Fill name but not track
-    await user.type(screen.getByLabelText(/course name/i), 'Test Course');
+    await user.type(screen.getByLabelText(/course title/i), 'Test Course');
     await user.click(screen.getByRole('button', { name: /save/i }));
     
     // Assert
@@ -106,8 +106,8 @@ describe('CourseBuilder Component', () => {
     render(<CourseBuilder onSave={mockOnSave} onPublish={mockOnPublish} />);
 
     // Act - Enter XSS attempt
-    await user.type(screen.getByLabelText(/course name/i), '<script>alert("xss")</script>');
-    await user.selectOptions(screen.getByLabelText(/track/i), 'animal-advocacy');
+    await user.type(screen.getByLabelText(/course title/i), '<script>alert("xss")</script>');
+    await user.selectOptions(screen.getByLabelText(/track/i), 'animal_advocacy');
     await user.click(screen.getByRole('button', { name: /save/i }));
 
     // Assert - Script tags stripped
@@ -128,9 +128,9 @@ describe('CourseBuilder Component', () => {
     render(<CourseBuilder onSave={mockOnSave} onPublish={mockOnPublish} />);
     
     // Act - Fill all required fields
-    await user.type(screen.getByLabelText(/course name/i), 'n8n Advanced Patterns');
+    await user.type(screen.getByLabelText(/course title/i), 'n8n Advanced Patterns');
     await user.type(screen.getByLabelText(/description/i), 'Learn advanced n8n workflow patterns');
-    await user.selectOptions(screen.getByLabelText(/track/i), 'animal-advocacy');
+    await user.selectOptions(screen.getByLabelText(/track/i), 'animal_advocacy');
     await user.selectOptions(screen.getByLabelText(/difficulty/i), 'intermediate');
     await user.type(screen.getByLabelText(/duration.*weeks/i), '3');
     
@@ -142,7 +142,7 @@ describe('CourseBuilder Component', () => {
         title: 'n8n Advanced Patterns',
         slug: 'n8n-advanced-patterns', // Auto-generated from title
         description: 'Learn advanced n8n workflow patterns',
-        track: 'animal-advocacy',
+        track: 'animal_advocacy',
         difficulty: 'intermediate',
         default_duration_weeks: 3,
         is_published: false, // Defaults to draft
@@ -162,7 +162,7 @@ describe('CourseBuilder Component', () => {
     );
 
     // Act - Modify name
-    const nameInput = screen.getByLabelText(/course name/i);
+    const nameInput = screen.getByLabelText(/course title/i);
     await user.clear(nameInput);
     await user.type(nameInput, 'Updated Course Name');
     await user.click(screen.getByRole('button', { name: /save/i }));
@@ -246,7 +246,7 @@ describe('CourseBuilder Component', () => {
     render(<CourseBuilder onSave={mockOnSave} onPublish={mockOnPublish} />);
     
     // Act - Type course name
-    await user.type(screen.getByLabelText(/course name/i), 'n8n & AI Integration');
+    await user.type(screen.getByLabelText(/course title/i), 'n8n & AI Integration');
     
     // Assert - Slug preview shows "n8n-ai-integration"
     expect(screen.getByText(/slug.*n8n-ai-integration/i)).toBeInTheDocument();
@@ -258,8 +258,8 @@ describe('CourseBuilder Component', () => {
     render(<CourseBuilder onSave={mockOnSave} onPublish={mockOnPublish} />);
 
     // Act - Enter custom slug
-    await user.type(screen.getByLabelText(/course name/i), 'Test Course');
-    await user.selectOptions(screen.getByLabelText(/track/i), 'animal-advocacy');
+    await user.type(screen.getByLabelText(/course title/i), 'Test Course');
+    await user.selectOptions(screen.getByLabelText(/track/i), 'animal_advocacy');
     await user.clear(screen.getByLabelText(/slug/i));
     await user.type(screen.getByLabelText(/slug/i), 'custom-slug');
 
@@ -283,8 +283,8 @@ describe('CourseBuilder Component', () => {
     render(<CourseBuilder onSave={mockOnSave} onPublish={mockOnPublish} />);
     
     // Act - Fill and save
-    await user.type(screen.getByLabelText(/course name/i), 'Test');
-    await user.selectOptions(screen.getByLabelText(/track/i), 'animal-advocacy');
+    await user.type(screen.getByLabelText(/course title/i), 'Test');
+    await user.selectOptions(screen.getByLabelText(/track/i), 'animal_advocacy');
     await user.click(screen.getByRole('button', { name: /save/i }));
     
     // Assert - Error displayed
@@ -301,8 +301,8 @@ describe('CourseBuilder Component', () => {
     render(<CourseBuilder onSave={mockOnSave} onPublish={mockOnPublish} />);
     
     // Act - Start save
-    await user.type(screen.getByLabelText(/course name/i), 'Test');
-    await user.selectOptions(screen.getByLabelText(/track/i), 'animal-advocacy');
+    await user.type(screen.getByLabelText(/course title/i), 'Test');
+    await user.selectOptions(screen.getByLabelText(/track/i), 'animal_advocacy');
     const saveButton = screen.getByRole('button', { name: /save/i });
     await user.click(saveButton);
     
@@ -319,8 +319,8 @@ describe('CourseBuilder Component', () => {
     render(<CourseBuilder onSave={mockOnSave} onPublish={mockOnPublish} />);
     
     // Act - Save without description
-    await user.type(screen.getByLabelText(/course name/i), 'Minimal Course');
-    await user.selectOptions(screen.getByLabelText(/track/i), 'animal-advocacy');
+    await user.type(screen.getByLabelText(/course title/i), 'Minimal Course');
+    await user.selectOptions(screen.getByLabelText(/track/i), 'animal_advocacy');
     await user.selectOptions(screen.getByLabelText(/difficulty/i), 'beginner');
     await user.click(screen.getByRole('button', { name: /save/i }));
     
@@ -342,14 +342,14 @@ describe('CourseBuilder Component', () => {
     render(<CourseBuilder onSave={mockOnSave} onPublish={mockOnPublish} />);
     
     // Act
-    await user.type(screen.getByLabelText(/course name/i), longName);
+    await user.type(screen.getByLabelText(/course title/i), longName);
     await user.click(screen.getByRole('button', { name: /save/i }));
     
-    // Assert - Truncated or shows error
+    // Assert - Shows title too long error
     await waitFor(() => {
-      const errorOrTruncation = 
-        screen.queryByText(/name too long/i) ||
-        mockOnSave.mock.calls[0]?.[0].name.length <= 255;
+      const errorOrTruncation =
+        screen.queryByText(/title too long/i) ||
+        mockOnSave.mock.calls[0]?.[0]?.title?.length <= 255;
       expect(errorOrTruncation).toBeTruthy();
     });
   });
@@ -364,7 +364,7 @@ describe('CourseBuilder Component', () => {
     
     // Assert - Multiple validation errors shown
     await waitFor(() => {
-      expect(screen.getByText(/name is required/i)).toBeInTheDocument();
+      expect(screen.getByText(/course title is required/i)).toBeInTheDocument();
       expect(screen.getByText(/track is required/i)).toBeInTheDocument();
     });
     expect(mockOnSave).not.toHaveBeenCalled();
@@ -375,12 +375,13 @@ describe('CourseBuilder Component', () => {
   test('should display correct track options', () => {
     // Arrange & Act
     render(<CourseBuilder onSave={mockOnSave} onPublish={mockOnPublish} />);
-    
-    // Assert - From BOOTCAMP_ARCHITECTURE.md types (line 95)
+
+    // Assert - matches schema CHECK constraint: animal_advocacy, climate, ai_safety, general
     const trackSelect = screen.getByLabelText(/track/i);
-    expect(trackSelect).toContainHTML('animal-advocacy');
+    expect(trackSelect).toContainHTML('animal_advocacy');
     expect(trackSelect).toContainHTML('climate');
-    expect(trackSelect).toContainHTML('human-rights');
+    expect(trackSelect).toContainHTML('ai_safety');
+    expect(trackSelect).toContainHTML('general');
   });
   
   test('should display correct difficulty options', () => {
@@ -402,9 +403,9 @@ describe('CourseBuilder Component', () => {
     render(<CourseBuilder onSave={mockOnSave} onPublish={mockOnPublish} />);
     
     // Act - Fill form completely
-    await user.type(screen.getByLabelText(/course name/i), 'Complete Course');
+    await user.type(screen.getByLabelText(/course title/i), 'Complete Course');
     await user.type(screen.getByLabelText(/description/i), 'Full description here');
-    await user.selectOptions(screen.getByLabelText(/track/i), 'animal-advocacy');
+    await user.selectOptions(screen.getByLabelText(/track/i), 'animal_advocacy');
     await user.selectOptions(screen.getByLabelText(/difficulty/i), 'beginner');
     await user.type(screen.getByLabelText(/duration.*weeks/i), '2');
     await user.click(screen.getByRole('button', { name: /save/i }));
@@ -415,7 +416,7 @@ describe('CourseBuilder Component', () => {
         title: 'Complete Course',
         slug: 'complete-course',
         description: 'Full description here',
-        track: 'animal-advocacy',
+        track: 'animal_advocacy',
         difficulty: 'beginner',
         default_duration_weeks: 2,
         is_published: false,
@@ -429,8 +430,8 @@ describe('CourseBuilder Component', () => {
     render(<CourseBuilder onSave={mockOnSave} onPublish={mockOnPublish} />);
     
     // Act
-    await user.type(screen.getByLabelText(/course name/i), 'Test');
-    await user.selectOptions(screen.getByLabelText(/track/i), 'animal-advocacy');
+    await user.type(screen.getByLabelText(/course title/i), 'Test');
+    await user.selectOptions(screen.getByLabelText(/track/i), 'animal_advocacy');
     await user.click(screen.getByRole('button', { name: /save/i }));
     
     // Assert
@@ -444,13 +445,13 @@ describe('CourseBuilder Component', () => {
   test('should have accessible form labels', () => {
     // Arrange & Act
     render(<CourseBuilder onSave={mockOnSave} onPublish={mockOnPublish} />);
-    
-    // Assert - All inputs have labels
-    expect(screen.getByLabelText(/course name/i)).toBeInTheDocument();
+
+    // Assert - All inputs have labels (matching actual component labels)
+    expect(screen.getByLabelText(/course title/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/description/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/track/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/difficulty/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/duration.*weeks/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/duration/i)).toBeInTheDocument();
   });
   
   test('should announce validation errors to screen readers', async () => {

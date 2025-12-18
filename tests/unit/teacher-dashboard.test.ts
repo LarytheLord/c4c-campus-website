@@ -256,10 +256,10 @@ describe('Teacher Dashboard - Page Navigation & Routing', () => {
 
   test('should display stats: Published courses count', () => {
     // Arrange & Act
-    const stats = { courses: 5, published: 3, drafts: 2, students: 45 };
+    const stats = { courses: 5, is_published: 3, drafts: 2, students: 45 };
 
     // Assert
-    expect(stats.published).toBe(3);
+    expect(stats.is_published).toBe(3);
   });
 
   test('should display stats: Draft courses count', () => {
@@ -504,17 +504,17 @@ describe('Teacher Dashboard - My Courses Tab (List View)', () => {
 
     // Assert
     expect(displayedCourses.length).toBe(3);
-    expect(displayedCourses[0].name).toBe('n8n Workflow Automation');
+    expect(displayedCourses[0].title).toBe('n8n Workflow Automation');
   });
 
   test('should show course cards with essential info', () => {
     // Arrange & Act
     const course = courses[0];
     const cardHasRequiredFields = !!(
-      course.name &&
+      course.title &&
       course.track &&
       course.difficulty &&
-      course.published !== undefined &&
+      course.is_published !== undefined &&
       course.students !== undefined
     );
 
@@ -525,7 +525,7 @@ describe('Teacher Dashboard - My Courses Tab (List View)', () => {
   test('should display "Published" badge for published courses', () => {
     // Arrange & Act
     const publishedCourse = courses[0];
-    const hasPublishedBadge = publishedCourse.published;
+    const hasPublishedBadge = publishedCourse.is_published;
 
     // Assert
     expect(hasPublishedBadge).toBe(true);
@@ -534,7 +534,7 @@ describe('Teacher Dashboard - My Courses Tab (List View)', () => {
   test('should display "Draft" badge for unpublished courses', () => {
     // Arrange & Act
     const draftCourse = courses[1];
-    const isDraft = !draftCourse.published;
+    const isDraft = !draftCourse.is_published;
 
     // Assert
     expect(isDraft).toBe(true);
@@ -576,22 +576,22 @@ describe('Teacher Dashboard - My Courses Tab (List View)', () => {
 
   test('should filter courses by published status', () => {
     // Arrange
-    const publishedOnly = courses.filter(c => c.published);
+    const publishedOnly = courses.filter(c => c.is_published);
 
     // Act & Assert
     expect(publishedOnly.length).toBe(2);
     publishedOnly.forEach(course => {
-      expect(course.published).toBe(true);
+      expect(course.is_published).toBe(true);
     });
   });
 
   test('should filter courses by draft status', () => {
     // Arrange
-    const draftsOnly = courses.filter(c => !c.published);
+    const draftsOnly = courses.filter(c => !c.is_published);
 
     // Act & Assert
     expect(draftsOnly.length).toBe(1);
-    expect(draftsOnly[0].published).toBe(false);
+    expect(draftsOnly[0].is_published).toBe(false);
   });
 
   test('should filter courses by track', () => {
@@ -608,19 +608,19 @@ describe('Teacher Dashboard - My Courses Tab (List View)', () => {
 
     // Act & Assert
     expect(beginnerCourses.length).toBe(1);
-    expect(beginnerCourses[0].name).toBe('n8n Workflow Automation');
+    expect(beginnerCourses[0].title).toBe('n8n Workflow Automation');
   });
 
   test('should support search by course name', () => {
     // Arrange
     const searchTerm = 'automation';
     const searchResults = courses.filter(c =>
-      c.name.toLowerCase().includes(searchTerm.toLowerCase())
+      c.title.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     // Act & Assert
     expect(searchResults.length).toBeGreaterThan(0);
-    expect(searchResults[0].name).toContain('Automation');
+    expect(searchResults[0].title).toContain('Automation');
   });
 
   // ==================== COURSE ACTIONS ====================
@@ -714,8 +714,8 @@ describe('Teacher Dashboard - My Courses Tab (List View)', () => {
     );
 
     // Assert
-    expect(sortedCourses[0].name).toBe('Climate Data Analysis');
-    expect(sortedCourses[2].name).toBe('n8n Workflow Automation');
+    expect(sortedCourses[0].title).toBe('Climate Data Analysis');
+    expect(sortedCourses[2].title).toBe('n8n Workflow Automation');
   });
 });
 
@@ -736,6 +736,7 @@ describe('Teacher Dashboard - Edit Course Tab (Course Builder)', () => {
       track: '',
       difficulty: '',
       default_duration_weeks: '',
+      estimated_hours: 0,
       slug: '',
       is_published: false,
     };
@@ -797,7 +798,7 @@ describe('Teacher Dashboard - Edit Course Tab (Course Builder)', () => {
 
   test('should render publish checkbox', () => {
     // Arrange & Act
-    const hasPublishField = 'published' in formData;
+    const hasPublishField = 'is_published' in formData;
 
     // Assert
     expect(hasPublishField).toBe(true);
@@ -825,12 +826,12 @@ describe('Teacher Dashboard - Edit Course Tab (Course Builder)', () => {
 
   // ==================== VALIDATION ====================
 
-  test('should require course name', () => {
+  test('should require course title', () => {
     // Arrange
-    formData.name = '';
+    formData.title = '';
 
     // Act
-    const isValid = formData.name.length > 0;
+    const isValid = formData.title.length > 0;
 
     // Assert
     expect(isValid).toBe(false);
@@ -871,12 +872,12 @@ describe('Teacher Dashboard - Edit Course Tab (Course Builder)', () => {
 
   // ==================== SLUG GENERATION ====================
 
-  test('should auto-generate slug from course name', () => {
+  test('should auto-generate slug from course title', () => {
     // Arrange
-    formData.name = 'n8n & AI Integration';
+    formData.title = 'n8n & AI Integration';
 
     // Act
-    const slug = formData.name
+    const slug = formData.title
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '');
@@ -887,7 +888,7 @@ describe('Teacher Dashboard - Edit Course Tab (Course Builder)', () => {
 
   test('should allow manual slug override', () => {
     // Arrange
-    formData.name = 'Test Course';
+    formData.title = 'Test Course';
     formData.slug = 'custom-slug';
 
     // Act & Assert
@@ -899,17 +900,17 @@ describe('Teacher Dashboard - Edit Course Tab (Course Builder)', () => {
   test('should submit course data when form saved', () => {
     // Arrange
     formData = {
-      name: 'Test Course',
+      title: 'Test Course',
       slug: 'test-course',
       track: 'animal-advocacy',
       difficulty: 'beginner',
       estimated_hours: 8,
-      published: false,
+      is_published: false,
     };
 
     // Act
     const allRequiredFieldsPresent = !!(
-      formData.name &&
+      formData.title &&
       formData.slug &&
       formData.track &&
       formData.difficulty
@@ -1256,7 +1257,7 @@ describe('Teacher Dashboard - Integration Tests (Full Workflows)', () => {
   test('should complete full course creation workflow', () => {
     // Arrange
     const courseData = {
-      name: 'New Course',
+      title: 'New Course',
       slug: 'new-course',
       track: 'animal-advocacy',
       difficulty: 'beginner',
@@ -1265,7 +1266,7 @@ describe('Teacher Dashboard - Integration Tests (Full Workflows)', () => {
 
     // Act
     const isValid = !!(
-      courseData.name &&
+      courseData.title &&
       courseData.slug &&
       courseData.track &&
       courseData.difficulty
@@ -1291,8 +1292,8 @@ describe('Teacher Dashboard - Integration Tests (Full Workflows)', () => {
 
   test('should show created course in list immediately', () => {
     // Arrange
-    const coursesBefore = [{ id: 1, name: 'Course 1' }];
-    const newCourse = { id: 2, name: 'Course 2' };
+    const coursesBefore = [{ id: 1, title: 'Course 1' }];
+    const newCourse = { id: 2, title: 'Course 2' };
 
     // Act
     const coursesAfter = [...coursesBefore, newCourse];
@@ -1345,11 +1346,11 @@ describe('Teacher Dashboard - Integration Tests (Full Workflows)', () => {
     const courseId = 1;
     const courseData = {
       id: courseId,
-      name: 'n8n Basics',
+      title: 'n8n Basics',
       description: 'Learn n8n',
       track: 'animal-advocacy',
       difficulty: 'beginner',
-      published: true,
+      is_published: true,
     };
 
     // Act
@@ -1357,46 +1358,46 @@ describe('Teacher Dashboard - Integration Tests (Full Workflows)', () => {
 
     // Assert
     expect(formLoaded).toBe(true);
-    expect(courseData.name).toBe('n8n Basics');
+    expect(courseData.title).toBe('n8n Basics');
   });
 
   test('should update course when form submitted', () => {
     // Arrange
-    const originalCourse = { id: 1, name: 'Old Name' };
-    const updatedData = { name: 'New Name' };
+    const originalCourse = { id: 1, title: 'Old Name' };
+    const updatedData = { title: 'New Name' };
 
     // Act
     const updatedCourse = { ...originalCourse, ...updatedData };
 
     // Assert
-    expect(updatedCourse.name).toBe('New Name');
+    expect(updatedCourse.title).toBe('New Name');
     expect(updatedCourse.id).toBe(1); // ID unchanged
   });
 
   test('should refresh course list after update', () => {
     // Arrange
-    const courses = [{ id: 1, name: 'Old Name' }];
-    const updatedCourse = { id: 1, name: 'New Name' };
+    const courses = [{ id: 1, title: 'Old Name' }];
+    const updatedCourse = { id: 1, title: 'New Name' };
 
     // Act
     const updatedCourses = courses.map(c => (c.id === updatedCourse.id ? updatedCourse : c));
 
     // Assert
-    expect(updatedCourses[0].name).toBe('New Name');
+    expect(updatedCourses[0].title).toBe('New Name');
   });
 
   // ==================== PUBLISH/UNPUBLISH WORKFLOW ====================
 
   test('should toggle course published status', () => {
     // Arrange
-    const course = { id: 1, name: 'Test', published: false };
+    const course = { id: 1, title: 'Test', is_published: false };
 
     // Act
-    const updated = { ...course, published: true };
+    const updated = { ...course, is_published: true };
 
     // Assert
-    expect(updated.published).toBe(true);
-    expect(course.published).toBe(false); // Original unchanged
+    expect(updated.is_published).toBe(true);
+    expect(course.is_published).toBe(false); // Original unchanged
   });
 
   test('should show confirmation before publishing', () => {
@@ -1551,15 +1552,15 @@ describe('Teacher Dashboard - Edge Cases & Accessibility', () => {
     // Arrange
     const course = {
       id: 1,
-      name: 'Test Course',
+      title: 'Test Course',
       // Missing other fields
     };
 
     // Act
-    const hasName = course.name !== undefined;
+    const hasTitle = course.title !== undefined;
 
     // Assert
-    expect(hasName).toBe(true);
+    expect(hasTitle).toBe(true);
   });
 
   test('should maintain consistent state across tab switches', () => {

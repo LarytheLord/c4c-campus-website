@@ -8,7 +8,13 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom', // Use jsdom for React component testing
     setupFiles: ['./tests/setup.ts'],
-    exclude: ['tests/integration/**'], // Integration tests have separate config
+    include: ['tests/unit/**/*.test.ts', 'tests/unit/**/*.test.tsx', 'tests/components/**/*.test.tsx'],
+    exclude: [
+      'tests/integration/**',  // Integration tests have separate config
+      'tests/e2e/**',          // E2E tests require Playwright
+      'tests/*.test.ts',       // Root-level tests are integration tests requiring database/server
+      'node_modules/**',       // Exclude node_modules
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
