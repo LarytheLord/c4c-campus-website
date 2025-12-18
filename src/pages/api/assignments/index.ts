@@ -59,7 +59,7 @@ export const POST: APIRoute = async ({ request }) => {
       { field: 'late_penalty_percent', required: false, type: 'number', min: 0, max: 100 },
       { field: 'allow_resubmission', required: false, type: 'boolean' },
       { field: 'max_submissions', required: false, type: 'number', min: 1, max: 10 },
-      { field: 'published', required: false, type: 'boolean' }
+      { field: 'is_published', required: false, type: 'boolean' }
     ];
 
     const validation = validateRequest(body, validationRules);

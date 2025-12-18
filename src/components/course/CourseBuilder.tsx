@@ -171,11 +171,10 @@ export default function CourseBuilder({ course, onSave, onPublish }: CourseBuild
             aria-label="Track"
           >
             <option value="">Select a track</option>
-            <option value="animal-advocacy">animal-advocacy</option>
-            <option value="climate">climate</option>
-            <option value="human-rights">human-rights</option>
-            <option value="ai-safety">ai-safety</option>
-            <option value="general">general</option>
+            <option value="animal_advocacy">Animal Advocacy</option>
+            <option value="climate">Climate</option>
+            <option value="ai_safety">AI Safety</option>
+            <option value="general">General</option>
           </select>
         </div>
 
