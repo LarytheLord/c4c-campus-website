@@ -203,6 +203,22 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
               <p class="text-text-muted">${escapeHTML(app.protected_class)}</p>
             </div>
           ` : ''}
+          ${app.track ? `
+            <div>
+              <h4 class="font-semibold mb-1">Track</h4>
+              <p class="text-text-muted">${escapeHTML(app.track).split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</p>
+            </div>
+          ` : ''}
+          <div>
+            <h4 class="font-semibold mb-1">Scholarship Requested</h4>
+            <p class="text-text-muted">${app.scholarship_requested ? 'Yes' : 'No'}</p>
+          </div>
+          ${app.scholarship_category ? `
+            <div>
+              <h4 class="font-semibold mb-1">Scholarship Category</h4>
+              <p class="text-text-muted">${escapeHTML(app.scholarship_category)}</p>
+            </div>
+          ` : ''}
         </div>
 
         ${app.career_goals ? `
@@ -242,12 +258,6 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
           <h4 class="font-semibold text-lg mb-4">Accelerator Program Details</h4>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            ${app.track ? `
-              <div>
-                <h4 class="font-semibold mb-1">Track</h4>
-                <p class="text-text-muted">${escapeHTML(app.track).split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</p>
-              </div>
-            ` : ''}
             ${app.project_name ? `
               <div>
                 <h4 class="font-semibold mb-1">Project Name</h4>
