@@ -6,6 +6,7 @@
  */
 
 import { describe, test, expect, vi } from 'vitest';
+import type { Mock } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import CourseCard from '@/components/course/CourseCard';
@@ -89,7 +90,7 @@ describe('CourseCard Component', () => {
   test('should navigate to course detail on click', async () => {
     // Arrange
     const user = userEvent.setup({ delay: null });
-    const mockNavigate = vi.fn();
+    const mockNavigate: Mock<(path: string) => void> = vi.fn<(path: string) => void>();
     
     // Mock navigation (would use router in real component)
     render(<CourseCard course={mockCourse} onNavigate={mockNavigate} />);

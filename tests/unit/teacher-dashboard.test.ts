@@ -1577,7 +1577,10 @@ describe('Teacher Dashboard - Edge Cases & Accessibility', () => {
 
   test('should maintain consistent state across tab switches', () => {
     // Arrange
-    const state = { courses: [{ id: 1 }], activeCourse: null };
+    const state: { courses: Array<{ id: number }>, activeCourse: { id: number } | null } = {
+      courses: [{ id: 1 }],
+      activeCourse: null
+    };
 
     // Act
     state.activeCourse = state.courses[0];

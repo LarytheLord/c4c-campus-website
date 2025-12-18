@@ -13,6 +13,8 @@ export interface Course {
   thumbnail_url: string;
   default_duration_weeks: number;
   is_published: boolean;
+  is_cohort_based: boolean;
+  enrollment_type: 'open' | 'cohort_only' | 'hybrid';
   created_by: string; // UUID
   created_at: string; // ISO timestamp
   updated_at: string;
@@ -41,7 +43,9 @@ export interface Lesson {
     size: number;
   }>;
   order_index: number;
+  is_preview: boolean;
   created_at: string;
+  updated_at: string;
 }
 
 // Mock Course 1: n8n Basics (beginner, published)
@@ -55,6 +59,8 @@ export const mockCourse: Course = {
   thumbnail_url: 'thumbnails/course-1-n8n-basics.jpg',
   default_duration_weeks: 2,
   is_published: true,
+  is_cohort_based: false,
+  enrollment_type: 'open' as const,
   created_by: '550e8400-e29b-41d4-a716-446655440000', // mockTeacher.id
   created_at: '2025-01-20T00:00:00Z',
   updated_at: '2025-01-20T00:00:00Z',
@@ -71,6 +77,8 @@ export const mockCourseUnpublished: Course = {
   thumbnail_url: 'thumbnails/course-2-n8n-advanced.jpg',
   default_duration_weeks: 3,
   is_published: false, // Draft course
+  is_cohort_based: false,
+  enrollment_type: 'open' as const,
   created_by: '550e8400-e29b-41d4-a716-446655440000',
   created_at: '2025-01-25T00:00:00Z',
   updated_at: '2025-01-25T00:00:00Z',
@@ -118,7 +126,9 @@ export const mockLesson: Lesson = {
     },
   ],
   order_index: 1,
+  is_preview: false,
   created_at: '2025-01-20T00:00:00Z',
+  updated_at: '2025-01-20T00:00:00Z',
 };
 
 // Mock Lesson 2: Installing n8n
@@ -138,7 +148,9 @@ export const mockLesson2: Lesson = {
     },
   ],
   order_index: 2,
+  is_preview: false,
   created_at: '2025-01-20T00:00:00Z',
+  updated_at: '2025-01-20T00:00:00Z',
 };
 
 // Mock Lesson 3 in Module 2
@@ -152,7 +164,9 @@ export const mockLesson3: Lesson = {
   content: '# Building Your First Workflow\n\nCreate a simple email automation.',
   resources: [],
   order_index: 1,
+  is_preview: false,
   created_at: '2025-01-20T00:00:00Z',
+  updated_at: '2025-01-20T00:00:00Z',
 };
 
 // Array of all lessons (for LessonNav tests)
@@ -192,6 +206,8 @@ export const mockCourses: Course[] = [
     thumbnail_url: 'thumbnails/course-3-campaigns.jpg',
     default_duration_weeks: 3,
     is_published: true,
+    is_cohort_based: false,
+    enrollment_type: 'open' as const,
     created_by: '550e8400-e29b-41d4-a716-446655440000',
     created_at: '2025-01-22T00:00:00Z',
     updated_at: '2025-01-22T00:00:00Z',
@@ -206,6 +222,8 @@ export const mockCourses: Course[] = [
     thumbnail_url: 'thumbnails/course-4-climate.jpg',
     default_duration_weeks: 4,
     is_published: true,
+    is_cohort_based: false,
+    enrollment_type: 'open' as const,
     created_by: '550e8400-e29b-41d4-a716-446655440000',
     created_at: '2025-01-23T00:00:00Z',
     updated_at: '2025-01-23T00:00:00Z',

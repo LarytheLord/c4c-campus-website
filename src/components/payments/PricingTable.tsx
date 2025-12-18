@@ -7,7 +7,8 @@
 import React, { useState, useEffect } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 
-const stripePromise = loadStripe(
+// Note: stripePromise is loaded but reserved for future Stripe checkout integration
+const _stripePromise = loadStripe(
   import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
 );
 

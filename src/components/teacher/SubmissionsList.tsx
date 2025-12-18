@@ -80,7 +80,7 @@ export default function SubmissionsList({
     }
   };
 
-  const handleDownload = async (submissionId: number, fileName: string) => {
+  const handleDownload = async (submissionId: number, _fileName: string) => {
     try {
       const supabase = (window as any).supabase;
       const { data: { session } } = await supabase.auth.getSession();

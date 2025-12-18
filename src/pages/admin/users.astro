@@ -111,7 +111,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 
   <script>
     import { supabase } from '../../lib/supabase';
-    import { showToast, showConfirm } from '../../lib/notifications';
+    import { showToast, showConfirm, dismissToast } from '../../lib/notifications';
 
     let currentUser: any = null;
     let allUsers: any[] = [];
@@ -329,38 +329,39 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     async function bulkUpdateRoles(role: string) {
       if (selectedUserIds.size === 0) return;
 
-      showConfirm(`Change role to ${role} for ${selectedUserIds.size} user(s)?`, async () => {
-        const loadingId = showToast('Updating user roles...', 'info', 0);
+      const confirmed = await showConfirm(`Change role to ${role} for ${selectedUserIds.size} user(s)?`);
+      if (!confirmed) return;
 
-        try {
-          const userIds = Array.from(selectedUserIds);
+      const loadingId = showToast('Updating user roles...', 'info', 0);
 
-          const { error } = await supabase
-            .from('applications')
-            .update({ role })
-            .in('user_id', userIds);
+      try {
+        const userIds = Array.from(selectedUserIds);
 
-          if (error) throw error;
+        const { error } = await supabase
+          .from('applications')
+          .update({ role })
+          .in('user_id', userIds);
 
-          // Update local data
-          userIds.forEach(userId => {
-            const user = allUsers.find(u => u.user_id === userId);
-            if (user) {
-              user.role = role;
-            }
-          });
+        if (error) throw error;
 
-          selectedUserIds.clear();
-          renderUsers();
-          dismissToast(loadingId);
-          showToast(`Successfully updated ${userIds.length} user(s)`, 'success');
+        // Update local data
+        userIds.forEach(userId => {
+          const user = allUsers.find(u => u.user_id === userId);
+          if (user) {
+            user.role = role;
+          }
+        });
 
-        } catch (error) {
-          console.error('Error in bulk update:', error);
-          dismissToast(loadingId);
-          showToast('Failed to update roles. Please try again.', 'error');
-        }
-      });
+        selectedUserIds.clear();
+        renderUsers();
+        dismissToast(loadingId);
+        showToast(`Successfully updated ${userIds.length} user(s)`, 'success');
+
+      } catch (error) {
+        console.error('Error in bulk update:', error);
+        dismissToast(loadingId);
+        showToast('Failed to update roles. Please try again.', 'error');
+      }
     }
 
     function showRoleModal(message: string) {

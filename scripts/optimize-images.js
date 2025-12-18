@@ -134,7 +134,7 @@ function generateManifest(images) {
       variants: {},
     };
 
-    for (const [sizeName, width] of Object.entries(SIZES)) {
+    for (const [sizeName] of Object.entries(SIZES)) {
       manifest[relativePath].variants[sizeName] = {
         webp: `/optimized/${outputPath}/${filename}-${sizeName}.webp`,
         jpeg: `/optimized/${outputPath}/${filename}-${sizeName}.jpeg`,

@@ -743,14 +743,14 @@ const toast = {
 };
 
 // Form handling with Supabase
-async function handleFormSubmit(e, program) {
+async function handleFormSubmit(e: Event, program: string) {
   e.preventDefault();
-  const form = e.target;
-  const submitButton = form.querySelector('button[type="submit"]');
+  const form = e.target as HTMLFormElement;
+  const submitButton = form.querySelector('button[type="submit"]') as HTMLButtonElement | null;
   const formData = new FormData(form);
 
   // Get form values
-  const data = {
+  const data: Record<string, any> = {
     program,
     name: formData.get('name'),
     email: formData.get('email'),
@@ -770,7 +770,7 @@ async function handleFormSubmit(e, program) {
     data.protectedClass = formData.get('protectedClass');
     data.careerGoals = formData.get('careerGoals');
     // Scholarship fields
-    const scholarshipCheckbox = form.querySelector('#scholarship-requested');
+    const scholarshipCheckbox = form.querySelector('#scholarship-requested') as HTMLInputElement | null;
     data.scholarshipRequested = scholarshipCheckbox?.checked || false;
     data.scholarshipCategory = data.scholarshipRequested ? formData.get('scholarshipCategory') : null;
   } else if (program === 'accelerator') {
@@ -797,7 +797,8 @@ async function handleFormSubmit(e, program) {
   }
 
   // Validate WhatsApp field if provided - prevent 'n/a' placeholder entries
-  if (data.whatsapp && (data.whatsapp.toLowerCase() === 'n/a' || data.whatsapp.toLowerCase() === 'na')) {
+  const whatsappValue = data.whatsapp as string | null;
+  if (whatsappValue && (whatsappValue.toLowerCase() === 'n/a' || whatsappValue.toLowerCase() === 'na')) {
     toast.warning('Please leave WhatsApp field empty if you don\'t have one, rather than entering "n/a"', 'Validation Warning');
     return;
   }
@@ -809,8 +810,10 @@ async function handleFormSubmit(e, program) {
   }
 
   // Disable button and show loading
-  submitButton.disabled = true;
-  submitButton.textContent = 'Submitting...';
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.textContent = 'Submitting...';
+  }
 
   try {
     const response = await fetch('/api/apply', {
@@ -900,8 +903,10 @@ async function handleFormSubmit(e, program) {
     console.error('Submission error:', error);
     toast.error('An error occurred. Please try again later or contact us at coders4causes@outlook.com', 'Error');
   } finally {
-    submitButton.disabled = false;
-    submitButton.textContent = program === 'bootcamp' ? 'Submit Bootcamp Application' : 'Submit Accelerator Application';
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.textContent = program === 'bootcamp' ? 'Submit Bootcamp Application' : 'Submit Accelerator Application';
+    }
   }
 }
 

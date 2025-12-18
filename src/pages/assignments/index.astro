@@ -83,19 +83,13 @@ export const prerender = false;
 
   <script>
     import { createClient } from '@supabase/supabase-js';
-    import type { AssignmentWithSubmission } from '@/types/assignment';
+    import type { AssignmentWithCourse } from '@/types/assignment';
     import { getAssignmentStatus, getStatusBadgeHtml } from '@/lib/assignment-status';
 
     const supabase = createClient(
       import.meta.env.PUBLIC_SUPABASE_URL,
       import.meta.env.PUBLIC_SUPABASE_ANON_KEY
     );
-
-    interface AssignmentWithCourse extends AssignmentWithSubmission {
-      course_name?: string;
-      course_id?: number;
-      lesson_name?: string;
-    }
 
     let allAssignments: AssignmentWithCourse[] = [];
     let filteredAssignments: AssignmentWithCourse[] = [];
@@ -133,7 +127,7 @@ export const prerender = false;
             lessons!inner(
               id, title,
               modules!inner(
-                id, name,
+                id, title,
                 courses!inner(id, title)
               )
             )
@@ -157,16 +151,18 @@ export const prerender = false;
         // Combine assignments with submissions
         allAssignments = (assignmentsData || []).map(assignment => {
           const userSubmission = submissions?.find(s => s.assignment_id === assignment.id) || null;
-          const lesson = assignment.lessons as any;
-          const course = lesson?.modules?.courses;
+
+          // Defensive access to nested query results
+          const lesson = assignment.lessons;
+          const module = lesson?.modules;
+          const course = module?.courses;
 
           return {
             ...assignment,
             user_submission: userSubmission,
             course_name: course?.title || 'Unknown Course',
-            course_id: course?.id,
             lesson_name: lesson?.title || 'Unknown Lesson'
-          };
+          } as AssignmentWithCourse;
         });
 
         // Populate course filter
@@ -253,8 +249,8 @@ export const prerender = false;
 
       // Filter
       filteredAssignments = allAssignments.filter(assignment => {
-        // Course filter
-        if (courseFilter !== 'all' && assignment.course_id?.toString() !== courseFilter) {
+        // Course filter (use course_id from base Assignment, which is always present)
+        if (courseFilter !== 'all' && assignment.course_id.toString() !== courseFilter) {
           return false;
         }
 

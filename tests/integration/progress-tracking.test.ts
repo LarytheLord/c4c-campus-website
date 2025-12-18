@@ -80,6 +80,7 @@ describe('Progress Tracking - Cohort-Based Learning', () => {
       { module_id: testModuleId, title: 'Lesson 4', slug: 'lesson-4', duration_minutes: 8, order_index: 4 },
       { module_id: testModuleId, title: 'Lesson 5', slug: 'lesson-5', duration_minutes: 9, order_index: 5 },
     ]).select();
+    if (!lessons.data) throw new Error('Failed to create lessons');
     testLessonIds = lessons.data.map(l => l.id);
 
     // Create test cohort
@@ -199,6 +200,8 @@ describe('Progress Tracking - Cohort-Based Learning', () => {
         .single();
 
       // Assert - Progress JSONB should reflect completion
+      expect(enrollment).not.toBeNull();
+      if (!enrollment) throw new Error('Enrollment is null - test setup failed');
       expect(enrollment.progress).toBeDefined();
       expect(enrollment.progress.completed_lessons).toBe(5);
     });
@@ -492,7 +495,8 @@ describe('Progress Tracking - Cohort-Based Learning', () => {
         .single();
 
       // Assert
-      expect(roster.completed_lessons).toBe(3);
+      expect(roster).not.toBeNull();
+      expect(roster!.completed_lessons).toBe(3);
     });
 
     test('3.3 should show discussion_posts count', async () => {
@@ -521,7 +525,8 @@ describe('Progress Tracking - Cohort-Based Learning', () => {
         .single();
 
       // Assert
-      expect(roster.discussion_posts).toBe(2);
+      expect(roster).not.toBeNull();
+      expect(roster!.discussion_posts).toBe(2);
     });
 
     test('3.4 should show forum_posts count', async () => {
@@ -551,7 +556,8 @@ describe('Progress Tracking - Cohort-Based Learning', () => {
         .single();
 
       // Assert
-      expect(roster.forum_posts).toBe(3);
+      expect(roster).not.toBeNull();
+      expect(roster!.forum_posts).toBe(3);
     });
 
     test('3.5 should support efficient refresh strategy', async () => {
@@ -579,6 +585,8 @@ describe('Progress Tracking - Cohort-Based Learning', () => {
 
       // Assert - Refresh completes quickly
       expect(refreshTime).toBeLessThan(2000); // < 2 seconds
+      expect(roster).not.toBeNull();
+      if (!roster) throw new Error('Roster data is null - test failed');
       expect(roster.length).toBe(2); // Both students visible
     });
   });
@@ -618,7 +626,8 @@ describe('Progress Tracking - Cohort-Based Learning', () => {
         .eq('id', enrollment.id)
         .single();
 
-      expect(new Date(updated.last_activity_at).getTime()).toBeGreaterThan(new Date(initialActivity).getTime());
+      expect(updated).not.toBeNull();
+      expect(new Date(updated!.last_activity_at).getTime()).toBeGreaterThan(new Date(initialActivity).getTime());
     });
 
     test('4.2 should increment completed_lessons count when lesson completed', async () => {
@@ -650,6 +659,8 @@ describe('Progress Tracking - Cohort-Based Learning', () => {
         .eq('user_id', studentClient1.userId)
         .single();
 
+      expect(enrollment).not.toBeNull();
+      if (!enrollment) throw new Error('Enrollment is null - test setup failed');
       expect(enrollment.progress.completed_lessons).toBe(1);
     });
 
@@ -690,6 +701,8 @@ describe('Progress Tracking - Cohort-Based Learning', () => {
         .eq('user_id', studentClient1.userId)
         .single();
 
+      expect(enrollment).not.toBeNull();
+      if (!enrollment) throw new Error('Enrollment is null - test setup failed');
       const percentage = (enrollment.progress.completed_lessons / enrollment.progress.total_lessons) * 100;
       expect(percentage).toBe(40);
     });
@@ -719,8 +732,9 @@ describe('Progress Tracking - Cohort-Based Learning', () => {
 
       // Assert
       expect(error).toBeNull();
-      expect(students.length).toBe(2);
-      expect(students[0].progress.completed_lessons).toBeGreaterThanOrEqual(students[1].progress.completed_lessons);
+      expect(students).not.toBeNull();
+      expect(students!.length).toBe(2);
+      expect(students![0].progress.completed_lessons).toBeGreaterThanOrEqual(students![1].progress.completed_lessons);
     });
 
     test('5.2 should calculate cohort average progress', async () => {
@@ -736,8 +750,9 @@ describe('Progress Tracking - Cohort-Based Learning', () => {
         .select('progress')
         .eq('cohort_id', testCohortId);
 
-      const totalCompleted = enrollments.reduce((sum, e) => sum + (e.progress?.completed_lessons || 0), 0);
-      const averageProgress = totalCompleted / enrollments.length;
+      expect(enrollments).not.toBeNull();
+      const totalCompleted = enrollments!.reduce((sum, e) => sum + (e.progress?.completed_lessons || 0), 0);
+      const averageProgress = totalCompleted / enrollments!.length;
 
       // Assert
       expect(averageProgress).toBe(3); // (2 + 4) / 2 = 3
@@ -760,8 +775,9 @@ describe('Progress Tracking - Cohort-Based Learning', () => {
 
       // Assert
       expect(error).toBeNull();
-      expect(strugglingStudents.length).toBeGreaterThanOrEqual(1);
-      expect(strugglingStudents[0].user_id).toBe(studentClient1.userId);
+      expect(strugglingStudents).not.toBeNull();
+      expect(strugglingStudents!.length).toBeGreaterThanOrEqual(1);
+      expect(strugglingStudents![0].user_id).toBe(studentClient1.userId);
     });
 
     test('5.4 should generate leaderboard (top performers)', async () => {
@@ -781,9 +797,10 @@ describe('Progress Tracking - Cohort-Based Learning', () => {
 
       // Assert
       expect(error).toBeNull();
-      expect(leaderboard.length).toBe(2);
-      expect(leaderboard[0].user_id).toBe(studentClient1.userId); // Top performer
-      expect(leaderboard[0].progress.completed_lessons).toBe(5);
+      expect(leaderboard).not.toBeNull();
+      expect(leaderboard!.length).toBe(2);
+      expect(leaderboard![0].user_id).toBe(studentClient1.userId); // Top performer
+      expect(leaderboard![0].progress.completed_lessons).toBe(5);
     });
   });
 
@@ -853,7 +870,9 @@ describe('Progress Tracking - Cohort-Based Learning', () => {
 
       // Assert - Query should be fast (indicating index usage)
       expect(error).toBeNull();
+      expect(data).not.toBeNull();
       expect(queryTime).toBeLessThan(50); // Very fast with index
+      if (!data) throw new Error('Query data is null - test failed');
       expect(data.length).toBeGreaterThan(0);
     });
 
@@ -885,7 +904,8 @@ describe('Progress Tracking - Cohort-Based Learning', () => {
 
       // Assert
       expect(error).toBeNull();
-      expect(students.length).toBeGreaterThanOrEqual(500);
+      expect(students).not.toBeNull();
+      expect(students!.length).toBeGreaterThanOrEqual(500);
       expect(queryTime).toBeLessThan(500); // < 500ms even with 500+ records
     });
   });

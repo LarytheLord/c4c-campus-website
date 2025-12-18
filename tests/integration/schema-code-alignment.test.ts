@@ -211,14 +211,10 @@ describe('Schema-Code Alignment Integration Tests', () => {
   describe('2. Database Table Existence', () => {
     test('should have all core LMS tables in database', async () => {
       // Query information_schema for table names
-      const { data: tables, error } = await supabaseAdmin
-        .rpc('get_table_names')
-        .catch(() => {
-          // Fallback if RPC doesn't exist - query a table we know exists
-          return { data: null, error: null };
-        });
+      // Note: We don't rely on get_table_names RPC as it may not exist
+      // Instead, we directly query each core table to verify existence
 
-      // Alternative: try to select from each table
+      // Try to select from each table to verify it exists and is accessible
       for (const tableName of CORE_TABLES) {
         const { error } = await supabaseAdmin
           .from(tableName)

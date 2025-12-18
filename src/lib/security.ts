@@ -149,6 +149,8 @@ export function isStrongPassword(password: string): {
 
 // Default allowed tags for rich text
 const DEFAULT_ALLOWED_TAGS = ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'a', 'code', 'pre'];
+// Note: DEFAULT_ALLOWED_ATTRS reserved for future attribute whitelist functionality
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const DEFAULT_ALLOWED_ATTRS = ['href', 'title', 'target'];
 
 // Server-safe HTML sanitizer that doesn't require jsdom

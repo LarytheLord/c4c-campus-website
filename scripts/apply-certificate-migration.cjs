@@ -46,7 +46,7 @@ async function applyMigration() {
 
     // Execute the SQL using Supabase's REST API
     // Note: We'll use the query method which executes raw SQL
-    const { data, error } = await supabase.rpc('exec_sql', { sql_query: sql });
+    const { error } = await supabase.rpc('exec_sql', { sql_query: sql });
 
     if (error) {
       // If exec_sql doesn't exist, we need to apply the migration manually

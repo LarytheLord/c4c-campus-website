@@ -3,7 +3,7 @@
  * Replaces browser alert() with styled, accessible notifications
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -47,7 +47,7 @@ const toastStyles: Record<ToastType, { bg: string; border: string; icon: string;
   },
 };
 
-const icons: Record<ToastType, JSX.Element> = {
+const icons: Record<ToastType, React.JSX.Element> = {
   success: (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -136,7 +136,7 @@ export function useToast() {
     message: string,
     options?: { title?: string; duration?: number }
   ) => {
-    const id = `toast-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const id = `toast-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
     const newToast: ToastMessage = {
       id,
       type,

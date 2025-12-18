@@ -63,8 +63,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // Try to find Supabase auth cookie (format: sb-<ref>-auth-token)
   const authCookieMatch = cookies.match(/sb-[^=]+-auth-token=([^;]+)/);
 
-  // Also check for our custom storage format
-  const storageCookieMatch = cookies.match(/sb-[^=]+-auth-token-code-verifier=([^;]+)/);
+  // Note: auth-token-code-verifier is used for OAuth PKCE flow but not currently used in this middleware
+  // const storageCookieMatch = cookies.match(/sb-[^=]+-auth-token-code-verifier=([^;]+)/);
 
   let accessToken: string | null = null;
   let refreshToken: string | null = null;

@@ -102,7 +102,7 @@ export default function D3HeatMap({
 
         setTooltip(null);
       })
-      .on('click', (event, d) => {
+      .on('click', (_event, d) => {
         if (onCellClick) {
           onCellClick(d);
         }
@@ -111,7 +111,7 @@ export default function D3HeatMap({
     // Animate cells in
     cells.transition()
       .duration(600)
-      .delay((d, i) => i * 5)
+      .delay((_d, i) => i * 5)
       .style('opacity', 1);
 
     // X-axis (hours)

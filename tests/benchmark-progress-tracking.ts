@@ -17,7 +17,7 @@ interface BenchmarkResult {
   error?: string;
 }
 
-async function benchmark(name: string, query: () => Promise<any>): Promise<BenchmarkResult> {
+async function benchmark(name: string, query: () => PromiseLike<any>): Promise<BenchmarkResult> {
   const start = Date.now();
   try {
     const result = await query();

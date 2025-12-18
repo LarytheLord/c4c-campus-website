@@ -212,7 +212,8 @@ describe('Cohort Schema Integration Tests', () => {
         .select('status')
         .eq('id', cohort.id)
         .single();
-      expect(finalCohort.status).toBe('archived');
+      expect(finalCohort).not.toBeNull();
+      expect(finalCohort!.status).toBe('archived');
     });
 
     test('should update cohort details (name, dates, max_students)', async () => {
@@ -442,7 +443,8 @@ describe('Cohort Schema Integration Tests', () => {
           .select('status')
           .eq('id', enrollment.id)
           .single();
-        expect(updated.status).toBe(status);
+        expect(updated).not.toBeNull();
+        expect(updated!.status).toBe(status);
       }
     });
 
@@ -517,7 +519,8 @@ describe('Cohort Schema Integration Tests', () => {
         .eq('id', enrollment.id)
         .single();
 
-      expect(new Date(updated.last_activity_at).getTime())
+      expect(updated).not.toBeNull();
+      expect(new Date(updated!.last_activity_at).getTime())
         .toBeGreaterThan(new Date(originalTimestamp).getTime());
     });
 
@@ -765,7 +768,7 @@ describe('Cohort Schema Integration Tests', () => {
 
       // Assert - Should only see enrolled cohort
       expect(visibleCohorts).toBeDefined();
-      const cohortIds = visibleCohorts!.map(c => c.id);
+      const cohortIds = visibleCohorts!.map((c: any) => c.id);
       expect(cohortIds).toContain(testCohortId);
       expect(cohortIds).not.toContain(cohort2.id);
     });
@@ -788,7 +791,7 @@ describe('Cohort Schema Integration Tests', () => {
       // Assert - Should see all cohorts for their course
       expect(teacherCohorts).toBeDefined();
       expect(teacherCohorts!.length).toBeGreaterThanOrEqual(2);
-      const cohortIds = teacherCohorts!.map(c => c.id);
+      const cohortIds = teacherCohorts!.map((c: any) => c.id);
       expect(cohortIds).toContain(testCohortId);
       expect(cohortIds).toContain(cohort2.id);
     });
@@ -929,7 +932,8 @@ describe('Cohort Schema Integration Tests', () => {
 
       // Assert - Should return results quickly
       expect(data).toBeDefined();
-      expect(data!.length).toBeGreaterThan(0);
+      if (!data) throw new Error('Query data is undefined - test failed');
+      expect(data.length).toBeGreaterThan(0);
       // Query should be fast (<200ms even with small data set)
       expect(queryTime).toBeLessThan(200);
     });

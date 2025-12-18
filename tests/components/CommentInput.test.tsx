@@ -6,15 +6,16 @@
  */
 
 import { describe, test, expect, vi, beforeEach } from 'vitest';
+import type { Mock } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CommentInput } from '../../src/components/CommentInput';
 
 describe('CommentInput Component', () => {
-  let onSubmit: ReturnType<typeof vi.fn>;
+  let onSubmit: Mock<(content: string) => void>;
 
   beforeEach(() => {
-    onSubmit = vi.fn();
+    onSubmit = vi.fn<(content: string) => void>();
   });
 
   test('shows submit button with correct label', () => {

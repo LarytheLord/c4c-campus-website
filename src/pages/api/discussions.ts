@@ -317,8 +317,9 @@ export const POST: APIRoute = async ({ request }) => {
         errors.push('content must not exceed 2000 characters');
       }
 
-      if (parent_id && typeof parent_id !== 'number') {
-        errors.push('parent_id must be a number if provided');
+      // parent_id is UUID (string) per schema.sql lesson_discussions table
+      if (parent_id && typeof parent_id !== 'string') {
+        errors.push('parent_id must be a string (UUID) if provided');
       }
 
       if (errors.length > 0) {

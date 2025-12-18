@@ -974,8 +974,8 @@ describe('Error Handling & Edge Cases', () => {
 
   test('should allow user to retry after error', () => {
     let state = { error: 'Failed to post', canRetry: true };
-    state.error = null;
-    expect(state.error).toBeNull();
+    state.error = '';
+    expect(state.error).toBe('');
     expect(state.canRetry).toBe(true);
   });
 

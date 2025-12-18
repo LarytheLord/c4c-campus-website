@@ -82,7 +82,7 @@ const { id } = Astro.params;
 
   <script>
     import { createClient } from '@supabase/supabase-js';
-    import type { AssignmentWithSubmission } from '@/types/assignment';
+    import type { AssignmentWithCourse } from '@/types/assignment';
     import { createRoot } from 'react-dom/client';
     import { createElement } from 'react';
     import AssignmentRubric from '@/components/student/AssignmentRubric';
@@ -98,7 +98,7 @@ const { id } = Astro.params;
     );
 
     const assignmentId = window.location.pathname.split('/')[2];
-    let assignment: AssignmentWithSubmission | null = null;
+    let assignment: AssignmentWithCourse | null = null;
     let assignmentStatus: AssignmentStatus | null = null;
 
     async function loadAssignment() {
@@ -116,10 +116,10 @@ const { id } = Astro.params;
           .select(`
             *,
             lessons(
-              id, name,
+              id, title,
               modules(
                 id, title,
-                courses(id, name, created_by)
+                courses(id, title, created_by)
               )
             )
           `)
@@ -160,8 +160,10 @@ const { id } = Astro.params;
     function renderAssignment() {
       if (!assignment) return;
 
-      const lesson = assignment.lessons as any;
-      const course = lesson?.modules?.courses;
+      // Defensive access to nested query results
+      const lesson = assignment.lessons;
+      const module = lesson?.modules;
+      const course = module?.courses;
 
       // Header
       const titleEl = document.getElementById('assignment-title');
@@ -169,7 +171,9 @@ const { id } = Astro.params;
 
       const metaEl = document.getElementById('assignment-meta');
       if (metaEl) {
-        metaEl.textContent = `${course?.title || 'Unknown Course'} • ${lesson?.name || 'Unknown Lesson'}`;
+        const courseName = course?.title || 'Unknown Course';
+        const lessonName = lesson?.title || 'Unknown Lesson';
+        metaEl.textContent = `${courseName} • ${lessonName}`;
       }
 
       const descEl = document.getElementById('assignment-description');

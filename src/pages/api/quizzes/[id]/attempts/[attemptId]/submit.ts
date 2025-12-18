@@ -172,17 +172,48 @@ export const POST: APIRoute = async ({ request, params }) => {
       results = {
         questions: gradingResult.answers.map(ans => {
           const question = questions.find(q => q.id === ans.question_id);
+
+          // DEFENSIVE: Ensure questionText is always a string
+          const questionText = typeof question?.question_text === 'string'
+            ? question.question_text
+            : '';
+
+          // DEFENSIVE: Ensure yourAnswer is string | string[]
+          const yourAnswer: string | string[] = Array.isArray(ans.answer)
+            ? ans.answer
+            : (typeof ans.answer === 'string' ? ans.answer : '');
+
+          // DEFENSIVE: Ensure correctAnswer is string | string[] or undefined
+          let correctAnswer: string | string[] | undefined = undefined;
+          if (quiz.show_correct_answers && question) {
+            if (question.question_type === 'multiple_select' && question.options) {
+              // multiple_select extracts correct answers from options (where is_correct is true)
+              correctAnswer = question.options
+                .filter((opt: any) => opt.is_correct)
+                .map((opt: any) => opt.id);
+            } else if (question.correct_answer !== null && question.correct_answer !== undefined) {
+              // Other types use correct_answer (string)
+              correctAnswer = typeof question.correct_answer === 'string'
+                ? question.correct_answer
+                : String(question.correct_answer);
+            }
+          }
+
+          // DEFENSIVE: Ensure explanation is string or undefined
+          const explanation = quiz.show_correct_answers && question?.answer_explanation
+            ? (typeof question.answer_explanation === 'string'
+                ? question.answer_explanation
+                : undefined)
+            : undefined;
+
           return {
             id: ans.question_id,
-            questionText: question?.question_text || '',
-            yourAnswer: ans.answer,
-            correctAnswer:
-              quiz.show_correct_answers
-                ? question?.correct_answer
-                : undefined,
+            questionText,
+            yourAnswer,
+            correctAnswer,
             isCorrect: ans.is_correct,
             pointsEarned: ans.points_earned,
-            explanation: quiz.show_correct_answers ? question?.answer_explanation : undefined,
+            explanation,
           };
         }),
       };

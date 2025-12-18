@@ -15,9 +15,29 @@ if (!accessToken) {
   return Astro.redirect('/login?redirect=/certificates');
 }
 
+// Certificate type for this page (matches schema.sql certificates table)
+interface CertificateData {
+  id: string;
+  user_id: string;
+  course_id: number;
+  template_id?: string;
+  certificate_code: string; // Used for verification (unique)
+  issued_date: string;
+  expiry_date?: string;
+  student_name: string;
+  course_title: string;
+  completion_date?: string;
+  final_grade?: string;
+  pdf_url?: string; // URL to download the PDF
+  metadata?: {
+    hours?: number;
+    [key: string]: unknown;
+  };
+}
+
 // Fetch certificates from API
-let certificates = [];
-let error = null;
+let certificates: CertificateData[] = [];
+let error: string | null = null;
 
 try {
   const apiUrl = new URL('/api/certificates', Astro.url.origin);
@@ -162,7 +182,7 @@ const pageDescription = 'View and download your course completion certificates';
                 <div>
                   <p class="text-2xl font-bold text-gray-900">
                     {certificates.reduce((sum, cert) => {
-                      const hours = cert.certificate_data?.hours || 0;
+                      const hours = cert.metadata?.hours ?? 0;
                       return sum + hours;
                     }, 0)}
                   </p>
@@ -190,7 +210,7 @@ const pageDescription = 'View and download your course completion certificates';
                 </div>
                 <div>
                   <p class="text-2xl font-bold text-gray-900">
-                    {new Date(certificates[0].completion_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                    {new Date(certificates[0].completion_date ?? certificates[0].issued_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                   </p>
                   <p class="text-sm text-gray-600">Latest Certificate</p>
                 </div>

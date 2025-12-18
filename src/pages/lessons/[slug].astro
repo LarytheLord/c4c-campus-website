@@ -60,7 +60,7 @@ export const prerender = false;
               id="lesson-video"
               class="w-full h-full"
               controls
-              controlsList="nodownload"
+              controlslist="nodownload"
             >
               <source id="video-source" src="" type="video/mp4" />
               Your browser does not support the video tag.
@@ -335,7 +335,7 @@ export const prerender = false;
       const container = document.getElementById('text-content-container');
       const content = document.getElementById('text-content');
       if (container && content) {
-        content.innerHTML = marked.parse(lesson.content);
+        content.innerHTML = marked.parse(lesson.content) as string;
         container.classList.remove('hidden');
       }
     }
@@ -535,15 +535,16 @@ export const prerender = false;
     // Import and render React component
     import('../../components/DiscussionThread').then(({ DiscussionThread }) => {
       import('react-dom/client').then(({ createRoot }) => {
-        const reactRoot = createRoot(root);
-        reactRoot.render(
-          DiscussionThread({
+        import('react').then((React) => {
+          const reactRoot = createRoot(root);
+          const component = DiscussionThread({
             lessonId: currentLesson.id,
             cohortId: userCohortId!,
             currentUserId: currentUser.id,
             isTeacher: isTeacher,
-          })
-        );
+          }) as React.ReactNode;
+          reactRoot.render(component);
+        });
       });
     });
   }

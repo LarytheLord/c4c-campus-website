@@ -183,11 +183,11 @@ export default function SubmissionHistory({
                   {/* File Info */}
                   <div className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg mb-3">
                     <div className="flex items-center gap-3">
-                      <span className="text-2xl">{getFileIcon(submission.file_name)}</span>
+                      <span className="text-2xl">{getFileIcon(submission.file_name ?? 'unknown')}</span>
                       <div>
-                        <p className="font-medium text-sm">{submission.file_name}</p>
+                        <p className="font-medium text-sm">{submission.file_name ?? 'Unknown file'}</p>
                         <p className="text-xs text-gray-600">
-                          {formatFileSize(submission.file_size_bytes)}
+                          {formatFileSize(submission.file_size_bytes ?? 0)}
                         </p>
                       </div>
                     </div>

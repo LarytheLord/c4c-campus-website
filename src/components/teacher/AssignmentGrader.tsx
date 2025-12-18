@@ -240,7 +240,7 @@ export default function AssignmentGrader({
                 <button
                   key={i}
                   type="button"
-                  onClick={() => setFeedback(prev => prev ? `${prev}\n\n${template}` : template)}
+                  onClick={() => setFeedback((prev: string) => prev ? `${prev}\n\n${template}` : template)}
                   className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
                 >
                   {template}

@@ -7,18 +7,19 @@
  */
 
 import { describe, test, expect, vi, beforeEach } from 'vitest';
+import type { Mock } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import CourseBuilder from '@/components/course/CourseBuilder';
 import { mockCourse } from '../fixtures/courses';
 
 describe('CourseBuilder Component', () => {
-  let mockOnSave: ReturnType<typeof vi.fn>;
-  let mockOnPublish: ReturnType<typeof vi.fn>;
+  let mockOnSave: Mock<(courseData: any) => Promise<{ success: boolean }>>;
+  let mockOnPublish: Mock<(courseId: number, published: boolean) => Promise<{ success: boolean }>>;
   
   beforeEach(() => {
-    mockOnSave = vi.fn().mockResolvedValue({ success: true });
-    mockOnPublish = vi.fn().mockResolvedValue({ success: true });
+    mockOnSave = vi.fn<(courseData: any) => Promise<{ success: boolean }>>().mockResolvedValue({ success: true });
+    mockOnPublish = vi.fn<(courseId: number, published: boolean) => Promise<{ success: boolean }>>().mockResolvedValue({ success: true });
   });
   
   // ==================== FORM RENDERING ====================

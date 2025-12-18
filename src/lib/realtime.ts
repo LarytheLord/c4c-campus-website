@@ -126,7 +126,7 @@ export class MessagingRealtimeManager {
         }
       )
       .on('broadcast', { event: 'typing' }, (payload) => {
-        callback({ type: 'typing', ...payload });
+        callback({ ...payload, type: 'typing' });
       })
       .subscribe();
 
@@ -185,7 +185,7 @@ export class MessagingRealtimeManager {
    * Unsubscribe from all channels
    */
   unsubscribeAll(): void {
-    for (const [name, channel] of this.channels) {
+    for (const [, channel] of this.channels) {
       this.supabase.removeChannel(channel);
     }
     this.channels.clear();

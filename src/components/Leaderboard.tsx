@@ -110,7 +110,7 @@ export default function Leaderboard({ entries, loading = false }: LeaderboardPro
 
       {/* Leaderboard List */}
       <div className="space-y-3">
-        {displayedEntries.map((entry, index) => {
+        {displayedEntries.map((entry) => {
           const isTopThree = entry.rank <= 3;
           const medal = getMedalEmoji(entry.rank);
           const rankColor = getRankColor(entry.rank);

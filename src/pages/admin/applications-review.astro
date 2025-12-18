@@ -142,7 +142,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   <script>
     import { supabase } from '../../lib/supabase';
 
-    function escapeHTML(unsafe) {
+    function escapeHTML(unsafe: unknown): string {
       if (!unsafe) return '';
       return String(unsafe)
         .replace(/&/g, "&amp;")
@@ -154,7 +154,9 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 
     let currentUser: any = null;
     let allApplications: any[] = [];
-// ... (omitting lines for brevity)
+    let filteredApplications: any[] = [];
+    let selectedAppIds = new Set<string>();
+    let currentApplication: any = null;
 
     async function showApplicationDetails(appId: string) {
       const app = allApplications.find(a => a.id === appId);

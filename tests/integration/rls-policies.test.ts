@@ -54,7 +54,7 @@ describe('RLS Policy Integration Tests', () => {
     // Assert - Only sees their own enrollment
     expect(student1Enrollments).toHaveLength(1);
     expect(student1Enrollments![0].user_id).toBe(student1Client.userId);
-    expect(student1Enrollments!.some(e => e.user_id === student2Client.userId)).toBe(false);
+    expect(student1Enrollments!.some((e: any) => e.user_id === student2Client.userId)).toBe(false);
   });
 
   test('should prevent users from modifying other users enrollments', async () => {
@@ -81,7 +81,8 @@ describe('RLS Policy Integration Tests', () => {
       .select('status')
       .eq('id', enrollment.id)
       .single();
-    expect(stillActive.status).toBe('active');
+    expect(stillActive).not.toBeNull();
+    expect(stillActive!.status).toBe('active');
   });
 
   // ==================== LESSON PROGRESS ACCESS ====================
@@ -176,7 +177,8 @@ describe('RLS Policy Integration Tests', () => {
       .select('completed')
       .eq('id', progress.id)
       .single();
-    expect(stillIncomplete.completed).toBe(false);
+    expect(stillIncomplete).not.toBeNull();
+    expect(stillIncomplete!.completed).toBe(false);
   });
 
   // ==================== PUBLIC COURSE ACCESS ====================
@@ -197,7 +199,7 @@ describe('RLS Policy Integration Tests', () => {
     // Assert - Can see published courses
     expect(courses).toBeDefined();
     expect(courses!.length).toBeGreaterThan(0);
-    expect(courses!.every(c => c.is_published === true)).toBe(true);
+    expect(courses!.every((c: any) => c.is_published === true)).toBe(true);
   });
 
   test('should hide unpublished courses from students', async () => {
@@ -216,7 +218,7 @@ describe('RLS Policy Integration Tests', () => {
       .select();
 
     // Assert - Only published courses visible (or empty array)
-    expect(courses?.every(c => c.is_published === true) || courses?.length === 0).toBe(true);
+    expect(courses?.every((c: any) => c.is_published === true) || courses?.length === 0).toBe(true);
   });
 
   // ==================== TEACHER OWNERSHIP ====================
@@ -246,7 +248,8 @@ describe('RLS Policy Integration Tests', () => {
       .select('title')
       .eq('id', teacherCourse.id)
       .single();
-    expect(unchanged.title).toBe('Teacher Course');
+    expect(unchanged).not.toBeNull();
+    expect(unchanged!.title).toBe('Teacher Course');
   });
 
   // ==================== SERVICE ROLE BYPASS ====================
@@ -459,7 +462,8 @@ describe('RLS Policy Integration Tests', () => {
       .select('status')
       .eq('id', enrollment.id)
       .single();
-    expect(updated.status).toBe('paused');
+    expect(updated).not.toBeNull();
+    expect(updated!.status).toBe('paused');
   });
 
   test('should prevent teacher from enrolling in other teachers cohorts', async () => {

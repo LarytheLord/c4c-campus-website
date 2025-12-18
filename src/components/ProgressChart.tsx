@@ -8,7 +8,7 @@
  * - Average completion rate
  */
 
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -173,11 +173,11 @@ export default function ProgressChart({
         ...options.scales.y,
         max: 100,
         ticks: {
-          callback: (value: number) => `${value}%`
+          callback: (value: string | number) => `${value}%`
         }
       }
     }
-  };
+  } as const;
 
   // Calculate summary statistics
   const totalCompletions = progressData.reduce((sum, d) => sum + d.completed_lessons, 0);

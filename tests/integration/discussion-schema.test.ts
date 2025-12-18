@@ -256,7 +256,8 @@ describe('Discussion System Schema Integration Tests', () => {
         .eq('user_id', student1Client.userId)
         .single();
 
-      const initialActivity = beforeEnrollment.last_activity_at;
+      expect(beforeEnrollment).not.toBeNull();
+      const initialActivity = beforeEnrollment!.last_activity_at;
 
       // Wait a moment to ensure timestamp difference
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -282,7 +283,8 @@ describe('Discussion System Schema Integration Tests', () => {
         .eq('user_id', student1Client.userId)
         .single();
 
-      expect(new Date(afterEnrollment.last_activity_at).getTime()).toBeGreaterThan(
+      expect(afterEnrollment).not.toBeNull();
+      expect(new Date(afterEnrollment!.last_activity_at).getTime()).toBeGreaterThan(
         new Date(initialActivity).getTime()
       );
     });
@@ -534,8 +536,8 @@ describe('Discussion System Schema Integration Tests', () => {
 
       // Assert - Student1 should only see their cohort's discussions
       // Note: This will fail until RLS policy is implemented
-      expect(student1Discussions?.every(d => d.cohort_id === testCohortId)).toBe(true);
-      expect(student1Discussions?.some(d => d.cohort_id === testCohort2Id)).toBe(false);
+      expect(student1Discussions?.every((d: any) => d.cohort_id === testCohortId)).toBe(true);
+      expect(student1Discussions?.some((d: any) => d.cohort_id === testCohort2Id)).toBe(false);
     });
 
     test('should allow teachers to view all discussions in their courses', async () => {
@@ -590,7 +592,8 @@ describe('Discussion System Schema Integration Tests', () => {
         .eq('id', post.id)
         .single();
 
-      expect(unchanged.content).toBe('Original content');
+      expect(unchanged).not.toBeNull();
+      expect(unchanged!.content).toBe('Original content');
     });
 
     test('should allow teachers to pin/lock any discussion', async () => {
@@ -670,7 +673,7 @@ describe('Discussion System Schema Integration Tests', () => {
         .eq('course_id', testCourseId);
 
       // Assert
-      expect(student1Forums?.every(f => f.cohort_id === testCohortId)).toBe(true);
+      expect(student1Forums?.every((f: any) => f.cohort_id === testCohortId)).toBe(true);
     });
 
     test('should allow teachers to moderate (lock/pin/delete) forum posts', async () => {

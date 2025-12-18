@@ -5,6 +5,8 @@
 
 type ToastType = 'success' | 'error' | 'warning' | 'info';
 
+// Note: ToastOptions is defined for future expansion of the toast API
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ToastOptions {
   duration?: number;
   dismissible?: boolean;
@@ -89,7 +91,7 @@ export function showToast(
   duration: number = DEFAULT_DURATION
 ): string {
   const container = ensureContainer();
-  const toastId = `toast-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const toastId = `toast-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 
   const toast = document.createElement('div');
   toast.id = toastId;

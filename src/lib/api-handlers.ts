@@ -20,6 +20,8 @@ export interface EnrollmentCheckResult {
     course_id: number;
     cohort_id: string | null;
     enrolled_at: string;
+    status: 'active' | 'completed' | 'dropped' | 'paused';
+    completed_at: string | null;
     progress_percentage: number;
   } | null;
 }
@@ -36,6 +38,7 @@ export interface CourseProgressResult {
     title: string;
     slug: string;
     module_id: number;
+    completed: boolean;
   } | null;
   total_watch_count: number;
 }
@@ -171,7 +174,7 @@ export async function checkEnrollment(
 
   const { data, error } = await supabase
     .from('enrollments')
-    .select('id, user_id, course_id, cohort_id, enrolled_at, progress_percentage')
+    .select('id, user_id, course_id, cohort_id, enrolled_at, status, completed_at, progress_percentage')
     .eq('user_id', userId)
     .eq('course_id', courseId)
     .single();
@@ -273,6 +276,7 @@ export async function calculateCourseProgress(
         title: incompleteLesson.title,
         slug: incompleteLesson.slug,
         module_id: incompleteLesson.module_id,
+        completed: false,
       };
     }
   }

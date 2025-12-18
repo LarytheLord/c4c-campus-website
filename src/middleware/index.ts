@@ -11,7 +11,7 @@ import { onRequest as authMiddleware } from './auth';
 /**
  * Security headers middleware
  */
-const securityMiddleware = defineMiddleware(async (context, next) => {
+const securityMiddleware = defineMiddleware(async (_context, next) => {
   const response = await next();
 
   const headers = new Headers(response.headers);

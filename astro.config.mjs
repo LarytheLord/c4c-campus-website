@@ -10,6 +10,7 @@ export default defineConfig({
   output: 'server',
   adapter: vercel(),
   vite: {
+    // @ts-expect-error - @tailwindcss/vite types are incompatible with Astro's bundled Vite types
     plugins: [tailwindcss()],
     build: {
       // Enable code splitting and chunk optimization
@@ -22,8 +23,7 @@ export default defineConfig({
             'supabase': ['@supabase/supabase-js', '@supabase/storage-js'],
           },
           // Optimize chunk naming for better caching
-          chunkFileNames: (chunkInfo) => {
-            const facadeModuleId = chunkInfo.facadeModuleId ? chunkInfo.facadeModuleId.split('/').pop() : 'chunk';
+          chunkFileNames: () => {
             return `assets/[name].[hash].js`;
           },
         },

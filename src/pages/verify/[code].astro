@@ -172,6 +172,7 @@ const pageDescription = 'Verify the authenticity of C4C Campus certificates';
                   </p>
                 </div>
 
+                {/* Status derived from validity check - per schema, certificates don't have a status field */}
                 <div class="bg-gray-50 rounded-lg p-4">
                   <p class="text-xs text-gray-600 mb-1 uppercase tracking-wide">
                     Status
@@ -179,18 +180,19 @@ const pageDescription = 'Verify the authenticity of C4C Campus certificates';
                   <div class="flex items-center gap-2">
                     <span class="inline-block w-2 h-2 bg-green-500 rounded-full"></span>
                     <p class="font-semibold text-gray-900 capitalize">
-                      {certificate.status}
+                      Valid
                     </p>
                   </div>
                 </div>
 
-                {certificate.instructor_name && (
+                {/* Final grade if available */}
+                {certificate.final_grade && (
                   <div class="bg-gray-50 rounded-lg p-4">
                     <p class="text-xs text-gray-600 mb-1 uppercase tracking-wide">
-                      Instructor
+                      Final Grade
                     </p>
                     <p class="font-semibold text-gray-900">
-                      {certificate.instructor_name}
+                      {certificate.final_grade}
                     </p>
                   </div>
                 )}

@@ -564,31 +564,26 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       await loadCohorts();
     }
 
-    function deleteCohort(id: string) {
+    async function deleteCohort(id: string) {
       // Cohort IDs are UUIDs (strings)
       const cohort = allCohorts.find(c => c.id === id);
       if (!cohort) return;
 
-      showConfirm({
-        title: 'Delete Cohort',
-        message: `Are you sure you want to delete "${cohort.name}"? This action cannot be undone.`,
-        confirmText: 'Delete',
-        confirmClass: 'btn-error',
-        onConfirm: async () => {
-          const { error } = await supabase
-            .from('cohorts')
-            .delete()
-            .eq('id', id);
+      const confirmed = await showConfirm(`Are you sure you want to delete "${cohort.name}"? This action cannot be undone.`, 'Delete');
+      if (!confirmed) return;
 
-          if (error) {
-            showToast('Error deleting cohort: ' + error.message, 'error');
-            return;
-          }
+      const { error } = await supabase
+        .from('cohorts')
+        .delete()
+        .eq('id', id);
 
-          showToast('Cohort deleted successfully!', 'success');
-          await loadCohorts();
-        }
-      });
+      if (error) {
+        showToast('Error deleting cohort: ' + error.message, 'error');
+        return;
+      }
+
+      showToast('Cohort deleted successfully!', 'success');
+      await loadCohorts();
     }
 
     async function openStudentsModal(cohortId: string) {
@@ -671,27 +666,22 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
           const enrollmentId = (btn as HTMLElement).getAttribute('data-enrollment-id')!;
           const studentName = (btn as HTMLElement).getAttribute('data-name');
 
-          showConfirm({
-            title: 'Remove Student',
-            message: `Are you sure you want to remove ${studentName} from this cohort?`,
-            confirmText: 'Remove',
-            confirmClass: 'btn-error',
-            onConfirm: async () => {
-              const { error } = await supabase
-                .from('enrollments')
-                .delete()
-                .eq('id', enrollmentId);
+          const confirmed = await showConfirm(`Are you sure you want to remove ${studentName} from this cohort?`, 'Remove');
+          if (!confirmed) return;
 
-              if (error) {
-                showToast('Failed to remove student: ' + error.message, 'error');
-                return;
-              }
+          const { error } = await supabase
+            .from('enrollments')
+            .delete()
+            .eq('id', enrollmentId);
 
-              showToast('Student removed successfully!', 'success');
-              await loadStudents(cohortId);
-              await loadCohorts(); // Refresh cohort counts
-            }
-          });
+          if (error) {
+            showToast('Failed to remove student: ' + error.message, 'error');
+            return;
+          }
+
+          showToast('Student removed successfully!', 'success');
+          await loadStudents(cohortId);
+          await loadCohorts(); // Refresh cohort counts
         });
       });
     }

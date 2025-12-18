@@ -7,7 +7,7 @@
  * - Automatic cache invalidation
  */
 
-import type { APIContext, MiddlewareHandler } from 'astro';
+import type { MiddlewareHandler } from 'astro';
 import { getCacheHeaders, getNoCacheHeaders } from '../lib/cache';
 
 /**
@@ -150,11 +150,8 @@ export const cacheMiddleware: MiddlewareHandler = async (context, next) => {
 /**
  * Compression middleware for API responses
  */
-export const compressionMiddleware: MiddlewareHandler = async (context, next) => {
+export const compressionMiddleware: MiddlewareHandler = async (_context, next) => {
   const response = await next();
-
-  // Check if client accepts compression
-  const acceptEncoding = context.request.headers.get('Accept-Encoding') || '';
 
   // If response is already compressed, return as is
   if (response.headers.has('Content-Encoding')) {

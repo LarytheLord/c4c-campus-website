@@ -64,3 +64,32 @@ export interface AssignmentWithSubmission extends Assignment {
    */
   serverCanSubmit?: boolean;
 }
+
+/**
+ * Assignment with nested lesson, module, and course data from Supabase joins.
+ * Used in assignment list and detail pages to display course context.
+ */
+export interface AssignmentWithCourse extends AssignmentWithSubmission {
+  // Nested relationships from Supabase query with select('*, lessons(...)')
+  lessons?: {
+    id: number;
+    title?: string;
+    modules?: {
+      id: number;
+      title?: string;
+      courses?: {
+        id: number;
+        title?: string;
+        created_by?: string;
+      };
+    };
+  } | null;
+
+  // Derived display fields (computed from nested data)
+  course_name?: string;
+  lesson_name?: string;
+
+  // Legacy/optional fields accessed in UI but may not be populated
+  // Note: grading_rubric is stored in assignment_rubrics table but may be accessed as if joined
+  grading_rubric?: any; // JSONB or array of rubric items, if fetched
+}

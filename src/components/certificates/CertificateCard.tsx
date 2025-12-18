@@ -4,27 +4,58 @@
  */
 
 import { useState } from 'react';
-import type { Certificate } from '../../lib/certificates';
+
+// Certificate type matching schema.sql certificates table
+interface Certificate {
+  id: string;
+  user_id: string;
+  course_id: number;
+  template_id?: string;
+  certificate_code: string; // Unique code used for verification
+  issued_date: string;
+  expiry_date?: string;
+  student_name: string;
+  course_title: string;
+  completion_date?: string;
+  final_grade?: string;
+  pdf_url?: string; // URL to download PDF
+  metadata?: {
+    hours?: number;
+    [key: string]: unknown;
+  };
+}
 
 interface CertificateCardProps {
-  certificate: any; // Certificate with URLs
+  certificate: Certificate;
 }
 
 export default function CertificateCard({ certificate }: CertificateCardProps) {
   const [isDownloading, setIsDownloading] = useState(false);
 
-  const certData = certificate.certificate_data || {};
-  const courseName = certificate.course_title || certData.course_name || 'Course';
-  const completionDate = new Date(certificate.completion_date).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
+  const courseName = certificate.course_title ?? 'Course';
+  const hours = certificate.metadata?.hours;
+
+  // Use completion_date if available, fall back to issued_date
+  const displayDate = certificate.completion_date ?? certificate.issued_date;
+  const completionDate = displayDate
+    ? new Date(displayDate).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      })
+    : 'N/A';
 
   const handleDownload = async () => {
+    // Use pdf_url from schema (not download_url)
+    const downloadUrl = certificate.pdf_url;
+    if (!downloadUrl) {
+      alert('PDF is not available for this certificate.');
+      return;
+    }
+
     setIsDownloading(true);
     try {
-      const response = await fetch(certificate.download_url);
+      const response = await fetch(downloadUrl);
       if (!response.ok) throw new Error('Download failed');
 
       const blob = await response.blob();
@@ -45,7 +76,8 @@ export default function CertificateCard({ certificate }: CertificateCardProps) {
   };
 
   const handleShare = () => {
-    const verificationUrl = `${window.location.origin}/verify/${certificate.verification_code}`;
+    // Use certificate_code as the verification identifier (it's unique per schema)
+    const verificationUrl = `${window.location.origin}/verify/${certificate.certificate_code}`;
 
     if (navigator.share) {
       navigator.share({
@@ -62,8 +94,9 @@ export default function CertificateCard({ certificate }: CertificateCardProps) {
   };
 
   const handleCopyVerificationCode = () => {
-    navigator.clipboard.writeText(certificate.verification_code).then(() => {
-      alert('Verification code copied to clipboard!');
+    // Use certificate_code as it's the unique identifier
+    navigator.clipboard.writeText(certificate.certificate_code).then(() => {
+      alert('Certificate code copied to clipboard!');
     });
   };
 
@@ -107,21 +140,23 @@ export default function CertificateCard({ certificate }: CertificateCardProps) {
             <span className="font-semibold text-gray-900">{completionDate}</span>
           </div>
 
-          {certData.hours && (
+          {hours != null && hours > 0 && (
             <div className="flex justify-between items-center text-sm">
               <span className="text-gray-600">Course Hours:</span>
-              <span className="font-semibold text-gray-900">{certData.hours} hours</span>
+              <span className="font-semibold text-gray-900">{hours} hours</span>
             </div>
           )}
 
           <div className="flex justify-between items-start text-sm pt-2 border-t border-gray-100">
-            <span className="text-gray-600">Verification Code:</span>
+            <span className="text-gray-600">Certificate Code:</span>
             <button
               onClick={handleCopyVerificationCode}
               className="font-mono text-xs text-blue-600 hover:text-blue-800 underline text-right break-all max-w-[200px]"
               title="Click to copy"
             >
-              {certificate.verification_code.substring(0, 16)}...
+              {certificate.certificate_code.length > 16
+                ? `${certificate.certificate_code.substring(0, 16)}...`
+                : certificate.certificate_code}
             </button>
           </div>
         </div>
@@ -198,7 +233,7 @@ export default function CertificateCard({ certificate }: CertificateCardProps) {
         {/* Verification Link */}
         <div className="mt-4 pt-4 border-t border-gray-100">
           <a
-            href={`/verify/${certificate.verification_code}`}
+            href={`/verify/${certificate.certificate_code}`}
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"

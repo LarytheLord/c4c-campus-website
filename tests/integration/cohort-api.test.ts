@@ -291,8 +291,8 @@ describe('Cohort API Integration Tests', () => {
         user_id: student1Client.userId,
       });
 
-      const { data: canView } = await student1Client.from('cohorts').select().eq('id', cohort.id).single();
-      const { error: cannotView } = await student2Client.from('cohorts').select().eq('id', cohort.id).single();
+      const { data: canView } = await student1Client.client.from('cohorts').select().eq('id', cohort.id).single();
+      const { error: cannotView } = await student2Client.client.from('cohorts').select().eq('id', cohort.id).single();
 
       expect(canView).toBeDefined();
       expect(cannotView).toBeDefined();
@@ -425,7 +425,7 @@ describe('Cohort API Integration Tests', () => {
         created_by: teacherClient.userId,
       }).select().single();
 
-      const { error } = await student1Client.from('cohorts').update({
+      const { error } = await student1Client.client.from('cohorts').update({
         name: 'Hacked Name',
       }).eq('id', cohort.id);
 
@@ -487,7 +487,8 @@ describe('Cohort API Integration Tests', () => {
       await supabaseAdmin.from('cohorts').delete().eq('id', cohort.id);
 
       const { data: enrollments } = await supabaseAdmin.from('cohort_enrollments').select().eq('cohort_id', cohort.id);
-      expect(enrollments.length).toBe(0);
+      expect(enrollments).not.toBeNull();
+      expect(enrollments!.length).toBe(0);
     });
 
     test('should cascade delete cohort schedules when cohort is deleted', async () => {
@@ -506,7 +507,8 @@ describe('Cohort API Integration Tests', () => {
       await supabaseAdmin.from('cohorts').delete().eq('id', cohort.id);
 
       const { data: schedules } = await supabaseAdmin.from('cohort_schedules').select().eq('cohort_id', cohort.id);
-      expect(schedules.length).toBe(0);
+      expect(schedules).not.toBeNull();
+      expect(schedules!.length).toBe(0);
     });
 
     test('should enforce RLS student cannot delete cohorts', async () => {
@@ -517,7 +519,7 @@ describe('Cohort API Integration Tests', () => {
         created_by: teacherClient.userId,
       }).select().single();
 
-      const { error } = await student1Client.from('cohorts').delete().eq('id', cohort.id);
+      const { error } = await student1Client.client.from('cohorts').delete().eq('id', cohort.id);
       expect(error).toBeDefined();
 
       const { data: stillThere } = await supabaseAdmin.from('cohorts').select().eq('id', cohort.id).single();
@@ -568,7 +570,8 @@ describe('Cohort API Integration Tests', () => {
       const { data: created, error } = await supabaseAdmin.from('cohort_schedules').insert(schedules).select();
 
       expect(error).toBeNull();
-      expect(created.length).toBe(testModuleIds.length);
+      expect(created).not.toBeNull();
+      expect(created!.length).toBe(testModuleIds.length);
     });
 
     test('should support custom schedule with specific unlock dates', async () => {
@@ -586,7 +589,8 @@ describe('Cohort API Integration Tests', () => {
       ]).select();
 
       expect(error).toBeNull();
-      expect(schedules.length).toBe(3);
+      expect(schedules).not.toBeNull();
+      expect(schedules!.length).toBe(3);
     });
 
     test('should support optional lock_date to re-lock modules', async () => {
@@ -844,7 +848,8 @@ describe('Cohort API Integration Tests', () => {
       const { data: cohorts, error } = await supabaseAdmin.from('cohorts').insert(cohortBatch).select();
 
       expect(error).toBeNull();
-      expect(cohorts.length).toBe(5);
+      expect(cohorts).not.toBeNull();
+      expect(cohorts!.length).toBe(5);
     });
 
     test('should handle bulk enrollment of students to cohort', async () => {
@@ -864,7 +869,8 @@ describe('Cohort API Integration Tests', () => {
       const { data: enrolled, error } = await supabaseAdmin.from('cohort_enrollments').insert(enrollments).select();
 
       expect(error).toBeNull();
-      expect(enrolled.length).toBe(2);
+      expect(enrolled).not.toBeNull();
+      expect(enrolled!.length).toBe(2);
     });
 
     test('should handle very long cohort names', async () => {

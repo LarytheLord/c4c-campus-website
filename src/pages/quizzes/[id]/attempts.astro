@@ -153,6 +153,10 @@ export const prerender = false;
     quiz = data.quiz;
     attempts = data.userAttempts || data.attempts || [];
 
+    if (!quiz) {
+      throw new Error('Quiz not found');
+    }
+
     // Use server-provided canAttempt for consistency
     canRetake = data.canAttempt ?? false;
 

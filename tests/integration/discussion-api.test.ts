@@ -420,8 +420,10 @@ describe('Discussion API Integration Tests', () => {
         .eq('user_id', student2Client.userId)
         .single();
 
-      expect(new Date(enrollmentAfter.last_activity_at).getTime()).toBeGreaterThanOrEqual(
-        new Date(enrollmentBefore.last_activity_at).getTime()
+      expect(enrollmentBefore).not.toBeNull();
+      expect(enrollmentAfter).not.toBeNull();
+      expect(new Date(enrollmentAfter!.last_activity_at).getTime()).toBeGreaterThanOrEqual(
+        new Date(enrollmentBefore!.last_activity_at).getTime()
       );
     });
 
@@ -504,7 +506,8 @@ describe('Discussion API Integration Tests', () => {
         .eq('id', post.id)
         .single();
 
-      expect(unchanged.is_pinned).toBe(false);
+      expect(unchanged).not.toBeNull();
+      expect(unchanged!.is_pinned).toBe(false);
     });
 
     test('should allow post author to pin their own post', async () => {
@@ -698,7 +701,8 @@ describe('Discussion API Integration Tests', () => {
         .eq('id', post.id)
         .single();
 
-      expect(unchanged.is_locked).toBe(false);
+      expect(unchanged).not.toBeNull();
+      expect(unchanged!.is_locked).toBe(false);
     });
   });
 
@@ -996,8 +1000,8 @@ describe('Discussion API Integration Tests', () => {
         .eq('lesson_id', lesson2.id);
 
       // Assert
-      expect(lesson1Discussions?.every(d => d.lesson_id === testLessonId)).toBe(true);
-      expect(lesson2Discussions?.every(d => d.lesson_id === lesson2.id)).toBe(true);
+      expect(lesson1Discussions?.every((d: any) => d.lesson_id === testLessonId)).toBe(true);
+      expect(lesson2Discussions?.every((d: any) => d.lesson_id === lesson2.id)).toBe(true);
     });
 
     test('should include user info in discussion responses', async () => {
@@ -1154,7 +1158,8 @@ describe('Discussion API Integration Tests', () => {
         .eq('id', post.id)
         .single();
 
-      expect(unchanged.content).toBe('Original content in cohort 2');
+      expect(unchanged).not.toBeNull();
+      expect(unchanged!.content).toBe('Original content in cohort 2');
     });
 
     test('should allow forum moderation by teachers only', async () => {
@@ -1202,7 +1207,7 @@ describe('Discussion API Integration Tests', () => {
       // Act - Subscribe to discussion changes
       const subscription = student1Client.client
         .from('lesson_discussions')
-        .on('*', payload => {
+        .on('*', (payload: any) => {
           changeReceived = true;
         })
         .subscribe();
@@ -1232,7 +1237,7 @@ describe('Discussion API Integration Tests', () => {
       // Arrange
       const subscription = student1Client.client
         .from('lesson_discussions')
-        .on('INSERT', payload => {
+        .on('INSERT', (payload: any) => {
           // Handle new discussion
         })
         .eq('lesson_id', testLessonId)

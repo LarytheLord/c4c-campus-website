@@ -122,6 +122,10 @@ export const prerender = false;
     const quizData = await quizResponse.json();
     quiz = quizData.quiz;
 
+    if (!quiz) {
+      throw new Error('Quiz not found');
+    }
+
     // Use server-provided canAttempt for consistency
     canRetake = quizData.canAttempt ?? false;
 
@@ -138,6 +142,10 @@ export const prerender = false;
     attempt = attemptData.attempt;
     questions = attemptData.questions || [];
 
+    if (!attempt) {
+      throw new Error('Attempt not found');
+    }
+
     // Update header
     document.getElementById('quiz-title')!.textContent = `${quiz.title} - Results`;
     document.getElementById('breadcrumb')!.textContent = `Attempt #${attempt.attempt_number}`;
@@ -151,6 +159,10 @@ export const prerender = false;
   function renderResults() {
     if (!quiz || !attempt) return;
 
+    // Capture non-null values for use in async callbacks
+    const quizData = quiz;
+    const attemptData = attempt;
+
     const summaryContainer = document.getElementById('results-summary')!;
 
     // Render results summary
@@ -159,8 +171,8 @@ export const prerender = false;
         const root = createRoot(summaryContainer);
         root.render(
           QuizResults({
-            quiz,
-            attempt,
+            quiz: quizData,
+            attempt: attemptData,
             canRetake,
             onRetry: handleRetry,
             onReview: showReview,
@@ -171,6 +183,13 @@ export const prerender = false;
   }
 
   function showReview() {
+    // Early return if data not loaded
+    if (!quiz || !attempt) return;
+
+    // Capture non-null values for use in async callbacks
+    const quizData = quiz;
+    const attemptData = attempt;
+
     const reviewContainer = document.getElementById('review-container')!;
     reviewContainer.classList.remove('hidden');
 
@@ -183,7 +202,7 @@ export const prerender = false;
           const questionDiv = document.createElement('div');
           questionsContainer.appendChild(questionDiv);
 
-          const userAnswer = attempt!.answers_json.find((a: any) => a.question_id === question.id);
+          const userAnswer = attemptData.answers_json?.find((a: any) => a.question_id === question.id);
 
           const root = createRoot(questionDiv);
           root.render(
@@ -193,7 +212,8 @@ export const prerender = false;
                 type: question.type,
                 questionText: question.question_text,
                 questionImageUrl: question.question_image_url,
-                options: question.options_json,
+                // Use 'options' per schema.sql quiz_questions table (not options_json)
+                options: question.options,
                 points: question.points,
                 orderIndex: index,
               },
@@ -202,8 +222,9 @@ export const prerender = false;
               value: userAnswer?.answer || '',
               onChange: () => {}, // Read-only
               readonly: true,
-              showCorrectAnswer: quiz!.show_correct_answers,
-              correctAnswer: question.correct_answer || question.correct_answers_json,
+              showCorrectAnswer: quizData.show_correct_answers,
+              // Use 'correct_answer' per schema.sql quiz_questions table (not correct_answers_json)
+              correctAnswer: question.correct_answer,
               isCorrect: userAnswer?.is_correct,
               explanation: question.explanation,
             })
@@ -217,14 +238,18 @@ export const prerender = false;
   }
 
   async function handleRetry() {
+    // Early return if data not loaded
     if (!quiz) return;
+
+    // Capture non-null value for use in async callbacks
+    const quizData = quiz;
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
       // Start new attempt
-      const response = await fetch(`/api/quizzes/${quiz.id}/start`, {
+      const response = await fetch(`/api/quizzes/${quizData.id}/start`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -241,7 +266,7 @@ export const prerender = false;
       const data = await response.json();
 
       // Navigate to quiz taking page
-      window.location.href = `/quizzes/${quiz.id}/take?attemptId=${data.attempt.id}`;
+      window.location.href = `/quizzes/${quizData.id}/take?attemptId=${data.attempt.id}`;
     } catch (error) {
       console.error('Error starting retry:', error);
       showToast('Failed to start quiz', 'error');

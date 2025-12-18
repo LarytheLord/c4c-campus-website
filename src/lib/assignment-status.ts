@@ -123,7 +123,7 @@ export function getAssignmentStatus(
 function computeStatusDisplay(
   hasSubmission: boolean,
   isGraded: boolean,
-  isPastDue: boolean,
+  _isPastDue: boolean,
   isClosed: boolean,
   isLateButAllowed: boolean,
   submission: Submission | null,
@@ -141,7 +141,7 @@ function computeStatusDisplay(
   }
 
   // Graded case
-  if (isGraded && submission?.score !== null) {
+  if (isGraded && submission && submission.score !== null) {
     const score = submission.score;
     const percentage = (score / maxPoints) * 100;
     const gradeLabel = `Graded: ${score}/${maxPoints}`;

@@ -13,7 +13,7 @@ interface QuizCardProps {
   onStart?: (quizId: string) => void;
 }
 
-export function QuizCard({ quizId, lessonId, onStart }: QuizCardProps) {
+export function QuizCard({ quizId }: QuizCardProps) {
   const [quiz, setQuiz] = useState<QuizWithDetails | null>(null);
   const [attempts, setAttempts] = useState<QuizAttempt[]>([]);
   const [loading, setLoading] = useState(true);

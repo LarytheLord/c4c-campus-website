@@ -149,7 +149,7 @@ describe('Time-Gating Functionality Integration Tests', () => {
 
       // Assert
       expect(isAccessible).toBe(true);
-      expect(scheduleDate).toBeLessThanOrEqual(now);
+      expect(scheduleDate.getTime()).toBeLessThanOrEqual(now.getTime());
     });
 
     test('should prevent module access when current time < unlock_date', async () => {
@@ -170,7 +170,7 @@ describe('Time-Gating Functionality Integration Tests', () => {
 
       // Assert
       expect(isAccessible).toBe(false);
-      expect(scheduleDate).toBeGreaterThan(now);
+      expect(scheduleDate.getTime()).toBeGreaterThan(now.getTime());
     });
 
     test('should enforce locked module with lock_date (re-lock after time period)', async () => {
@@ -195,7 +195,7 @@ describe('Time-Gating Functionality Integration Tests', () => {
       // Assert
       expect(isCurrentlyAccessible).toBe(true);
       expect(schedule.lock_date).toBe(lockDateStr);
-      expect(scheduleLockDate).toBeGreaterThan(currentDate);
+      expect(scheduleLockDate.getTime()).toBeGreaterThan(currentDate.getTime());
     });
 
     test('should re-lock module when current time >= lock_date', async () => {
@@ -264,6 +264,8 @@ describe('Time-Gating Functionality Integration Tests', () => {
 
       // Assert
       expect(error).toBeNull();
+      expect(updated).not.toBeNull();
+      if (!updated) throw new Error('Updated schedule is null - test failed');
       expect(updated.unlock_date).toBe(newDate);
       expect(updated.unlock_date).not.toBe(initialDate);
     });
@@ -285,7 +287,8 @@ describe('Time-Gating Functionality Integration Tests', () => {
 
       // Assert
       expect(error).toBeNull();
-      expect(updated.lock_date).toBe(lockDate);
+      expect(updated).not.toBeNull();
+      expect(updated!.lock_date).toBe(lockDate);
     });
 
     test('should delete cohort schedule', async () => {
@@ -304,12 +307,19 @@ describe('Time-Gating Functionality Integration Tests', () => {
       expect(error).toBeNull();
 
       // Verify deletion
-      const { data: deleted, error: findError } = await supabaseAdmin
-        .from('cohort_schedules')
-        .select()
-        .eq('id', schedule.id)
-        .single()
-        .catch(e => ({ data: null, error: e }));
+      let deleted = null;
+      let findError = null;
+      try {
+        const result = await supabaseAdmin
+          .from('cohort_schedules')
+          .select()
+          .eq('id', schedule.id)
+          .single();
+        deleted = result.data;
+        findError = result.error;
+      } catch (e) {
+        findError = e;
+      }
 
       expect(findError).toBeDefined();
     });
@@ -385,11 +395,12 @@ describe('Time-Gating Functionality Integration Tests', () => {
 
       // Assert
       expect(error).toBeNull();
-      expect(created.length).toBe(4);
-      expect(created[0].unlock_date).toBe('2025-03-01');
-      expect(created[1].unlock_date).toBe('2025-03-08');
-      expect(created[2].unlock_date).toBe('2025-03-15');
-      expect(created[3].unlock_date).toBe('2025-03-22');
+      expect(created).not.toBeNull();
+      expect(created!.length).toBe(4);
+      expect(created![0].unlock_date).toBe('2025-03-01');
+      expect(created![1].unlock_date).toBe('2025-03-08');
+      expect(created![2].unlock_date).toBe('2025-03-15');
+      expect(created![3].unlock_date).toBe('2025-03-22');
     });
 
     test('should support custom schedule with non-uniform intervals', async () => {
@@ -422,8 +433,9 @@ describe('Time-Gating Functionality Integration Tests', () => {
 
       // Assert
       expect(error).toBeNull();
-      expect(created.length).toBe(4);
-      expect(created[1].unlock_date).toBe('2025-03-10'); // Non-uniform interval
+      expect(created).not.toBeNull();
+      expect(created!.length).toBe(4);
+      expect(created![1].unlock_date).toBe('2025-03-10'); // Non-uniform interval
     });
   });
 
@@ -472,6 +484,8 @@ describe('Time-Gating Functionality Integration Tests', () => {
         .single();
 
       // Assert
+      expect(displaySchedule).not.toBeNull();
+      if (!displaySchedule) throw new Error('Display schedule is null - test failed');
       expect(displaySchedule.unlock_date).toBe(futureDateStr);
       expect(displaySchedule.unlock_date).toBeDefined();
     });
@@ -566,8 +580,10 @@ describe('Time-Gating Functionality Integration Tests', () => {
 
       // Assert
       expect(error).toBeNull();
+      expect(updated).not.toBeNull();
+      if (!updated) throw new Error('Updated schedule is null - test failed');
       expect(updated.unlock_date).toBe(laterDateStr);
-      expect(new Date(updated.unlock_date)).toBeGreaterThan(new Date());
+      expect(new Date(updated.unlock_date).getTime()).toBeGreaterThan(new Date().getTime());
     });
 
     test('should allow teacher to remove lock_date (keep module unlocked indefinitely)', async () => {
@@ -589,7 +605,8 @@ describe('Time-Gating Functionality Integration Tests', () => {
 
       // Assert
       expect(error).toBeNull();
-      expect(updated.lock_date).toBeNull();
+      expect(updated).not.toBeNull();
+      expect(updated!.lock_date).toBeNull();
     });
 
     test('should allow teacher to set lock_date to re-lock already unlocked module', async () => {
@@ -609,7 +626,8 @@ describe('Time-Gating Functionality Integration Tests', () => {
 
       // Assert
       expect(error).toBeNull();
-      expect(updated.lock_date).toBe(lockDate);
+      expect(updated).not.toBeNull();
+      expect(updated!.lock_date).toBe(lockDate);
     });
 
     test('should enforce RLS: student cannot modify schedule unlock dates', async () => {
@@ -622,7 +640,7 @@ describe('Time-Gating Functionality Integration Tests', () => {
       }).select().single();
 
       // Act - Student tries to update schedule
-      const { error } = await student1Client.from('cohort_schedules').update({
+      const { error } = await student1Client.client.from('cohort_schedules').update({
         unlock_date: '2025-02-01',
       }).eq('id', schedule.id);
 
@@ -738,6 +756,8 @@ describe('Time-Gating Functionality Integration Tests', () => {
         .single();
 
       // Assert
+      expect(fetched).not.toBeNull();
+      if (!fetched) throw new Error('Fetched schedule is null - test failed');
       expect(fetched.unlock_date).toBe(dateStr);
       expect(fetched.unlock_date).toMatch(/^\d{4}-\d{2}-\d{2}$/); // YYYY-MM-DD format
     });
@@ -762,6 +782,10 @@ describe('Time-Gating Functionality Integration Tests', () => {
       expect(fetch1.data).toBeDefined();
       expect(fetch2.data).toBeDefined();
       expect(fetch3.data).toBeDefined();
+      expect(fetch1.data).not.toBeNull();
+      expect(fetch2.data).not.toBeNull();
+      expect(fetch3.data).not.toBeNull();
+      if (!fetch1.data || !fetch2.data || !fetch3.data) throw new Error('Concurrent fetch data is null - test failed');
       expect(fetch1.data.id).toBe(fetch2.data.id);
       expect(fetch2.data.id).toBe(fetch3.data.id);
     });
@@ -794,9 +818,10 @@ describe('Time-Gating Functionality Integration Tests', () => {
         .order('unlock_date', { ascending: true });
 
       // Assert
-      expect(allSchedules.length).toBe(3);
-      expect(allSchedules[0].unlock_date <= allSchedules[1].unlock_date).toBe(true);
-      expect(allSchedules[1].unlock_date <= allSchedules[2].unlock_date).toBe(true);
+      expect(allSchedules).not.toBeNull();
+      expect(allSchedules!.length).toBe(3);
+      expect(allSchedules![0].unlock_date <= allSchedules![1].unlock_date).toBe(true);
+      expect(allSchedules![1].unlock_date <= allSchedules![2].unlock_date).toBe(true);
     });
 
     test('should identify all currently locked modules for a cohort', async () => {
@@ -821,11 +846,12 @@ describe('Time-Gating Functionality Integration Tests', () => {
         .select()
         .eq('cohort_id', testCohortId);
 
-      const locked = all.filter(s => new Date(s.unlock_date) > now);
+      expect(all).not.toBeNull();
+      const locked = all!.filter((s: { unlock_date: string }) => new Date(s.unlock_date) > now);
 
       // Assert
       expect(locked.length).toBeGreaterThan(0);
-      expect(locked.every(s => new Date(s.unlock_date) > now)).toBe(true);
+      expect(locked.every((s: { unlock_date: string }) => new Date(s.unlock_date) > now)).toBe(true);
     });
 
     test('should identify all currently unlocked modules for a cohort', async () => {
@@ -850,11 +876,12 @@ describe('Time-Gating Functionality Integration Tests', () => {
         .select()
         .eq('cohort_id', testCohortId);
 
-      const unlocked = all.filter(s => new Date(s.unlock_date) <= now);
+      expect(all).not.toBeNull();
+      const unlocked = all!.filter((s: { unlock_date: string }) => new Date(s.unlock_date) <= now);
 
       // Assert
       expect(unlocked.length).toBeGreaterThan(0);
-      expect(unlocked.every(s => new Date(s.unlock_date) <= now)).toBe(true);
+      expect(unlocked.every((s: { unlock_date: string }) => new Date(s.unlock_date) <= now)).toBe(true);
     });
   });
 
@@ -874,7 +901,7 @@ describe('Time-Gating Functionality Integration Tests', () => {
       });
 
       // Act - Student queries schedules (RLS should allow)
-      const { data: schedules, error } = await student1Client
+      const { data: schedules, error } = await student1Client.client
         .from('cohort_schedules')
         .select('*')
         .eq('cohort_id', testCohortId);
@@ -890,7 +917,7 @@ describe('Time-Gating Functionality Integration Tests', () => {
       const unlockDate = new Date().toISOString().split('T')[0];
 
       // Act - Teacher creates schedule
-      const { data: schedule, error } = await teacherClient
+      const { data: schedule, error } = await teacherClient.client
         .from('cohort_schedules')
         .insert({
           cohort_id: testCohortId,
@@ -903,7 +930,8 @@ describe('Time-Gating Functionality Integration Tests', () => {
       // Assert - Teacher can create schedules
       expect(error).toBeNull();
       expect(schedule).toBeDefined();
-      expect(schedule.cohort_id).toBe(testCohortId);
+      expect(schedule).not.toBeNull();
+      expect(schedule!.cohort_id).toBe(testCohortId);
     });
 
     test('should allow teachers to update schedules for their cohorts', async () => {
@@ -917,7 +945,7 @@ describe('Time-Gating Functionality Integration Tests', () => {
 
       // Act - Teacher updates schedule
       const newDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      const { data: updated, error } = await teacherClient
+      const { data: updated, error } = await teacherClient.client
         .from('cohort_schedules')
         .update({ unlock_date: newDate })
         .eq('id', schedule.id)
@@ -926,6 +954,8 @@ describe('Time-Gating Functionality Integration Tests', () => {
 
       // Assert
       expect(error).toBeNull();
+      expect(updated).not.toBeNull();
+      if (!updated) throw new Error('Updated schedule is null - test failed');
       expect(updated.unlock_date).toBe(newDate);
     });
 
@@ -939,7 +969,7 @@ describe('Time-Gating Functionality Integration Tests', () => {
       }).select().single();
 
       // Act - Teacher deletes schedule
-      const { error } = await teacherClient
+      const { error } = await teacherClient.client
         .from('cohort_schedules')
         .delete()
         .eq('id', schedule.id);
@@ -966,7 +996,7 @@ describe('Time-Gating Functionality Integration Tests', () => {
       }).select().single();
 
       // Act - Student tries to update schedule
-      const { error } = await student1Client
+      const { error } = await student1Client.client
         .from('cohort_schedules')
         .update({ unlock_date: '2099-01-01' })
         .eq('id', schedule.id);
@@ -977,7 +1007,7 @@ describe('Time-Gating Functionality Integration Tests', () => {
 
     test('should deny students from creating schedules', async () => {
       // Act - Student tries to create schedule
-      const { error } = await student1Client
+      const { error } = await student1Client.client
         .from('cohort_schedules')
         .insert({
           cohort_id: testCohortId,
@@ -999,7 +1029,7 @@ describe('Time-Gating Functionality Integration Tests', () => {
       }).select().single();
 
       // Act - Student tries to delete schedule
-      const { error } = await student1Client
+      const { error } = await student1Client.client
         .from('cohort_schedules')
         .delete()
         .eq('id', schedule.id);
@@ -1027,13 +1057,13 @@ describe('Time-Gating Functionality Integration Tests', () => {
       }).select().single();
 
       // Act - Student queries their cohort schedules
-      const { data: studentSchedules } = await student1Client
+      const { data: studentSchedules } = await student1Client.client
         .from('cohort_schedules')
         .select()
         .eq('cohort_id', testCohortId);
 
       // Assert - Student can see schedule data (date logic handled by frontend)
-      const foundSchedule = studentSchedules?.find(s => s.id === schedule.id);
+      const foundSchedule = studentSchedules?.find((s: { id: number }) => s.id === schedule.id);
       expect(foundSchedule).toBeDefined();
       expect(foundSchedule?.unlock_date).toBe(futureDateStr);
     });
@@ -1172,15 +1202,16 @@ describe('Time-Gating Functionality Integration Tests', () => {
         .select()
         .eq('cohort_id', testCohortId);
 
+      expect(all).not.toBeNull();
       const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-      const upcoming = all.filter(s => {
+      const upcoming = all!.filter((s: { unlock_date: string }) => {
         const unlockDate = new Date(s.unlock_date);
         return unlockDate > now && unlockDate <= sevenDaysFromNow;
       });
 
       // Assert
       expect(upcoming.length).toBeGreaterThan(0);
-      expect(upcoming.some(s => s.unlock_date === in3Days.toISOString().split('T')[0])).toBe(true);
+      expect(upcoming.some((s: { unlock_date: string }) => s.unlock_date === in3Days.toISOString().split('T')[0])).toBe(true);
     });
 
     test('should calculate completion percentage based on unlocked modules', async () => {
@@ -1203,8 +1234,9 @@ describe('Time-Gating Functionality Integration Tests', () => {
         .select()
         .eq('cohort_id', testCohortId);
 
-      const unlockedCount = allSchedules.filter(s => new Date(s.unlock_date) <= now).length;
-      const totalCount = allSchedules.length;
+      expect(allSchedules).not.toBeNull();
+      const unlockedCount = allSchedules!.filter((s: { unlock_date: string }) => new Date(s.unlock_date) <= now).length;
+      const totalCount = allSchedules!.length;
       const unlockedPercentage = (unlockedCount / totalCount) * 100;
 
       // Assert

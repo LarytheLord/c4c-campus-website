@@ -23,8 +23,6 @@ interface SearchBarProps {
 export default function SearchBar({
   initialQuery = '',
   placeholder = 'Search courses, lessons, discussions...',
-  scope = 'global',
-  scopeId,
   className = '',
   autoFocus = false
 }: SearchBarProps) {

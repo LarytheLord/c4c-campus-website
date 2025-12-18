@@ -207,8 +207,8 @@ describe('Course Creation API+DB Integration', () => {
       .eq('is_published', true);
 
     // Assert - Only published course returned
-    expect(publishedCourses?.some(c => c.title === 'Published')).toBe(true);
-    expect(publishedCourses?.some(c => c.title === 'Draft')).toBe(false);
+    expect(publishedCourses?.some((c: any) => c.title === 'Published')).toBe(true);
+    expect(publishedCourses?.some((c: any) => c.title === 'Draft')).toBe(false);
   });
   
   // ==================== ERROR CASES ====================

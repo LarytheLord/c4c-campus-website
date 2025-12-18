@@ -137,7 +137,7 @@ export const POST: APIRoute = async ({ request, params }) => {
       .select(`
         *,
         lessons(
-          id, name, module_id,
+          id, title, module_id,
           modules(
             id, title, course_id,
             courses(id, title, created_by)

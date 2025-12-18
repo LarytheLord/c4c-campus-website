@@ -9,7 +9,7 @@ import type { CohortAnalytics } from '../../src/types';
 
 describe('CohortStats Component', () => {
   const mockAnalytics: CohortAnalytics = {
-    cohort_id: 1,
+    cohort_id: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
     cohort_name: 'Fall 2025 Cohort',
     course_name: 'n8n Workflow Automation',
     total_students: 25,

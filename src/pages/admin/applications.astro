@@ -136,9 +136,9 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 
   <script>
     import { supabase } from '../../lib/supabase';
-    import { showToast, showConfirm } from '../../lib/notifications';
+    import { showToast, showConfirm, dismissToast } from '../../lib/notifications';
 
-    function escapeHTML(unsafe) {
+    function escapeHTML(unsafe: unknown): string {
       if (!unsafe) return '';
       return String(unsafe)
         .replace(/&/g, "&amp;")
@@ -217,7 +217,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
           ${app.interests ? `
             <div>
               <h4 class="font-semibold mb-1">Interests</h4>
-              <p class="text-text-muted">${app.interests.map(i => escapeHTML(i)).join(', ')}</p>
+              <p class="text-text-muted">${app.interests.map((i: string) => escapeHTML(i)).join(', ')}</p>
             </div>
           ` : ''}
           ${app.scholarship_requested ? `
@@ -487,45 +487,46 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     async function bulkUpdateStatus(status: string) {
       if (selectedAppIds.size === 0) return;
 
-      showConfirm(`Update ${selectedAppIds.size} application(s) to ${status}?`, async () => {
-        const loadingId = showToast('Updating applications...', 'info', 0);
+      const confirmed = await showConfirm(`Update ${selectedAppIds.size} application(s) to ${status}?`);
+      if (!confirmed) return;
 
-        try {
-          const appIds = Array.from(selectedAppIds);
+      const loadingId = showToast('Updating applications...', 'info', 0);
 
-          const { error } = await supabase
-            .from('applications')
-            .update({
-              status,
-              reviewed_at: new Date().toISOString(),
-              reviewed_by: currentUser.id
-            })
-            .in('id', appIds);
+      try {
+        const appIds = Array.from(selectedAppIds);
 
-          if (error) throw error;
+        const { error } = await supabase
+          .from('applications')
+          .update({
+            status,
+            reviewed_at: new Date().toISOString(),
+            reviewed_by: currentUser.id
+          })
+          .in('id', appIds);
 
-          // Update local data
-          appIds.forEach(appId => {
-            const app = allApplications.find(a => a.id === appId);
-            if (app) {
-              app.status = status;
-              app.reviewed_at = new Date().toISOString();
-              app.reviewed_by = currentUser.id;
-            }
-          });
+        if (error) throw error;
 
-          selectedAppIds.clear();
-          updateStatistics();
-          filterApplications();
-          dismissToast(loadingId);
-          showToast(`Successfully updated ${appIds.length} application(s)`, 'success');
+        // Update local data
+        appIds.forEach(appId => {
+          const app = allApplications.find(a => a.id === appId);
+          if (app) {
+            app.status = status;
+            app.reviewed_at = new Date().toISOString();
+            app.reviewed_by = currentUser.id;
+          }
+        });
 
-        } catch (error) {
-          console.error('Error in bulk update:', error);
-          dismissToast(loadingId);
-          showToast('Failed to update applications. Please try again.', 'error');
-        }
-      });
+        selectedAppIds.clear();
+        updateStatistics();
+        filterApplications();
+        dismissToast(loadingId);
+        showToast(`Successfully updated ${appIds.length} application(s)`, 'success');
+
+      } catch (error) {
+        console.error('Error in bulk update:', error);
+        dismissToast(loadingId);
+        showToast('Failed to update applications. Please try again.', 'error');
+      }
     }
 
 

@@ -117,7 +117,7 @@ describe('Enrollment Flow Integration Tests', () => {
       // Assert
       expect(availableCohorts).toBeDefined();
       expect(availableCohorts!.length).toBeGreaterThanOrEqual(2);
-      const cohortNames = availableCohorts!.map(c => c.name);
+      const cohortNames = availableCohorts!.map((c: any) => c.name);
       expect(cohortNames).toContain('Spring 2025 Cohort');
       expect(cohortNames).toContain('Summer 2025 Cohort');
     });
@@ -178,7 +178,7 @@ describe('Enrollment Flow Integration Tests', () => {
 
       // Assert
       expect(availableCohorts).toBeDefined();
-      const cohortNames = availableCohorts!.map(c => c.name);
+      const cohortNames = availableCohorts!.map((c: any) => c.name);
       expect(cohortNames).toContain('Active Cohort');
       expect(cohortNames).not.toContain('Archived Cohort');
     });
@@ -222,7 +222,7 @@ describe('Enrollment Flow Integration Tests', () => {
       // Assert - Should only see cohort from published course
       expect(studentCohorts).toBeDefined();
       expect(studentCohorts!.length).toBeGreaterThanOrEqual(1);
-      const cohortNames = studentCohorts!.map(c => c.name);
+      const cohortNames = studentCohorts!.map((c: any) => c.name);
       expect(cohortNames).toContain('Visible Cohort');
     });
 
@@ -614,7 +614,8 @@ describe('Enrollment Flow Integration Tests', () => {
         .select('status')
         .eq('id', enrollment.id)
         .single();
-      expect(updated.status).toBe('completed');
+      expect(updated).not.toBeNull();
+      expect(updated!.status).toBe('completed');
     });
 
     test('should transition enrollment from active to dropped', async () => {
@@ -649,7 +650,8 @@ describe('Enrollment Flow Integration Tests', () => {
         .select('status')
         .eq('id', enrollment.id)
         .single();
-      expect(updated.status).toBe('dropped');
+      expect(updated).not.toBeNull();
+      expect(updated!.status).toBe('dropped');
     });
 
     test('should transition enrollment from active to paused', async () => {
@@ -684,7 +686,8 @@ describe('Enrollment Flow Integration Tests', () => {
         .select('status')
         .eq('id', enrollment.id)
         .single();
-      expect(updated.status).toBe('paused');
+      expect(updated).not.toBeNull();
+      expect(updated!.status).toBe('paused');
     });
 
     test('should enforce valid status enum values', async () => {
@@ -743,7 +746,8 @@ describe('Enrollment Flow Integration Tests', () => {
           .eq('id', enrollment.id)
           .single();
 
-        expect(updated.status).toBe(status);
+        expect(updated).not.toBeNull();
+        expect(updated!.status).toBe(status);
       }
     });
   });
@@ -840,7 +844,8 @@ describe('Enrollment Flow Integration Tests', () => {
         .select('status')
         .eq('id', enrollment.id)
         .single();
-      expect(updated.status).toBe('paused');
+      expect(updated).not.toBeNull();
+      expect(updated!.status).toBe('paused');
     });
 
     test('should allow teacher to remove student from cohort', async () => {
@@ -937,7 +942,7 @@ describe('Enrollment Flow Integration Tests', () => {
 
       // Assert
       expect(enrollments).toHaveLength(2);
-      const enrolledCohortIds = enrollments!.map(e => e.cohort_id);
+      const enrolledCohortIds = enrollments!.map((e: any) => e.cohort_id);
       expect(enrolledCohortIds).toContain(cohort1.id);
       expect(enrolledCohortIds).toContain(cohort2.id);
     });

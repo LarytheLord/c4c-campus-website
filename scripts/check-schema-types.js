@@ -225,7 +225,7 @@ function checkGeneratedTypes() {
   return { exists: true, issues };
 }
 
-function checkTypeFile(filePath, schemaTypes) {
+function checkTypeFile(filePath, _schemaTypes) {
   if (!fs.existsSync(filePath)) {
     return { exists: false, issues: [] };
   }

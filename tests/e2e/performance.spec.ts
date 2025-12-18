@@ -253,8 +253,23 @@ test.describe('Performance - JavaScript Bundle', () => {
 });
 
 test.describe('Performance - Memory Usage', () => {
-  test('should not have memory leaks during navigation', async ({ page }) => {
+  test('should not leak memory during navigation', async ({ page, context, browserName }) => {
+    // Skip for non-Chromium browsers (CDP only available in Chromium)
+    test.skip(browserName !== 'chromium', 'CDP is only available in Chromium');
+
     await login(page, TEST_USERS.student);
+
+    // Create CDP session for memory metrics
+    const client = await context.newCDPSession(page);
+    await client.send('Performance.enable');
+
+    // Navigate to initial page and wait for stability
+    await page.goto('/dashboard');
+    await page.waitForLoadState('networkidle');
+
+    // Get initial memory baseline
+    const initialMetrics = await client.send('Performance.getMetrics');
+    const initialHeap = initialMetrics.metrics.find(m => m.name === 'JSHeapUsedSize')?.value || 0;
 
     // Navigate between pages multiple times
     for (let i = 0; i < 5; i++) {
@@ -263,17 +278,26 @@ test.describe('Performance - Memory Usage', () => {
 
       await page.goto('/courses');
       await page.waitForLoadState('networkidle');
+
+      await page.goto('/about');
+      await page.waitForLoadState('networkidle');
     }
 
-    // Get memory metrics (if available)
-    const metrics = await page.metrics();
-    console.log('Memory metrics:', {
-      JSHeapUsedSize: Math.round(metrics.JSHeapUsedSize / 1024 / 1024) + 'MB',
-      JSHeapTotalSize: Math.round(metrics.JSHeapTotalSize / 1024 / 1024) + 'MB',
-    });
+    // Get final memory after navigation cycles
+    const finalMetrics = await client.send('Performance.getMetrics');
+    const finalHeap = finalMetrics.metrics.find(m => m.name === 'JSHeapUsedSize')?.value || 0;
 
-    // Heap should not grow excessively (< 100MB)
-    expect(metrics.JSHeapUsedSize).toBeLessThan(100 * 1024 * 1024);
+    // Calculate memory growth
+    const heapGrowth = finalHeap - initialHeap;
+    const initialMB = Math.round(initialHeap / 1024 / 1024);
+    const finalMB = Math.round(finalHeap / 1024 / 1024);
+    const growthMB = Math.round(heapGrowth / 1024 / 1024);
+
+    console.log(`Memory: Initial ${initialMB}MB, Final ${finalMB}MB, Growth ${growthMB}MB`);
+
+    // Memory should not grow excessively (allow 50MB growth)
+    // This threshold accounts for legitimate caching and runtime overhead
+    expect(heapGrowth).toBeLessThan(50 * 1024 * 1024); // 50MB max growth
   });
 });
 

@@ -11,7 +11,7 @@ import type { ViteDevServer } from 'vite';
 const AxeBuilder = require('@axe-core/cli');
 
 describe('Accessibility Audit - WCAG 2.1 AA', () => {
-  let server: ViteDevServer;
+  let server: ViteDevServer | null = null;
   let baseUrl: string;
 
   beforeAll(async () => {
@@ -22,7 +22,7 @@ describe('Accessibility Audit - WCAG 2.1 AA', () => {
 
   afterAll(async () => {
     if (server) {
-      await server.close();
+      await (server as ViteDevServer).close();
     }
   });
 

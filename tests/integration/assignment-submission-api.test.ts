@@ -42,7 +42,8 @@ describe('Assignment Submission API Integration Tests', () => {
       is_published: true,
       created_by: teacherClient.userId,
     }).select().single();
-    testCourseId = course!.id;
+    if (!course) throw new Error('Failed to create test course');
+    testCourseId = course.id;
 
     // Create test module
     const { data: module } = await supabaseAdmin.from('modules').insert({
@@ -50,7 +51,8 @@ describe('Assignment Submission API Integration Tests', () => {
       title: 'Test Module',
       order_index: 1,
     }).select().single();
-    testModuleId = module!.id;
+    if (!module) throw new Error('Failed to create test module');
+    testModuleId = module.id;
 
     // Create test lesson
     const { data: lesson } = await supabaseAdmin.from('lessons').insert({
@@ -59,7 +61,8 @@ describe('Assignment Submission API Integration Tests', () => {
       slug: 'test-lesson-' + Date.now(),
       order_index: 1,
     }).select().single();
-    testLessonId = lesson!.id;
+    if (!lesson) throw new Error('Failed to create test lesson');
+    testLessonId = lesson.id;
 
     // Enroll students in course
     await supabaseAdmin.from('enrollments').insert([
@@ -87,7 +90,8 @@ describe('Assignment Submission API Integration Tests', () => {
         max_submissions: 3,
         created_by: teacherClient.userId,
       }).select().single();
-      testAssignmentId = assignment!.id;
+      if (!assignment) throw new Error('Failed to create test assignment');
+      testAssignmentId = assignment.id;
 
       // First submission
       const { data: submission1, error: error1 } = await supabaseAdmin.rpc('create_assignment_submission', {
@@ -192,7 +196,8 @@ describe('Assignment Submission API Integration Tests', () => {
         allow_resubmission: false,
         created_by: teacherClient.userId,
       }).select().single();
-      testAssignmentId = assignment!.id;
+      if (!assignment) throw new Error('Failed to create test assignment');
+      testAssignmentId = assignment.id;
 
       // First submission should succeed
       const { error: error1 } = await supabaseAdmin.rpc('create_assignment_submission', {
@@ -232,7 +237,8 @@ describe('Assignment Submission API Integration Tests', () => {
         max_submissions: 2,
         created_by: teacherClient.userId,
       }).select().single();
-      testAssignmentId = assignment!.id;
+      if (!assignment) throw new Error('Failed to create test assignment');
+      testAssignmentId = assignment.id;
 
       // First two submissions should succeed
       await supabaseAdmin.rpc('create_assignment_submission', {
@@ -281,7 +287,8 @@ describe('Assignment Submission API Integration Tests', () => {
         max_submissions: 1,
         created_by: teacherClient.userId,
       }).select().single();
-      testAssignmentId = assignment!.id;
+      if (!assignment) throw new Error('Failed to create test assignment');
+      testAssignmentId = assignment.id;
 
       // Issue concurrent submission requests from same user
       const submissionPromises = [
@@ -335,7 +342,8 @@ describe('Assignment Submission API Integration Tests', () => {
         max_submissions: 1,
         created_by: teacherClient.userId,
       }).select().single();
-      testAssignmentId = assignment!.id;
+      if (!assignment) throw new Error('Failed to create test assignment');
+      testAssignmentId = assignment.id;
 
       // Issue concurrent submission requests from different users
       const submissionPromises = [
@@ -394,7 +402,8 @@ describe('Assignment Submission API Integration Tests', () => {
         max_submissions: 5,
         created_by: teacherClient.userId,
       }).select().single();
-      testAssignmentId = assignment!.id;
+      if (!assignment) throw new Error('Failed to create test assignment');
+      testAssignmentId = assignment.id;
 
       // Issue 3 concurrent submissions
       const submissionPromises = [
@@ -479,7 +488,8 @@ describe('Assignment Submission API Integration Tests', () => {
         max_file_size_mb: 10,
         created_by: teacherClient.userId,
       }).select().single();
-      testAssignmentId = assignment!.id;
+      if (!assignment) throw new Error('Failed to create test assignment');
+      testAssignmentId = assignment.id;
 
       // Get student session for HTTP requests
       const { data: { session } } = await student1Client.client.auth.getSession();
@@ -522,7 +532,8 @@ describe('Assignment Submission API Integration Tests', () => {
         max_file_size_mb: 10,
         created_by: teacherClient.userId,
       }).select().single();
-      testAssignmentId = assignment!.id;
+      if (!assignment) throw new Error('Failed to create test assignment');
+      testAssignmentId = assignment.id;
 
       // Get student session for HTTP requests
       const { data: { session } } = await student1Client.client.auth.getSession();
@@ -675,7 +686,8 @@ describe('Assignment Submission API Integration Tests', () => {
         max_file_size_mb: 10,
         created_by: teacherClient.userId,
       }).select().single();
-      testAssignmentId = assignment!.id;
+      if (!assignment) throw new Error('Failed to create test assignment');
+      testAssignmentId = assignment.id;
 
       // Get student session for HTTP requests
       const { data: { session } } = await student1Client.client.auth.getSession();

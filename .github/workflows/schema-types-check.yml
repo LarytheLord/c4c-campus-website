@@ -129,3 +129,14 @@ jobs:
         env:
           PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          # NOTE: Analytics authentication tests require real JWT tokens to run acceptance tests.
+          # Without these tokens, only rejection tests (unauthenticated/wrong role) will run.
+          # To enable full test coverage, configure these secrets in GitHub repository settings:
+          #
+          # TEST_ADMIN_TOKEN: ${{ secrets.TEST_ADMIN_TOKEN }}     # JWT for a user with admin role
+          # TEST_TEACHER_TOKEN: ${{ secrets.TEST_TEACHER_TOKEN }} # JWT for a user with teacher role
+          # TEST_STUDENT_TOKEN: ${{ secrets.TEST_STUDENT_TOKEN }} # JWT for a user with student role
+          #
+          # Acceptance tests verify that correctly authenticated users CAN access their endpoints.
+          # Rejection tests verify that unauthorized users CANNOT access protected endpoints.
+          # Currently, only rejection tests run in CI.

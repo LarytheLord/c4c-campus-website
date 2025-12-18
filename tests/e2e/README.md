@@ -175,7 +175,7 @@ Tests use predefined test users (see `fixtures/auth.ts`):
 - ✓ 3G network simulation (40% of users)
 - ✓ Resource optimization
 - ✓ JavaScript bundle size
-- ✓ Memory usage
+- ✓ Memory usage (leak detection during navigation)
 - ✓ API response times
 - ✓ Offline handling
 

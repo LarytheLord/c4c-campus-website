@@ -4,7 +4,6 @@
  * Displays quiz results with score, feedback, and review options
  */
 
-import { useMemo } from 'react';
 import type { Quiz, QuizAttempt } from '@/types/quiz';
 
 interface QuizResultsProps {
@@ -40,12 +39,6 @@ export function QuizResults({
     if (passed) return 'text-success';
     if (scorePercentage >= quiz.passing_score * 0.8) return 'text-warning';
     return 'text-error';
-  };
-
-  const getScoreBgColor = () => {
-    if (passed) return 'bg-success';
-    if (scorePercentage >= quiz.passing_score * 0.8) return 'bg-warning';
-    return 'bg-error';
   };
 
   const getMessage = () => {

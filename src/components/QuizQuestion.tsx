@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import type { QuizQuestionForStudent, QuestionType } from '@/types/quiz';
+import type { QuizQuestionForStudent } from '@/types/quiz';
 
 interface QuizQuestionProps {
   question: QuizQuestionForStudent;

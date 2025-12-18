@@ -239,7 +239,8 @@ const defaultCohort = cohortsWithCounts?.[0];
 
     // Global state
     let currentCohortId: string | null = null; // UUID string, not number
-    let currentDateRange = { start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), end: new Date() };
+    // Date range state for future filtering (currently unused but set by DateRangeSelector)
+    let _currentDateRange = { start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), end: new Date() };
 
     // Initialize
     document.addEventListener('DOMContentLoaded', () => {
@@ -269,7 +270,7 @@ const defaultCohort = cohortsWithCounts?.[0];
         root.render(
           createElement(DateRangeSelector, {
             onChange: (range) => {
-              currentDateRange = range;
+              _currentDateRange = range;
               loadDashboardData();
             }
           })
@@ -282,7 +283,9 @@ const defaultCohort = cohortsWithCounts?.[0];
       tabButtons.forEach(button => {
         button.addEventListener('click', () => {
           const tabName = button.getAttribute('data-tab');
-          switchTab(tabName);
+          if (tabName) {
+            switchTab(tabName);
+          }
         });
       });
     }
@@ -323,8 +326,17 @@ const defaultCohort = cohortsWithCounts?.[0];
       const container = document.getElementById('metrics-container');
       if (!container) return;
 
+      type MetricData = {
+        title: string;
+        value: string;
+        trend: 'up' | 'down' | 'stable';
+        trendValue: string;
+        color: 'blue' | 'green' | 'red' | 'yellow' | 'purple';
+        icon: string;
+      };
+
       // Fetch real metrics from cohort-analytics API
-      let metrics = [
+      let metrics: MetricData[] = [
         { title: 'Total Students', value: '-', trend: 'stable', trendValue: '', color: 'blue', icon: '👥' },
         { title: 'Avg Completion', value: '-', trend: 'stable', trendValue: '', color: 'green', icon: '✓' },
         { title: 'At Risk', value: '-', trend: 'stable', trendValue: '', color: 'red', icon: '⚠️' },
@@ -493,8 +505,8 @@ const defaultCohort = cohortsWithCounts?.[0];
       }
     }
 
-    function renderRiskLevel(level: string, students: any[]) {
-      const colors = {
+    function renderRiskLevel(level: 'critical' | 'high' | 'medium' | 'low', students: any[]) {
+      const colors: Record<'critical' | 'high' | 'medium' | 'low', string> = {
         critical: 'bg-red-100 dark:bg-red-900/20 border-red-300 dark:border-red-800',
         high: 'bg-orange-100 dark:bg-orange-900/20 border-orange-300 dark:border-orange-800',
         medium: 'bg-yellow-100 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-800',

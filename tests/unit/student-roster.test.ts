@@ -501,7 +501,7 @@ describe('StudentRoster Filtering', () => {
     const filter = 'nonexistent_status';
 
     // Act
-    const filteredStudents = students.filter((s) => s.status === filter);
+    const filteredStudents = students.filter((s) => (s.status as string) === filter);
 
     // Assert
     expect(filteredStudents).toHaveLength(0);

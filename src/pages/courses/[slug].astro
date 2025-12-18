@@ -230,7 +230,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
     getDaysUntilUnlock,
     type ModuleUnlockStatus
   } from '@/lib/time-gating';
-  import { showToast, showConfirm, setButtonLoading } from '@/lib/notifications';
+  import { showToast, showConfirm, setButtonLoading, dismissToast } from '@/lib/notifications';
 
   const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
@@ -309,7 +309,9 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
       const enrollment = enrollments[0];
       userCohortId = enrollment.cohort_id;
       // Load all module statuses for this cohort
-      moduleStatuses = await getCohortModuleStatuses(userCohortId, supabase, isTeacher);
+      if (userCohortId) {
+        moduleStatuses = await getCohortModuleStatuses(userCohortId, supabase, isTeacher);
+      }
     }
   }
 
@@ -472,46 +474,64 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
     if (currentCourse.created_by === currentUser.id) {
       list?.querySelectorAll('.add-lesson').forEach(btn => {
         btn.addEventListener('click', () => {
-          // Module IDs are UUIDs (strings)
-          const moduleId = btn.getAttribute('data-module-id')!;
-          addLesson(moduleId);
+          // Module IDs are BIGSERIAL (numbers) - parse from data attribute
+          const moduleIdStr = btn.getAttribute('data-module-id')!;
+          const moduleId = parseInt(moduleIdStr, 10);
+          if (!isNaN(moduleId)) {
+            addLesson(moduleId);
+          }
         });
       });
 
       list?.querySelectorAll('.edit-module').forEach(btn => {
         btn.addEventListener('click', () => {
-          // Module IDs are UUIDs (strings)
-          const id = btn.getAttribute('data-id')!;
-          editModule(id);
+          // Module IDs are BIGSERIAL (numbers) - parse from data attribute
+          const idStr = btn.getAttribute('data-id')!;
+          const id = parseInt(idStr, 10);
+          if (!isNaN(id)) {
+            editModule(id);
+          }
         });
       });
 
       list?.querySelectorAll('.delete-module').forEach(btn => {
         btn.addEventListener('click', async () => {
-          // Module IDs are UUIDs (strings)
-          const id = btn.getAttribute('data-id')!;
-          showConfirm('Delete this module and all its lessons?', async () => {
-            await deleteModule(id);
-          });
+          // Module IDs are BIGSERIAL (numbers) - parse from data attribute
+          const idStr = btn.getAttribute('data-id')!;
+          const id = parseInt(idStr, 10);
+          if (!isNaN(id)) {
+            const confirmed = await showConfirm('Delete this module and all its lessons?');
+            if (confirmed) {
+              await deleteModule(id);
+            }
+          }
         });
       });
 
       list?.querySelectorAll('.edit-lesson').forEach(btn => {
         btn.addEventListener('click', () => {
-          // Lesson and Module IDs are UUIDs (strings)
-          const id = btn.getAttribute('data-id')!;
-          const moduleId = btn.getAttribute('data-module-id')!;
-          editLesson(id, moduleId);
+          // Lesson and Module IDs are BIGSERIAL (numbers) - parse from data attributes
+          const idStr = btn.getAttribute('data-id')!;
+          const moduleIdStr = btn.getAttribute('data-module-id')!;
+          const id = parseInt(idStr, 10);
+          const moduleId = parseInt(moduleIdStr, 10);
+          if (!isNaN(id) && !isNaN(moduleId)) {
+            editLesson(id, moduleId);
+          }
         });
       });
 
       list?.querySelectorAll('.delete-lesson').forEach(btn => {
         btn.addEventListener('click', async () => {
-          // Lesson IDs are UUIDs (strings)
-          const id = btn.getAttribute('data-id')!;
-          showConfirm('Delete this lesson?', async () => {
-            await deleteLesson(id);
-          });
+          // Lesson IDs are BIGSERIAL (numbers) - parse from data attribute
+          const idStr = btn.getAttribute('data-id')!;
+          const id = parseInt(idStr, 10);
+          if (!isNaN(id)) {
+            const confirmed = await showConfirm('Delete this lesson?');
+            if (confirmed) {
+              await deleteLesson(id);
+            }
+          }
         });
       });
     }
@@ -632,59 +652,60 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
       return;
     }
 
-    showConfirm(`Enroll in ${cohortName}?`, async () => {
-      const loadingId = showToast('Enrolling...', 'info', 0);
+    const confirmed = await showConfirm(`Enroll in ${cohortName}?`);
+    if (!confirmed) return;
 
-      try {
-        // Get the user's session token
-        const { data: { session } } = await supabase.auth.getSession();
+    const loadingId = showToast('Enrolling...', 'info', 0);
 
-        if (!session) {
-          dismissToast(loadingId);
-          showToast('Session expired. Please login again.', 'error');
-          setTimeout(() => {
-            window.location.href = '/login';
-          }, 1500);
-          return;
-        }
+    try {
+      // Get the user's session token
+      const { data: { session } } = await supabase.auth.getSession();
 
-        // Call the cohort enrollment API endpoint
-        const response = await fetch('/api/enroll-cohort', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`
-          },
-          body: JSON.stringify({ cohortId })
-        });
-
-        const result = await response.json();
-
+      if (!session) {
         dismissToast(loadingId);
-
-        if (!response.ok) {
-          if (response.status === 409) {
-            if (result.error.includes('full')) {
-              showToast('This cohort is full. Please try another cohort.', 'error');
-            } else {
-              showToast('You are already enrolled in this cohort!', 'warning');
-            }
-          } else {
-            showToast('Error enrolling: ' + (result.error || 'Unknown error'), 'error');
-          }
-          return;
-        }
-
-        showToast('Successfully enrolled in ' + cohortName + '!', 'success');
-        await loadCohorts(); // Reload to update UI
-        await loadModuleStatuses(); // Reload module statuses
-        await loadModules(); // Reload modules to show lock status
-      } catch (error) {
-        console.error('Enrollment error:', error);
-        dismissToast(loadingId);
-        showToast('Error enrolling in cohort. Please try again.', 'error');
+        showToast('Session expired. Please login again.', 'error');
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 1500);
+        return;
       }
-    });
+
+      // Call the cohort enrollment API endpoint
+      const response = await fetch('/api/enroll-cohort', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ cohortId })
+      });
+
+      const result = await response.json();
+
+      dismissToast(loadingId);
+
+      if (!response.ok) {
+        if (response.status === 409) {
+          if (result.error.includes('full')) {
+            showToast('This cohort is full. Please try another cohort.', 'error');
+          } else {
+            showToast('You are already enrolled in this cohort!', 'warning');
+          }
+        } else {
+          showToast('Error enrolling: ' + (result.error || 'Unknown error'), 'error');
+        }
+        return;
+      }
+
+      showToast('Successfully enrolled in ' + cohortName + '!', 'success');
+      await loadCohorts(); // Reload to update UI
+      await loadModuleStatuses(); // Reload module statuses
+      await loadModules(); // Reload modules to show lock status
+    } catch (error) {
+      console.error('Enrollment error:', error);
+      dismissToast(loadingId);
+      showToast('Error enrolling in cohort. Please try again.', 'error');
+    }
   }
 
   function setupEventListeners() {
@@ -793,16 +814,16 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
     await loadModules();
   }
 
-  function editModule(id: string) {
-    // Module IDs are UUIDs (strings)
+  function editModule(id: number) {
+    // Module IDs are BIGSERIAL (numbers)
     editingModule = modules.find(m => m.id === id);
     if (editingModule) {
       showModuleModal();
     }
   }
 
-  async function deleteModule(id: string) {
-    // Module IDs are UUIDs (strings)
+  async function deleteModule(id: number) {
+    // Module IDs are BIGSERIAL (numbers)
     const { error } = await supabase
       .from('modules')
       .delete()
@@ -817,8 +838,8 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
     await loadModules();
   }
 
-  function addLesson(moduleId: string) {
-    // Module IDs are UUIDs (strings)
+  function addLesson(moduleId: number) {
+    // Module IDs are BIGSERIAL (numbers)
     currentModuleId = moduleId;
     editingLesson = null;
     showLessonModal();
@@ -880,8 +901,15 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const youtubeUrl = (document.getElementById('lesson-youtube') as HTMLInputElement).value;
     const videoPath = (document.getElementById('lesson-video-path') as HTMLInputElement).value;
 
+    // Defensive: Ensure we have a valid module_id
+    const moduleId = currentModuleId ?? editingLesson?.module_id;
+    if (!moduleId) {
+      showToast('Error: No module selected', 'error');
+      return;
+    }
+
     const lessonData: any = {
-      module_id: currentModuleId || editingLesson.module_id,
+      module_id: moduleId,
       title: (document.getElementById('lesson-title') as HTMLInputElement).value,
       slug: (document.getElementById('lesson-slug') as HTMLInputElement).value,
       duration_minutes: parseInt((document.getElementById('lesson-duration') as HTMLInputElement).value) || null,
@@ -916,8 +944,8 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
     await loadModules();
   }
 
-  function editLesson(id: string, moduleId: string) {
-    // Lesson and Module IDs are UUIDs (strings)
+  function editLesson(id: number, moduleId: number) {
+    // Lesson and Module IDs are BIGSERIAL (numbers)
     const module = modules.find(m => m.id === moduleId);
     editingLesson = module?.lessons?.find((l: any) => l.id === id);
     currentModuleId = moduleId;
@@ -926,8 +954,8 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
     }
   }
 
-  async function deleteLesson(id: string) {
-    // Lesson IDs are UUIDs (strings)
+  async function deleteLesson(id: number) {
+    // Lesson IDs are BIGSERIAL (numbers)
     const { error } = await supabase
       .from('lessons')
       .delete()

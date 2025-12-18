@@ -286,7 +286,7 @@ export const prerender = false;
     const modal = document.getElementById('instructions-modal')!;
     const content = document.getElementById('instructions-content')!;
 
-    content.innerHTML = quiz.instructions || '<p>Read each question carefully and select your answer.</p>';
+    content.innerHTML = quiz.description || '<p>Read each question carefully and select your answer.</p>';
     document.getElementById('passing-score-text')!.textContent = `Passing score: ${quiz.passing_score}%`;
     document.getElementById('questions-count-text')!.textContent = `${questions.length} questions`;
 
@@ -335,8 +335,8 @@ export const prerender = false;
         const root = createRoot(timerContainer);
         root.render(
           QuizTimer({
-            startedAt: attempt.startedAt,
-            timeLimitMinutes: quiz!.time_limit_minutes,
+            startedAt: attempt.started_at,
+            timeLimit: quiz!.time_limit_minutes,
             onTimeUp: handleTimeUp,
           })
         );
