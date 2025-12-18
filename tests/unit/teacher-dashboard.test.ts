@@ -23,7 +23,7 @@
  * Coverage Target: 95%+ of dashboard functionality
  */
 
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, test, expect, beforeEach, vi } from 'vitest';
 
 /**
  * ============================================================================
@@ -456,7 +456,6 @@ describe('Teacher Dashboard - Tab Interface', () => {
 
 describe('Teacher Dashboard - My Courses Tab (List View)', () => {
   let courses: any[] = [];
-  let filter: string = 'all';
 
   beforeEach(() => {
     // Initialize mock courses
@@ -637,7 +636,6 @@ describe('Teacher Dashboard - My Courses Tab (List View)', () => {
 
   test('should show "Manage Cohorts" button for each course', () => {
     // Arrange & Act
-    const course = courses[0];
     const hasCohortAction = true; // Button should exist
 
     // Assert
@@ -646,7 +644,6 @@ describe('Teacher Dashboard - My Courses Tab (List View)', () => {
 
   test('should show "Delete" button for each course', () => {
     // Arrange & Act
-    const course = courses[0];
     const hasDeleteAction = true; // Button should exist
 
     // Assert
@@ -1134,7 +1131,6 @@ describe('Teacher Dashboard - Cohort Management Tab', () => {
 
   test('should show "Edit" button for each cohort', () => {
     // Arrange & Act
-    const cohort = cohorts[0];
     const hasEditAction = true; // Button exists
 
     // Assert
@@ -1143,7 +1139,6 @@ describe('Teacher Dashboard - Cohort Management Tab', () => {
 
   test('should show "View Roster" button for each cohort', () => {
     // Arrange & Act
-    const cohort = cohorts[0];
     const hasRosterAction = true; // Button exists
 
     // Assert
@@ -1152,7 +1147,6 @@ describe('Teacher Dashboard - Cohort Management Tab', () => {
 
   test('should show "Delete" button for each cohort', () => {
     // Arrange & Act
-    const cohort = cohorts[0];
     const hasDeleteAction = true; // Button exists
 
     // Assert
@@ -1200,10 +1194,7 @@ describe('Teacher Dashboard - Old URL Redirects', () => {
   });
 
   test('should preserve course id in redirect query param', () => {
-    // Arrange
-    const oldUrl = '/teacher/manage/123';
-
-    // Act
+    // Arrange & Act
     const newUrl = `/teacher/courses/123`;
 
     // Assert
@@ -1211,10 +1202,7 @@ describe('Teacher Dashboard - Old URL Redirects', () => {
   });
 
   test('should set tab parameter when redirecting edit page', () => {
-    // Arrange
-    const oldUrl = '/teacher/edit/123';
-
-    // Act
+    // Arrange & Act
     const newUrl = `/teacher/courses/123/edit`;
 
     // Assert
@@ -1318,7 +1306,6 @@ describe('Teacher Dashboard - Integration Tests (Full Workflows)', () => {
 
   test('should complete full cohort creation workflow', () => {
     // Arrange
-    const courseId = 1;
     const cohortData = {
       name: 'Spring 2025',
       start_date: '2025-03-01',

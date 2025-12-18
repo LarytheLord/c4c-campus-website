@@ -16,7 +16,7 @@
  */
 
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
-import { supabaseAdmin, supabaseAnon, cleanupTestData, getAuthenticatedClient, TEST_USERS } from '../integration-setup';
+import { supabaseAdmin, cleanupTestData, getAuthenticatedClient, TEST_USERS } from '../integration-setup';
 
 describe('Discussion System Schema Integration Tests', () => {
   let student1Client: Awaited<ReturnType<typeof getAuthenticatedClient>>;

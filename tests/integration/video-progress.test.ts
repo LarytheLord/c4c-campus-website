@@ -11,7 +11,6 @@ import { supabaseAdmin, cleanupTestData, getAuthenticatedClient, TEST_USERS } fr
 describe('Enrollment + Progress + Resume Integration', () => {
   let studentClient: Awaited<ReturnType<typeof getAuthenticatedClient>>;
   let testCourseId: number;
-  let testModuleId: number;
   let testLessonId: number;
 
   beforeEach(async () => {
@@ -41,7 +40,6 @@ describe('Enrollment + Progress + Resume Integration', () => {
     if (moduleError || !module) {
       throw new Error(`Failed to create module: ${moduleError?.message || 'no data returned'}`);
     }
-    testModuleId = module.id;
 
     const { data: lesson, error: lessonError } = await supabaseAdmin.from('lessons').insert({
       module_id: module.id,

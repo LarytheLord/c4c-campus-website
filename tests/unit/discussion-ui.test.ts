@@ -23,7 +23,7 @@
  * Coverage Target: 95%+ of discussion UI functionality
  */
 
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, test, expect, beforeEach, vi } from 'vitest';
 
 /**
  * ============================================================================
@@ -34,8 +34,6 @@ import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 
 describe('Lesson Discussion Component', () => {
   let mockDiscussionData: any;
-  let mockUser: any;
-  let mockCohort: any;
 
   beforeEach(() => {
     mockDiscussionData = {
@@ -51,19 +49,6 @@ describe('Lesson Discussion Component', () => {
       parent_id: null,
       is_teacher_response: false,
       reply_count: 3,
-    };
-
-    mockUser = {
-      id: 'user-student-1',
-      email: 'student@example.com',
-      role: 'student',
-      name: 'John Student',
-    };
-
-    mockCohort = {
-      id: 5,
-      course_id: 10,
-      name: 'Cohort A',
     };
   });
 
@@ -369,19 +354,12 @@ describe('Threaded Comment Display', () => {
 
 describe('Comment Input with Rich Text', () => {
   let mockFormState: any;
-  let mockUser: any;
 
   beforeEach(() => {
     mockFormState = {
       content: '',
       isSubmitting: false,
       error: null,
-    };
-
-    mockUser = {
-      id: 'user-student-1',
-      email: 'student@example.com',
-      role: 'student',
     };
   });
 
@@ -492,14 +470,12 @@ describe('Moderation Features - Pin/Lock/Delete Actions', () => {
   // ==================== PIN/UNPIN FUNCTIONALITY ====================
 
   test('should display pin button for teachers only', () => {
-    const discussion = mockDiscussion;
     const user = mockTeacher;
     const canPin = user.role === 'teacher';
     expect(canPin).toBe(true);
   });
 
   test('should NOT display pin button for students', () => {
-    const discussion = mockDiscussion;
     const user = mockStudent;
     const canPin = user.role === 'teacher';
     expect(canPin).toBe(false);
@@ -530,7 +506,7 @@ describe('Moderation Features - Pin/Lock/Delete Actions', () => {
       { ...mockDiscussion, id: 3, is_pinned: true },
     ];
 
-    const sorted = discussions.sort((a, b) =>
+    const sorted = discussions.sort((_a, b) =>
       b.is_pinned ? 1 : -1
     );
 
@@ -540,7 +516,6 @@ describe('Moderation Features - Pin/Lock/Delete Actions', () => {
   // ==================== LOCK/UNLOCK FUNCTIONALITY ====================
 
   test('should display lock button for teachers only', () => {
-    const discussion = mockDiscussion;
     const user = mockTeacher;
     const canLock = user.role === 'teacher';
     expect(canLock).toBe(true);
@@ -595,7 +570,6 @@ describe('Moderation Features - Pin/Lock/Delete Actions', () => {
   });
 
   test('should show confirmation dialog before deletion', () => {
-    const discussion = mockDiscussion;
     let confirmationShown = false;
     confirmationShown = true;
     expect(confirmationShown).toBe(true);
@@ -696,7 +670,7 @@ describe('Teacher Badge Display', () => {
       { ...mockStudentResponse, id: 3 },
     ];
 
-    const sorted = [...responses].sort((a, b) =>
+    const sorted = [...responses].sort((_a, b) =>
       b.is_teacher_response ? 1 : -1
     );
 
@@ -731,8 +705,6 @@ describe('Teacher Badge Display', () => {
 
 describe('Course Forum Component', () => {
   let mockForumPost: any;
-  let mockTeacher: any;
-  let mockStudent: any;
 
   beforeEach(() => {
     mockForumPost = {
@@ -746,16 +718,6 @@ describe('Course Forum Component', () => {
       is_locked: false,
       reply_count: 5,
       created_at: new Date('2025-10-29T10:00:00Z'),
-    };
-
-    mockTeacher = {
-      id: 'user-teacher-1',
-      role: 'teacher',
-    };
-
-    mockStudent = {
-      id: 'user-student-1',
-      role: 'student',
     };
   });
 
@@ -810,7 +772,7 @@ describe('Course Forum Component', () => {
       { ...mockForumPost, id: 3, is_pinned: false },
     ];
 
-    const sorted = [...posts].sort((a, b) =>
+    const sorted = [...posts].sort((_a, b) =>
       b.is_pinned ? 1 : -1
     );
 
@@ -825,14 +787,14 @@ describe('Course Forum Component', () => {
 
   test('should allow teacher to lock forum post', () => {
     let post = { ...mockForumPost, is_locked: false };
-    const user = mockTeacher;
+    // Teacher action
     post.is_locked = true;
     expect(post.is_locked).toBe(true);
   });
 
   test('should prevent replies to locked forum posts', () => {
     const post = { ...mockForumPost, is_locked: true };
-    const user = mockStudent;
+    // Student cannot reply
     const canReply = !post.is_locked;
     expect(canReply).toBe(false);
   });

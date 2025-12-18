@@ -15,7 +15,6 @@
 import { describe, test, expect, beforeEach, afterEach, beforeAll } from 'vitest';
 import {
   supabaseAdmin,
-  supabaseAnon,
   cleanupTestData,
   getAuthenticatedClient,
   TEST_USERS

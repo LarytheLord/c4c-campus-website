@@ -342,8 +342,6 @@ describe('Cohort Enrollment Integration Tests', () => {
       ]);
 
       // Assert - Exactly one should succeed, one should fail
-      const statuses = [response1.status, response2.status].sort();
-
       // Verify enrollment count never exceeds max_students
       const { data: enrollments } = await supabaseAdmin
         .from('cohort_enrollments')

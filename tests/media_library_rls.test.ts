@@ -11,12 +11,11 @@
  * 6. Delete restrictions - users can only delete own media
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { createClient } from '@supabase/supabase-js';
 
 // Test configuration
 const SUPABASE_URL = process.env.PUBLIC_SUPABASE_URL || '';
-const ANON_KEY = process.env.PUBLIC_SUPABASE_ANON_KEY || '';
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 // Test user IDs (UUIDs)
@@ -31,16 +30,6 @@ const TEST_USERS = {
 // HELPER: Create authenticated clients
 // ============================================================================
 
-function createAuthClient(userId: string) {
-  const client = createClient(SUPABASE_URL, ANON_KEY);
-  // In real tests, you'd use proper authentication
-  // This is a mock to show RLS enforcement
-  return {
-    client,
-    userId,
-  };
-}
-
 function createAdminClient() {
   // Service role client has full access
   return createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
@@ -52,13 +41,9 @@ function createAdminClient() {
 
 describe('Media Library RLS Policies', () => {
   let adminClient: any;
-  let user1Client: any;
-  let user2Client: any;
 
   beforeAll(() => {
     adminClient = createAdminClient();
-    user1Client = createAuthClient(TEST_USERS.user1);
-    user2Client = createAuthClient(TEST_USERS.user2);
   });
 
   // ============================================================================
@@ -97,7 +82,7 @@ describe('Media Library RLS Policies', () => {
 
     it('User 1 should NOT see User 2 media (RLS blocked)', async () => {
       // Admin uploads media for user2
-      const { data: media2 } = await adminClient
+      const { data: _media2 } = await adminClient
         .from('media_library')
         .insert({
           file_name: 'user2_file.jpg',
@@ -171,7 +156,7 @@ describe('Media Library RLS Policies', () => {
   describe('3. Update Restrictions - Owner Protection', () => {
     it('User 1 can update their own media', async () => {
       // Admin creates media for user1
-      const { data: mediaList } = await adminClient
+      const { data: _mediaList } = await adminClient
         .from('media_library')
         .insert({
           file_name: 'update_test.jpg',
@@ -229,7 +214,7 @@ describe('Media Library RLS Policies', () => {
   describe('4. Delete Restrictions - Users Delete Own Media', () => {
     it('User 1 can delete their own media', async () => {
       // Admin creates media for user1
-      const { data: mediaList } = await adminClient
+      const { data: _mediaList } = await adminClient
         .from('media_library')
         .insert({
           file_name: 'delete_test.jpg',

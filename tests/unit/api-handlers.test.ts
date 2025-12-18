@@ -1,10 +1,9 @@
-import { describe, test, expect, beforeEach } from 'vitest';
-import { 
-  validateCourseInput, 
-  checkEnrollment, 
-  calculateCourseProgress 
+import { describe, test, expect } from 'vitest';
+import {
+  validateCourseInput,
+  checkEnrollment,
+  calculateCourseProgress
 } from '@/lib/api-handlers';
-import type { Course, Enrollment, LessonProgress } from '@/types';
 
 // API handler unit tests - business logic validation
 // Reference: BOOTCAMP_ARCHITECTURE.md lines 1074-1076

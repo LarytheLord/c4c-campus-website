@@ -10,7 +10,7 @@ import type { Mock } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import CourseCard from '@/components/course/CourseCard';
-import { mockCourse, mockCourseWithProgress } from '../fixtures/courses';
+import { mockCourse } from '../fixtures/courses';
 
 describe('CourseCard Component', () => {
   // ==================== RENDERING ====================

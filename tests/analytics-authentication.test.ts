@@ -27,7 +27,6 @@ const API_URL = 'http://localhost:3000';
 const adminToken: string = process.env.TEST_ADMIN_TOKEN || '';
 const teacherToken: string = process.env.TEST_TEACHER_TOKEN || '';
 const studentToken: string = process.env.TEST_STUDENT_TOKEN || '';
-const noToken: string = '';
 
 // Helper to conditionally run tests that require valid tokens
 const itWithToken = (token: string) => token ? it : it.skip;

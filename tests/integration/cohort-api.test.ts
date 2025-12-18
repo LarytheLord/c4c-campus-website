@@ -27,7 +27,6 @@
 import { describe, test, expect, beforeEach, afterEach, beforeAll } from 'vitest';
 import {
   supabaseAdmin,
-  supabaseAnon,
   cleanupTestData,
   getAuthenticatedClient,
   TEST_USERS
@@ -387,7 +386,7 @@ describe('Cohort API Integration Tests', () => {
     });
 
     test('should reject duplicate name when updating to existing name', async () => {
-      const { data: cohort1 } = await supabaseAdmin.from('cohorts').insert({
+      await supabaseAdmin.from('cohorts').insert({
         course_id: testCourseId,
         name: 'First Cohort',
         start_date: '2025-03-01',
@@ -637,7 +636,7 @@ describe('Cohort API Integration Tests', () => {
     });
 
     test('should allow same module in schedule for different cohorts', async () => {
-      const { data: cohort1 } = await supabaseAdmin.from('cohorts').insert({
+      await supabaseAdmin.from('cohorts').insert({
         course_id: testCourseId,
         name: 'Cohort 1 Schedule',
         start_date: '2025-03-01',
@@ -651,17 +650,17 @@ describe('Cohort API Integration Tests', () => {
         created_by: teacherClient.userId,
       }).select().single();
 
-      const { data: sched1, error: e1 } = await supabaseAdmin.from('cohort_schedules').insert({
-        cohort_id: cohort1.id,
-        module_id: testModuleIds[0],
-        unlock_date: '2025-03-01',
-      }).select().single();
-
-      const { data: sched2, error: e2 } = await supabaseAdmin.from('cohort_schedules').insert({
+      const { error: e1 } = await supabaseAdmin.from('cohort_schedules').insert({
         cohort_id: cohort2.id,
         module_id: testModuleIds[0],
         unlock_date: '2025-04-01',
-      }).select().single();
+      });
+
+      const { error: e2 } = await supabaseAdmin.from('cohort_schedules').insert({
+        cohort_id: cohort2.id,
+        module_id: testModuleIds[0],
+        unlock_date: '2025-04-01',
+      });
 
       expect(e1).toBeNull();
       expect(e2).toBeNull();

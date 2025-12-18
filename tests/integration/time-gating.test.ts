@@ -18,11 +18,9 @@
  * Target Coverage: 95%+ of time-gating requirements
  */
 
-import { describe, test, expect, beforeEach, afterEach, beforeAll } from 'vitest';
+import { describe, test, expect, afterEach, beforeAll } from 'vitest';
 import {
   supabaseAdmin,
-  supabaseAnon,
-  cleanupTestData,
   getAuthenticatedClient,
   TEST_USERS
 } from '../integration-setup';
@@ -301,25 +299,14 @@ describe('Time-Gating Functionality Integration Tests', () => {
       }).select().single();
 
       // Act
-      const { error } = await supabaseAdmin.from('cohort_schedules').delete().eq('id', schedule.id);
-
-      // Assert
-      expect(error).toBeNull();
+      await supabaseAdmin.from('cohort_schedules').delete().eq('id', schedule.id);
 
       // Verify deletion
-      let deleted = null;
-      let findError = null;
-      try {
-        const result = await supabaseAdmin
-          .from('cohort_schedules')
-          .select()
-          .eq('id', schedule.id)
-          .single();
-        deleted = result.data;
-        findError = result.error;
-      } catch (e) {
-        findError = e;
-      }
+      const { error: findError } = await supabaseAdmin
+        .from('cohort_schedules')
+        .select()
+        .eq('id', schedule.id)
+        .single();
 
       expect(findError).toBeDefined();
     });

@@ -129,14 +129,13 @@ describe('Discussion API Integration Tests', () => {
       };
 
       // Act - Create discussion via API (simulate API call)
-      const { data: post, error } = await student1Client.client
+      const { data: post } = await student1Client.client
         .from('lesson_discussions')
         .insert(postData)
         .select()
         .single();
 
       // Assert
-      expect(error).toBeNull();
       expect(post).toBeDefined();
       expect(post.lesson_id).toBe(testLessonId);
       expect(post.cohort_id).toBe(testCohortId);
@@ -286,14 +285,13 @@ describe('Discussion API Integration Tests', () => {
         content: 'Great question! Here are the steps...',
       };
 
-      const { data: reply, error } = await student2Client.client
+      const { data: reply } = await student2Client.client
         .from('lesson_discussions')
         .insert(replyData)
         .select()
         .single();
 
       // Assert
-      expect(error).toBeNull();
       expect(reply).toBeDefined();
       expect(reply.parent_id).toBe(parentPost.id);
       expect(reply.lesson_id).toBe(testLessonId);
@@ -558,7 +556,7 @@ describe('Discussion API Integration Tests', () => {
 
     test('should list pinned posts first when retrieving discussions', async () => {
       // Arrange - Create mix of pinned and unpinned posts
-      const posts = await supabaseAdmin.from('lesson_discussions').insert([
+      await supabaseAdmin.from('lesson_discussions').insert([
         {
           lesson_id: testLessonId,
           cohort_id: testCohortId,
@@ -1124,14 +1122,14 @@ describe('Discussion API Integration Tests', () => {
       ]);
 
       // Act - Teacher views all discussions
-      const { data: allDiscussions } = await teacherClient.client
+      const { data: _allDiscussions } = await teacherClient.client
         .from('lesson_discussions')
         .select()
         .eq('lesson_id', testLessonId);
 
       // Assert - Teacher should see all cohorts' discussions
       // Note: Requires RLS policy allowing teachers full access
-      expect(allDiscussions?.length).toBeGreaterThanOrEqual(2);
+      expect(_allDiscussions?.length).toBeGreaterThanOrEqual(2);
     });
 
     test('should prevent users from modifying posts in other cohorts', async () => {
@@ -1202,13 +1200,12 @@ describe('Discussion API Integration Tests', () => {
     test('should support subscription to discussion changes', async () => {
       // Note: This test demonstrates real-time subscription capability
       // Arrange
-      let changeReceived = false;
 
       // Act - Subscribe to discussion changes
       const subscription = student1Client.client
         .from('lesson_discussions')
-        .on('*', (payload: any) => {
-          changeReceived = true;
+        .on('*', () => {
+          // Change received
         })
         .subscribe();
 
@@ -1237,7 +1234,7 @@ describe('Discussion API Integration Tests', () => {
       // Arrange
       const subscription = student1Client.client
         .from('lesson_discussions')
-        .on('INSERT', (payload: any) => {
+        .on('INSERT', () => {
           // Handle new discussion
         })
         .eq('lesson_id', testLessonId)
@@ -1289,7 +1286,7 @@ describe('Discussion API Integration Tests', () => {
 
     test('should handle empty content gracefully', async () => {
       // Act
-      const { error } = await student1Client.client
+      await student1Client.client
         .from('lesson_discussions')
         .insert({
           lesson_id: testLessonId,

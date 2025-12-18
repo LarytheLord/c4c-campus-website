@@ -6,22 +6,8 @@
 
 import { test, expect } from '@playwright/test';
 
-// Test fixtures - in a real scenario, these would be created via seed scripts
-const TEST_USER = {
-  email: 'test-student@example.com',
-  password: 'TestPassword123!',
-};
-
-const TEST_QUIZ = {
-  id: 'test-quiz-uuid', // Would be a real UUID in production
-  title: 'Test Quiz',
-  passingScore: 70,
-  timeLimitMinutes: 30,
-  maxAttempts: 3,
-};
-
 test.describe('Quiz Student Flow', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page: _page }) => {
     // Setup: Login as test user
     // In a real scenario, we would seed the database and authenticate
     // await page.goto('/login');
@@ -317,11 +303,6 @@ test.describe('Quiz Attempt Schema Fields', () => {
 
     // Wait for redirect to results
     await page.waitForURL(/\/quizzes\/[a-f0-9-]+\/results\/[a-f0-9-]+/);
-
-    // For auto-gradable quizzes, should not show "Awaiting Review"
-    // Unless there are essay questions
-    const awaitingReview = page.locator('text=Awaiting Review');
-    const isAwaitingReview = await awaitingReview.isVisible();
 
     // Either show immediate score or awaiting review
     const scoreDisplay = page.locator('text=/\\d+%/');

@@ -20,23 +20,10 @@ describe('Accessibility Audit - WCAG 2.1 AA', () => {
 
   afterAll(async () => {
     // Server cleanup - would be used when actual dev server is implemented
-    server = server; // Keep reference to prevent 'never used' error
+    if (server) {
+      // Cleanup would go here
+    }
   });
-
-  // Test configuration for each page - used in actual accessibility tests
-  const _pagesToTest = [
-    { path: '/', name: 'Homepage' },
-    { path: '/apply', name: 'Apply Page' },
-    { path: '/about', name: 'About Page' },
-    { path: '/programs', name: 'Programs Page' },
-    { path: '/tracks', name: 'Tracks Page' },
-    { path: '/framework', name: 'Framework Page' },
-    { path: '/faq', name: 'FAQ Page' },
-    { path: '/contact', name: 'Contact Page' },
-    { path: '/login', name: 'Login Page' },
-    { path: '/dashboard', name: 'Dashboard Page (requires auth)' },
-    { path: '/courses', name: 'Courses Page (requires auth)' },
-  ];
 
   it('should pass WCAG 2.1 AA standards', () => {
     // This is a placeholder test that documents the manual testing approach

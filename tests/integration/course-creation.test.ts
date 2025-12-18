@@ -6,13 +6,9 @@
  */
 
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
-import { supabaseAdmin, cleanupTestData, getAuthenticatedClient, TEST_USERS } from '../integration-setup';
-import type { Course, Module, Lesson } from '@/types';
+import { cleanupTestData, getAuthenticatedClient, TEST_USERS } from '../integration-setup';
 
 describe('Course Creation API+DB Integration', () => {
-  let testCourseId: number;
-  let testModuleId: number;
-  let testLessonId: number;
   let teacherClient: Awaited<ReturnType<typeof getAuthenticatedClient>>;
 
   beforeEach(async () => {
@@ -50,7 +46,7 @@ describe('Course Creation API+DB Integration', () => {
     expect(courseError).toBeNull();
     expect(course).toBeDefined();
     expect(course.title).toBe(courseData.title);
-    testCourseId = course.id;
+    const testCourseId = course.id;
 
     // Act & Assert - Step 2: Add module to course
     const moduleData = {
@@ -69,11 +65,10 @@ describe('Course Creation API+DB Integration', () => {
     expect(moduleError).toBeNull();
     expect(module).toBeDefined();
     expect(module.course_id).toBe(testCourseId);
-    testModuleId = module.id;
 
     // Act & Assert - Step 3: Add lesson to module
     const lessonData = {
-      module_id: testModuleId,
+      module_id: module.id,
       title: 'Lesson 1: Introduction',
       slug: 'intro',
       video_url: 'videos/test/lesson1.mp4',
@@ -91,8 +86,7 @@ describe('Course Creation API+DB Integration', () => {
 
     expect(lessonError).toBeNull();
     expect(lesson).toBeDefined();
-    expect(lesson.module_id).toBe(testModuleId);
-    testLessonId = lesson.id;
+    expect(lesson.module_id).toBe(module.id);
 
     // Act & Assert - Step 4: Fetch course with nested modules and lessons
     const { data: fullCourse, error: fetchError } = await teacherClient.client

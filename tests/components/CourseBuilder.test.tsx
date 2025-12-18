@@ -296,8 +296,7 @@ describe('CourseBuilder Component', () => {
   test('should disable save button while saving', async () => {
     // Arrange
     const user = userEvent.setup({ delay: null });
-    let resolveSave: (value: any) => void;
-    mockOnSave.mockReturnValue(new Promise(resolve => { resolveSave = resolve; }));
+    mockOnSave.mockReturnValue(new Promise(() => { /* never resolves */ }));
     
     render(<CourseBuilder onSave={mockOnSave} onPublish={mockOnPublish} />);
     

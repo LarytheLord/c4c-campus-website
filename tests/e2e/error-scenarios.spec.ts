@@ -25,10 +25,6 @@ test.describe('Error Scenarios - Network Failures', () => {
     await page.waitForTimeout(1000);
 
     // Should show error message or cached content
-    const hasError =
-      (await page.locator('text=/offline/i, text=/connection/i, text=/network/i').isVisible().catch(() => false)) ||
-      (await page.title().then((t) => t.length > 0));
-
     console.log('✓ Offline handled gracefully');
 
     // Reconnect

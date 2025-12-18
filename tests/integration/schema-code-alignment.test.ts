@@ -45,24 +45,6 @@ const CORE_TABLES = [
   'applications',
 ];
 
-// Tables with JSONB columns that need special handling
-const JSONB_COLUMNS = {
-  'cohort_enrollments': ['progress'],
-  'lesson_progress': [],
-  'quiz_questions': ['options'],
-  'quiz_attempts': ['answers_json'],
-  'assignment_submissions': ['rubric_scores'],
-  'profiles': ['preferences'],
-  'lessons': ['resources'],
-  'applications': [],
-  'auth_logs': ['details'],
-  'ai_messages': ['metadata'],
-  'certificates': ['metadata'],
-  'payments': ['metadata'],
-  'notifications': ['metadata'],
-  'analytics_events': ['event_data'],
-};
-
 /**
  * Parse schema.sql to extract table and column definitions
  */
@@ -226,7 +208,7 @@ describe('Schema-Code Alignment Integration Tests', () => {
     }, 30000);
 
     test('should have cohorts table with expected columns', async () => {
-      const { data, error } = await supabaseAdmin
+      const { error } = await supabaseAdmin
         .from('cohorts')
         .select('id, course_id, name, start_date, end_date, status, max_students, created_by, created_at, updated_at')
         .limit(0);
@@ -235,7 +217,7 @@ describe('Schema-Code Alignment Integration Tests', () => {
     });
 
     test('should have cohort_enrollments table with expected columns', async () => {
-      const { data, error } = await supabaseAdmin
+      const { error } = await supabaseAdmin
         .from('cohort_enrollments')
         .select('id, cohort_id, user_id, enrolled_at, status, completed_lessons, progress, last_activity_at')
         .limit(0);
@@ -244,7 +226,7 @@ describe('Schema-Code Alignment Integration Tests', () => {
     });
 
     test('should have quizzes table with expected columns', async () => {
-      const { data, error } = await supabaseAdmin
+      const { error } = await supabaseAdmin
         .from('quizzes')
         .select('id, course_id, module_id, lesson_id, title, description, time_limit_minutes, passing_score, max_attempts, is_published')
         .limit(0);
@@ -253,7 +235,7 @@ describe('Schema-Code Alignment Integration Tests', () => {
     });
 
     test('should have assignments table with expected columns', async () => {
-      const { data, error } = await supabaseAdmin
+      const { error } = await supabaseAdmin
         .from('assignments')
         .select('id, course_id, module_id, lesson_id, title, description, max_points, due_date, allow_late_submissions, is_published')
         .limit(0);

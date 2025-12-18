@@ -145,7 +145,6 @@ test.describe('Cross-Browser - Forms and Inputs', () => {
     const button = page.locator('button, a.btn').first();
 
     if (await button.isVisible()) {
-      const initialUrl = page.url();
       await button.click();
       await page.waitForTimeout(500);
 

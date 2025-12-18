@@ -20,9 +20,7 @@ import {
   canAccessLesson,
   getCohortModuleStatuses,
   formatUnlockDate,
-  getDaysUntilUnlock,
-  type ModuleUnlockStatus,
-  type LessonAccessStatus
+  getDaysUntilUnlock
 } from '@/lib/time-gating';
 
 // Mock Supabase client

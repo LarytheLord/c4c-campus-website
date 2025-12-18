@@ -59,7 +59,6 @@ test.describe('Accessibility - Keyboard Navigation', () => {
     await page.keyboard.press('Tab');
 
     // Press Enter
-    const initialUrl = page.url();
     await page.keyboard.press('Enter');
 
     await page.waitForTimeout(1000);
@@ -221,10 +220,6 @@ test.describe('Accessibility - ARIA Labels', () => {
 
   test('should have ARIA labels on form inputs', async ({ page }) => {
     await page.goto('/login');
-
-    // Check inputs have labels
-    const emailInput = page.locator('input[name="email"]');
-    const passwordInput = page.locator('input[name="password"]');
 
     // Check for label association
     const emailLabel = await page.evaluate(() => {
@@ -457,12 +452,6 @@ test.describe('Accessibility - Forms', () => {
 test.describe('Accessibility - Responsive Text', () => {
   test('should allow text resize up to 200%', async ({ page }) => {
     await page.goto('/');
-
-    // Get initial text size
-    const initialSize = await page.evaluate(() => {
-      const body = document.body;
-      return parseFloat(window.getComputedStyle(body).fontSize);
-    });
 
     // Zoom to 200%
     await page.evaluate(() => {

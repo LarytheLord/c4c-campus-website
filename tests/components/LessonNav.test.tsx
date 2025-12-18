@@ -9,7 +9,7 @@ import { describe, test, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import LessonNav from '@/components/course/LessonNav';
-import { mockModule, mockLessons } from '../fixtures/courses';
+import { mockLessons } from '../fixtures/courses';
 
 describe('LessonNav Component', () => {
   const firstLesson = mockLessons[0]; // id: 1, order: 1
@@ -203,14 +203,14 @@ describe('LessonNav Component', () => {
   
   test('should handle empty lessons array', () => {
     // Arrange & Act
-    const { container } = render(
+    render(
       <LessonNav
         currentLesson={firstLesson}
         allLessons={[]}
         onNavigate={vi.fn()}
       />
     );
-    
+
     // Assert - Renders nothing or both disabled
     const buttons = screen.queryAllByRole('button');
     buttons.forEach(button => expect(button).toBeDisabled());

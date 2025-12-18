@@ -18,7 +18,6 @@
 import { describe, test, expect, beforeEach, afterEach, beforeAll } from 'vitest';
 import {
   supabaseAdmin,
-  supabaseAnon,
   cleanupTestData,
   getAuthenticatedClient,
   TEST_USERS
@@ -30,7 +29,6 @@ describe('Enrollment Flow Integration Tests', () => {
   let student3Client: Awaited<ReturnType<typeof getAuthenticatedClient>>;
   let teacherClient: Awaited<ReturnType<typeof getAuthenticatedClient>>;
   let testCourseId: number;
-  let testModuleId: number;
 
   beforeAll(async () => {
     // Authenticate all test users once
@@ -38,7 +36,7 @@ describe('Enrollment Flow Integration Tests', () => {
     student2Client = await getAuthenticatedClient(TEST_USERS.STUDENT_2.email, TEST_USERS.STUDENT_2.password);
 
     // Create third test student for capacity testing
-    const { data: student3 } = await supabaseAdmin.auth.admin.createUser({
+    await supabaseAdmin.auth.admin.createUser({
       email: 'student3@test.c4c.com',
       password: 'test_password_123',
       email_confirm: true,
@@ -63,12 +61,11 @@ describe('Enrollment Flow Integration Tests', () => {
     }).select().single();
     testCourseId = course.id;
 
-    const { data: module } = await supabaseAdmin.from('modules').insert({
+    await supabaseAdmin.from('modules').insert({
       course_id: testCourseId,
       name: 'Test Module 1',
       order_index: 1,
-    }).select().single();
-    testModuleId = module.id;
+    });
   });
 
   afterEach(async () => {
@@ -87,7 +84,7 @@ describe('Enrollment Flow Integration Tests', () => {
   describe('1. Student Views Available Cohorts', () => {
     test('should display available cohorts for published course', async () => {
       // Arrange - Create cohorts for published course
-      const { data: cohort1 } = await supabaseAdmin.from('cohorts').insert({
+      await supabaseAdmin.from('cohorts').insert({
         course_id: testCourseId,
         name: 'Spring 2025 Cohort',
         start_date: '2025-03-01',
@@ -97,7 +94,7 @@ describe('Enrollment Flow Integration Tests', () => {
         created_by: teacherClient.userId,
       }).select().single();
 
-      const { data: cohort2 } = await supabaseAdmin.from('cohorts').insert({
+      await supabaseAdmin.from('cohorts').insert({
         course_id: testCourseId,
         name: 'Summer 2025 Cohort',
         start_date: '2025-06-01',
@@ -152,15 +149,15 @@ describe('Enrollment Flow Integration Tests', () => {
 
     test('should filter out archived cohorts from student view', async () => {
       // Arrange - Create active and archived cohorts
-      const { data: activeCohort } = await supabaseAdmin.from('cohorts').insert({
+      await supabaseAdmin.from('cohorts').insert({
         course_id: testCourseId,
         name: 'Active Cohort',
         start_date: '2025-01-01',
         status: 'active',
         created_by: teacherClient.userId,
-      }).select().single();
+      });
 
-      const { data: archivedCohort } = await supabaseAdmin.from('cohorts').insert({
+      await supabaseAdmin.from('cohorts').insert({
         course_id: testCourseId,
         name: 'Archived Cohort',
         start_date: '2024-01-01',
@@ -204,7 +201,7 @@ describe('Enrollment Flow Integration Tests', () => {
       });
 
       // Create cohort for published course
-      const { data: publishedCohort } = await supabaseAdmin.from('cohorts').insert({
+      await supabaseAdmin.from('cohorts').insert({
         course_id: testCourseId,
         name: 'Visible Cohort',
         start_date: '2025-01-01',
@@ -560,7 +557,7 @@ describe('Enrollment Flow Integration Tests', () => {
       });
 
       // Act - Check if full
-      const { data: enrollments, count } = await supabaseAdmin
+      const { count } = await supabaseAdmin
         .from('cohort_enrollments')
         .select('*', { count: 'exact' })
         .eq('cohort_id', cohort.id);
@@ -1074,7 +1071,7 @@ describe('Enrollment Flow Integration Tests', () => {
         created_by: teacherClient.userId,
       }).select().single();
 
-      const { data: enrollment1 } = await supabaseAdmin
+      await supabaseAdmin
         .from('cohort_enrollments')
         .insert({
           cohort_id: cohort.id,
@@ -1101,15 +1098,15 @@ describe('Enrollment Flow Integration Tests', () => {
         .eq('id', enrollment2.id);
 
       // Act - Get active enrollments only
-      const { data: activeEnrollments } = await supabaseAdmin
+      const { data: _activeEnrollments } = await supabaseAdmin
         .from('cohort_enrollments')
         .select()
         .eq('cohort_id', cohort.id)
         .eq('status', 'active');
 
       // Assert
-      expect(activeEnrollments).toHaveLength(1);
-      expect(activeEnrollments![0].user_id).toBe(student1Client.userId);
+      expect(_activeEnrollments).toHaveLength(1);
+      expect(_activeEnrollments![0].user_id).toBe(student1Client.userId);
     });
   });
 

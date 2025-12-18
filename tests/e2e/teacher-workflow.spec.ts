@@ -56,8 +56,6 @@ test.describe('Teacher Workflow - Course Management', () => {
       '/admin/courses/builder',
     ];
 
-    let foundPage = false;
-
     for (const url of possibleUrls) {
       await page.goto(url);
       await page.waitForLoadState('networkidle');
@@ -66,7 +64,6 @@ test.describe('Teacher Workflow - Course Management', () => {
       const notFound = await page.locator('text=/404|not found/i').isVisible().catch(() => false);
 
       if (!notFound && !page.url().includes('/login')) {
-        foundPage = true;
         break;
       }
     }

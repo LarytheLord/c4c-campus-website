@@ -20,7 +20,7 @@
  * - Test Count: 25+ comprehensive test cases
  */
 
-import { describe, test, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, test, expect, beforeEach } from 'vitest';
 
 /**
  * Type definitions for student roster data
@@ -49,14 +49,6 @@ interface RosterData {
   query_time_ms: number;
 }
 
-interface RosterFilter {
-  status?: string;
-  search?: string;
-  sortBy?: 'name' | 'progress' | 'activity';
-  sortOrder?: 'asc' | 'desc';
-  pageNumber?: number;
-  pageSize?: number;
-}
 
 interface RosterDetailView {
   student_id: string;
@@ -384,7 +376,6 @@ describe('StudentRoster Sorting', () => {
   test('should maintain sort when toggling sort order', () => {
     // Arrange
     const students = mockRosterData.students;
-    let currentSort = 'asc';
 
     // Act
     let sorted = [...students].sort((a, b) =>
@@ -392,7 +383,6 @@ describe('StudentRoster Sorting', () => {
     );
     const firstAsc = sorted.map((s) => s.name);
 
-    currentSort = 'desc';
     sorted = [...students].sort((a, b) =>
       b.name.localeCompare(a.name)
     );
@@ -828,7 +818,7 @@ describe('StudentRoster Performance', () => {
     const endTime = performance.now();
     const renderTime = endTime - startTime;
     const sortTime = performance.now();
-    const sorted = [...rosterData.students].sort((a, b) =>
+    [...rosterData.students].sort((a, b) =>
       a.name.localeCompare(b.name)
     );
     const sortEnd = performance.now();
@@ -1130,7 +1120,6 @@ describe('StudentRoster Edge Cases', () => {
 describe('StudentRoster Responsive Design', () => {
   test('should handle roster on mobile viewport', () => {
     // Arrange
-    const mobileWidth = 375;
     const rosterData = generateMockRosterData(10);
 
     // Act & Assert
@@ -1140,7 +1129,6 @@ describe('StudentRoster Responsive Design', () => {
 
   test('should handle roster on tablet viewport', () => {
     // Arrange
-    const tabletWidth = 768;
     const rosterData = generateMockRosterData(20);
 
     // Act & Assert
@@ -1150,7 +1138,6 @@ describe('StudentRoster Responsive Design', () => {
 
   test('should handle roster on desktop viewport', () => {
     // Arrange
-    const desktopWidth = 1920;
     const rosterData = generateMockRosterData(30);
 
     // Act & Assert

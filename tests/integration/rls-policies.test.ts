@@ -234,7 +234,7 @@ describe('RLS Policy Integration Tests', () => {
     }).select().single();
 
     // Act - Student 1 tries to edit teacher's course
-    const { error, count } = await student1Client.client
+    const { error } = await student1Client.client
       .from('courses')
       .update({ title: 'Hijacked Course' })
       .eq('id', teacherCourse.id);
@@ -336,7 +336,7 @@ describe('RLS Policy Integration Tests', () => {
       .eq('id', lessonA.id)
       .single();
 
-    const { data: blockedLesson, error: blockedError } = await student1Client.client
+    const { error: blockedError } = await student1Client.client
       .from('lessons')
       .select()
       .eq('id', lessonB.id)
