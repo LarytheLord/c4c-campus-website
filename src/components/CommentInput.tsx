@@ -19,7 +19,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import Link from '@tiptap/extension-link';
 
 interface CommentInputProps {
-  onSubmit: (content: string) => void;
+  onSubmit: (content: string) => void | Promise<void>;
   onCancel?: () => void;
   placeholder?: string;
   initialContent?: string;

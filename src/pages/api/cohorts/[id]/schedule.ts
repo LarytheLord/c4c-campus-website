@@ -1,6 +1,5 @@
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
-import type { CohortSchedule } from '@/types';
 
 export const prerender = false;
 

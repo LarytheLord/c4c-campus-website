@@ -147,7 +147,6 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     import { supabase } from '../lib/supabase';
 
     let currentUser: any = null;
-    let userApplication: any = null;
 
     // Check authentication on page load
     async function checkAuth() {
@@ -163,15 +162,13 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       currentUser = session.user;
 
       // Fetch user's application data
-      const { data: application, error } = await supabase
+      const { data: application } = await supabase
         .from('applications')
         .select('*')
         .eq('user_id', currentUser.id)
         .single();
 
       if (application) {
-        userApplication = application;
-
         // Check if user has student role - redirect teachers/admins to their dashboards
         if (application.role === 'admin') {
           window.location.href = '/admin/dashboard';
@@ -414,8 +411,8 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   </script>
 
   <!-- Google Translate Script -->
-  <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
-  <script type="text/javascript">
+  <script is:inline type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+  <script is:inline type="text/javascript">
     function googleTranslateElementInit() {
       new google.translate.TranslateElement({
         pageLanguage: 'en',

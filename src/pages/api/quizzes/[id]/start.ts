@@ -6,7 +6,7 @@
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
 import { rateLimit, RateLimitPresets } from '@/lib/rate-limiter';
-import { checkQuizAvailability, shuffleQuestions, shuffleQuestionOptions } from '@/lib/quiz-grading';
+import { checkQuizAvailability, shuffleQuestions } from '@/lib/quiz-grading';
 import type { StartQuizAttemptRequest, StartAttemptResponse } from '@/types/quiz';
 
 export const prerender = false;

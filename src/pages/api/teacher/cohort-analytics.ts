@@ -95,7 +95,7 @@ export const GET: APIRoute = async ({ request, url }) => {
     }
 
     // Get total lessons in the course - two-step approach to avoid subquery issues
-    const { data: modules, error: modulesError } = await supabase
+    const { data: modules } = await supabase
       .from('modules')
       .select('id')
       .eq('course_id', cohort.course_id);
@@ -104,7 +104,7 @@ export const GET: APIRoute = async ({ request, url }) => {
 
     let totalLessons = 0;
     if (moduleIds.length > 0) {
-      const { data: lessons, error: lessonsError } = await supabase
+      const { data: lessons } = await supabase
         .from('lessons')
         .select('id')
         .in('module_id', moduleIds);

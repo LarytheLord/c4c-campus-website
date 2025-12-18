@@ -8,7 +8,7 @@
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
 import { rateLimit, RateLimitPresets } from '@/lib/rate-limiter';
-import { validateRequest, sanitizeHTML, type ValidationRule } from '@/lib/security';
+import { sanitizeHTML } from '@/lib/security';
 import { validateQuiz, checkQuizAvailability } from '@/lib/quiz-grading';
 import type { UpdateQuizRequest } from '@/types/quiz';
 

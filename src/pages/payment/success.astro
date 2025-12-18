@@ -64,7 +64,7 @@ const sessionId = Astro.url.searchParams.get('session_id');
     </div>
   </div>
 
-  <script define:vars={{ sessionId }}>
+  <script is:inline define:vars={{ sessionId }}>
     async function verifyPayment() {
       if (!sessionId) {
         showError('No session ID provided');

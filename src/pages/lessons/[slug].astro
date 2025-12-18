@@ -14,7 +14,7 @@
  */
 
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { DiscussionThread } from '../../components/DiscussionThread';
+// Note: DiscussionThread is dynamically imported in client-side script
 
 export const prerender = false;
 ---
@@ -535,15 +535,14 @@ export const prerender = false;
     // Import and render React component
     import('../../components/DiscussionThread').then(({ DiscussionThread }) => {
       import('react-dom/client').then(({ createRoot }) => {
-        import('react').then((React) => {
+        import('react').then(({ createElement }) => {
           const reactRoot = createRoot(root);
-          const component = DiscussionThread({
+          reactRoot.render(createElement(DiscussionThread, {
             lessonId: currentLesson.id,
             cohortId: userCohortId!,
             currentUserId: currentUser.id,
             isTeacher: isTeacher,
-          }) as React.ReactNode;
-          reactRoot.render(component);
+          }));
         });
       });
     });
@@ -605,7 +604,7 @@ export const prerender = false;
         localTimeSpentSeconds += elapsed;
       }
       // Use sendBeacon for reliable delivery on page close
-      saveVideoProgressSync(video.currentTime, false);
+      saveVideoProgressSync(video.currentTime);
     });
   }
 
@@ -651,7 +650,7 @@ export const prerender = false;
   }
 
   // Synchronous save for beforeunload (uses sendBeacon fallback)
-  function saveVideoProgressSync(positionSeconds: number, completed: boolean) {
+  function saveVideoProgressSync(positionSeconds: number) {
     if (!currentUser || !currentLesson) return;
 
     const progressData: any = {
@@ -668,19 +667,14 @@ export const prerender = false;
 
     // Attempt to use sendBeacon for reliable delivery
     // This is a best-effort save on page close
+    // Note: sendBeacon doesn't support custom headers, so this is limited
     try {
       const url = `${supabaseUrl}/rest/v1/lesson_progress?on_conflict=user_id,lesson_id`;
-      const headers = {
-        'Content-Type': 'application/json',
-        'apikey': supabaseAnonKey!,
-        'Prefer': 'resolution=merge-duplicates',
-      };
-
       const body = JSON.stringify(progressData);
       if (navigator.sendBeacon) {
         navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
       }
-    } catch (e) {
+    } catch {
       // Silently fail - best effort
     }
   }

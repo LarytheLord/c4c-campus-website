@@ -6,10 +6,6 @@ export const prerender = false;
 
 const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY!;
-const supabaseServiceKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-// Admin client for operations that require bypassing RLS
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
 /**
  * GET /api/cohorts

@@ -1,18 +1,8 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
-import { createClient } from '@supabase/supabase-js';
 
 // Enable server-side rendering for this dynamic route
 export const prerender = false;
-
-const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error('Missing Supabase environment variables');
-}
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
 ---
 
 <BaseLayout title="Course Details - C4C Campus" hideHeader={true} hideFooter={true}>
@@ -223,8 +213,6 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 <script>
   import { createClient } from '@supabase/supabase-js';
   import {
-    isModuleUnlocked,
-    getUnlockDate,
     getCohortModuleStatuses,
     formatUnlockDate,
     getDaysUntilUnlock,
@@ -982,12 +970,6 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   function formatDifficulty(difficulty: string): string {
     return difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
-  }
-
-  function formatDuration(seconds: number): string {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
   }
 
   // Initialize

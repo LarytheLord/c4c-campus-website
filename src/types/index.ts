@@ -17,8 +17,6 @@ import type {
   LessonDiscussionRow,
   CourseForumRow,
   ForumReplyRow,
-  ProfileRow,
-  Json,
 } from './generated';
 
 /**

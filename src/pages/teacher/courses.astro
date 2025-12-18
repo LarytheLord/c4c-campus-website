@@ -527,7 +527,8 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
       ]);
     }
 
-    function showPrompt(title: string, onSubmit: (value: string) => void) {
+    // Reserved for future use - input prompt modal utility
+    function _showPrompt(title: string, onSubmit: (value: string) => void) {
       const modal = document.getElementById('input-modal');
       const titleEl = document.getElementById('input-title');
       const inputField = document.getElementById('input-field') as HTMLInputElement;
@@ -667,7 +668,7 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
 
       // Add event listeners for edit buttons
       grid?.querySelectorAll('.edit-course-tab').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', () => {
           const id = (btn as HTMLElement).getAttribute('data-id');
           // IDs are UUIDs (strings), not numbers
           editCourseInTab(id!);
@@ -774,7 +775,7 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
 
       // Add event listeners for delete buttons
       grid?.querySelectorAll('.delete-cohort').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
+        btn.addEventListener('click', async () => {
           const id = (btn as HTMLElement).getAttribute('data-id');
           showConfirm('Delete Cohort', 'Are you sure you want to delete this cohort?', async () => {
             // IDs are UUIDs (strings), not numbers
@@ -1000,7 +1001,7 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
 
       // Add event listeners for delete buttons
       modulesList.querySelectorAll('.delete-module').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
+        btn.addEventListener('click', async () => {
           const moduleId = (btn as HTMLElement).getAttribute('data-id');
           if (!moduleId) return;
 

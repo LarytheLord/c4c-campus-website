@@ -2,11 +2,10 @@
 /**
  * Submission Detail Page
  * View details of a specific submission
+ * Note: IDs are extracted from URL in client-side script
  */
 import BaseLayout from '@/layouts/BaseLayout.astro';
 export const prerender = false;
-
-const { id, submissionId } = Astro.params;
 ---
 
 <BaseLayout title="Submission Details - Code4Change">
@@ -79,7 +78,6 @@ const { id, submissionId } = Astro.params;
 
   <script>
     import { createClient } from '@supabase/supabase-js';
-    import type { Submission } from '@/types/assignment';
     import { formatFileSize, getFileIcon } from '@/lib/file-upload';
 
     const supabase = createClient(
@@ -357,7 +355,7 @@ const { id, submissionId } = Astro.params;
           timestamp: h.created_at,
           icon: getActionIcon(h.action),
           color: getActionColor(h.action),
-          description: getActionDescription(h.action, h.details)
+          description: getActionDescription(h.action)
         }))
       ];
 
@@ -413,7 +411,7 @@ const { id, submissionId } = Astro.params;
       return colors[action] || 'gray';
     }
 
-    function getActionDescription(action: string, details: any): string {
+    function getActionDescription(action: string): string {
       const descriptions: Record<string, string> = {
         submitted: 'Assignment submitted',
         resubmitted: 'Assignment resubmitted',

@@ -170,7 +170,6 @@ export const prerender = false;
   let questions: QuizQuestionForStudent[] = [];
   let answers: Map<string, string | string[]> = new Map();
   let currentQuestionIndex = 0;
-  let timerInterval: number | null = null;
   let hasStarted = false;
 
   // Prevent navigation during quiz
@@ -466,7 +465,7 @@ export const prerender = false;
         throw new Error('Failed to submit quiz');
       }
 
-      const data = await response.json();
+      await response.json();
 
       preventNavigation = false;
       showToast('Quiz submitted successfully!', 'success');

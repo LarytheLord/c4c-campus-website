@@ -83,7 +83,7 @@ interface DiscussionMetrics {
 
 // Mock data generators
 const mockStudentProgress = (overrides: Partial<StudentProgress> = {}): StudentProgress => ({
-  id: 'student-' + Math.random().toString(36).substr(2, 9),
+  id: 'student-' + Math.random().toString(36).substring(2, 11),
   name: 'John Doe',
   email: 'john@example.com',
   cohort_id: 1,

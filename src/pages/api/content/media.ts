@@ -214,7 +214,7 @@ export const POST: APIRoute = async ({ request }) => {
   }
 };
 
-export const PUT: APIRoute = async ({ request, url }) => {
+export const PUT: APIRoute = async ({ request }) => {
   try {
     // Verify authentication
     const authHeader = request.headers.get('authorization');

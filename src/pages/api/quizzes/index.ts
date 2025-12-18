@@ -8,7 +8,7 @@ import { createClient } from '@supabase/supabase-js';
 import { rateLimit, RateLimitPresets } from '@/lib/rate-limiter';
 import { validateRequest, sanitizeHTML, type ValidationRule } from '@/lib/security';
 import { validateQuiz } from '@/lib/quiz-grading';
-import type { CreateQuizRequest, Quiz } from '@/types/quiz';
+import type { CreateQuizRequest } from '@/types/quiz';
 
 export const prerender = false;
 

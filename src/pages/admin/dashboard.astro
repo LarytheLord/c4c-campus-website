@@ -134,8 +134,6 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   <script>
     import { supabase } from '../../lib/supabase';
 
-    let currentUser: any = null;
-
     async function loadDashboardStats() {
       try {
         const [usersResult, appsResult, coursesResult, cohortsResult] = await Promise.all([

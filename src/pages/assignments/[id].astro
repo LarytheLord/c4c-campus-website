@@ -2,11 +2,10 @@
 /**
  * Assignment Detail & Submission Page
  * Students can view assignment details and submit their work
+ * Note: Assignment ID is extracted from URL in client-side script
  */
 import BaseLayout from '@/layouts/BaseLayout.astro';
 export const prerender = false;
-
-const { id } = Astro.params;
 ---
 
 <BaseLayout title="Assignment - Code4Change">
@@ -89,7 +88,7 @@ const { id } = Astro.params;
     import DueDateCountdown from '@/components/student/DueDateCountdown';
     import SubmissionStatus from '@/components/student/SubmissionStatus';
     import FileUploader from '@/components/student/FileUploader';
-    import SubmissionHistory from '@/components/student/SubmissionHistory';
+    // Note: SubmissionHistory component available but not currently rendered
     import { getAssignmentStatus, getStatusBadgeHtml, type AssignmentStatus } from '@/lib/assignment-status';
 
     const supabase = createClient(
