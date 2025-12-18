@@ -142,11 +142,175 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   <script>
     import { supabase } from '../../lib/supabase';
 
+    function escapeHTML(unsafe) {
+      if (!unsafe) return '';
+      return String(unsafe)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
     let currentUser: any = null;
     let allApplications: any[] = [];
-    let filteredApplications: any[] = [];
-    let selectedAppIds = new Set<string>();
-    let currentApplication: any = null;
+// ... (omitting lines for brevity)
+
+    async function showApplicationDetails(appId: string) {
+      const app = allApplications.find(a => a.id === appId);
+      if (!app) return;
+
+      currentApplication = app;
+
+      const content = document.getElementById('modal-content')!;
+      content.innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h4 class="font-semibold mb-1">Name</h4>
+            <p class="text-text-muted">${escapeHTML(app.name)}</p>
+          </div>
+          <div>
+            <h4 class="font-semibold mb-1">Email</h4>
+            <p class="text-text-muted">${escapeHTML(app.email)}</p>
+          </div>
+          ${app.whatsapp ? `
+            <div>
+              <h4 class="font-semibold mb-1">WhatsApp</h4>
+              <p class="text-text-muted">${escapeHTML(app.whatsapp)}</p>
+            </div>
+          ` : ''}
+          ${app.location ? `
+            <div>
+              <h4 class="font-semibold mb-1">Location</h4>
+              <p class="text-text-muted">${escapeHTML(app.location)}</p>
+            </div>
+          ` : ''}
+          ${app.discord ? `
+            <div>
+              <h4 class="font-semibold mb-1">Discord</h4>
+              <p class="text-text-muted">${escapeHTML(app.discord)}</p>
+            </div>
+          ` : ''}
+          <div>
+            <h4 class="font-semibold mb-1">Program</h4>
+            <p class="text-text-muted">${escapeHTML(app.program)}</p>
+          </div>
+          ${app.protected_class ? `
+            <div>
+              <h4 class="font-semibold mb-1">Protected Class</h4>
+              <p class="text-text-muted">${escapeHTML(app.protected_class)}</p>
+            </div>
+          ` : ''}
+        </div>
+
+        ${app.career_goals ? `
+          <div class="mt-6">
+            <h4 class="font-semibold mb-2">Career Goals</h4>
+            <p class="text-text-muted whitespace-pre-wrap">${escapeHTML(app.career_goals)}</p>
+          </div>
+        ` : ''}
+
+        ${app.motivation ? `
+          <div class="mt-6">
+            <h4 class="font-semibold mb-2">Motivation</h4>
+            <p class="text-text-muted">${escapeHTML(app.motivation)}</p>
+          </div>
+        ` : ''}
+        ${app.technical_experience ? `
+          <div class="mt-4">
+            <h4 class="font-semibold mb-2">Technical Experience</h4>
+            <p class="text-text-muted">${escapeHTML(app.technical_experience)}</p>
+          </div>
+        ` : ''}
+        ${app.commitment ? `
+          <div class="mt-4">
+            <h4 class="font-semibold mb-2">Commitment</h4>
+            <p class="text-text-muted">${escapeHTML(app.commitment)}</p>
+          </div>
+        ` : ''}
+        ${app.interests ? `
+          <div class="mt-4">
+            <h4 class="font-semibold mb-2">Interests</h4>
+            <p class="text-text-muted">${app.interests.map((i: string) => escapeHTML(i)).join(', ')}</p>
+          </div>
+        ` : ''}
+
+        ${app.program === 'accelerator' ? `
+          <div class="border-t border-border my-6"></div>
+          <h4 class="font-semibold text-lg mb-4">Accelerator Program Details</h4>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            ${app.track ? `
+              <div>
+                <h4 class="font-semibold mb-1">Track</h4>
+                <p class="text-text-muted">${escapeHTML(app.track).split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</p>
+              </div>
+            ` : ''}
+            ${app.project_name ? `
+              <div>
+                <h4 class="font-semibold mb-1">Project Name</h4>
+                <p class="text-text-muted">${escapeHTML(app.project_name)}</p>
+              </div>
+            ` : ''}
+            <div>
+              <h4 class="font-semibold mb-1">Team Size</h4>
+              <p class="text-text-muted">${app.team_size != null ? escapeHTML(String(app.team_size)) : 'Not specified'}</p>
+            </div>
+            ${app.current_stage ? `
+              <div>
+                <h4 class="font-semibold mb-1">Current Stage</h4>
+                <p class="text-text-muted">${escapeHTML(app.current_stage)}</p>
+              </div>
+            ` : ''}
+            ${app.funding ? `
+              <div>
+                <h4 class="font-semibold mb-1">Funding Type</h4>
+                <p class="text-text-muted">${escapeHTML(app.funding)}</p>
+              </div>
+            ` : ''}
+          </div>
+
+          ${app.project_description ? `
+            <div class="mt-6">
+              <h4 class="font-semibold mb-2">Project Description</h4>
+              <p class="text-text-muted">${escapeHTML(app.project_description)}</p>
+            </div>
+          ` : ''}
+
+          ${app.prototype_link ? `
+            <div class="mt-4">
+              <h4 class="font-semibold mb-2">Prototype Link</h4>
+              <p><a href="${escapeHTML(app.prototype_link)}" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">${escapeHTML(app.prototype_link)}</a></p>
+            </div>
+          ` : ''}
+
+          ${app.tech_stack ? `
+            <div class="mt-4">
+              <h4 class="font-semibold mb-2">Tech Stack</h4>
+              <p class="text-text-muted">${escapeHTML(app.tech_stack)}</p>
+            </div>
+          ` : ''}
+
+          ${app.target_users ? `
+            <div class="mt-4">
+              <h4 class="font-semibold mb-2">Target Users</h4>
+              <p class="text-text-muted">${escapeHTML(app.target_users)}</p>
+            </div>
+          ` : ''}
+
+          ${app.production_needs ? `
+            <div class="mt-4">
+              <h4 class="font-semibold mb-2">Production Needs</h4>
+              <p class="text-text-muted">${escapeHTML(app.production_needs)}</p>
+            </div>
+          ` : ''}
+        ` : ''}
+      `;
+
+      document.getElementById('detail-modal')?.classList.remove('hidden');
+    }
+
+
 
     async function checkAdminAccess() {
       const { data: { session } } = await supabase.auth.getSession();
@@ -392,146 +556,6 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       }
     }
 
-    async function showApplicationDetails(appId: string) {
-      const app = allApplications.find(a => a.id === appId);
-      if (!app) return;
-
-      currentApplication = app;
-
-      const content = document.getElementById('modal-content')!;
-      content.innerHTML = `
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <h4 class="font-semibold mb-1">Name</h4>
-            <p class="text-text-muted">${app.name}</p>
-          </div>
-          <div>
-            <h4 class="font-semibold mb-1">Email</h4>
-            <p class="text-text-muted">${app.email}</p>
-          </div>
-          ${app.whatsapp ? `
-            <div>
-              <h4 class="font-semibold mb-1">WhatsApp</h4>
-              <p class="text-text-muted">${app.whatsapp}</p>
-            </div>
-          ` : ''}
-          ${app.location ? `
-            <div>
-              <h4 class="font-semibold mb-1">Location</h4>
-              <p class="text-text-muted">${app.location}</p>
-            </div>
-          ` : ''}
-          ${app.discord ? `
-            <div>
-              <h4 class="font-semibold mb-1">Discord</h4>
-              <p class="text-text-muted">${app.discord}</p>
-            </div>
-          ` : ''}
-          <div>
-            <h4 class="font-semibold mb-1">Program</h4>
-            <p class="text-text-muted">${app.program}</p>
-          </div>
-        </div>
-
-        ${app.motivation ? `
-          <div class="mt-6">
-            <h4 class="font-semibold mb-2">Motivation</h4>
-            <p class="text-text-muted">${app.motivation}</p>
-          </div>
-        ` : ''}
-        ${app.technical_experience ? `
-          <div class="mt-4">
-            <h4 class="font-semibold mb-2">Technical Experience</h4>
-            <p class="text-text-muted">${app.technical_experience}</p>
-          </div>
-        ` : ''}
-        ${app.commitment ? `
-          <div class="mt-4">
-            <h4 class="font-semibold mb-2">Commitment</h4>
-            <p class="text-text-muted">${app.commitment}</p>
-          </div>
-        ` : ''}
-        ${app.interests ? `
-          <div class="mt-4">
-            <h4 class="font-semibold mb-2">Interests</h4>
-            <p class="text-text-muted">${app.interests.join(', ')}</p>
-          </div>
-        ` : ''}
-
-        ${app.program === 'accelerator' ? `
-          <div class="border-t border-border my-6"></div>
-          <h4 class="font-semibold text-lg mb-4">Accelerator Program Details</h4>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            ${app.track ? `
-              <div>
-                <h4 class="font-semibold mb-1">Track</h4>
-                <p class="text-text-muted">${app.track.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</p>
-              </div>
-            ` : ''}
-            ${app.project_name ? `
-              <div>
-                <h4 class="font-semibold mb-1">Project Name</h4>
-                <p class="text-text-muted">${app.project_name}</p>
-              </div>
-            ` : ''}
-            <div>
-              <h4 class="font-semibold mb-1">Team Size</h4>
-              <p class="text-text-muted">${app.team_size != null ? app.team_size : 'Not specified'}</p>
-            </div>
-            ${app.current_stage ? `
-              <div>
-                <h4 class="font-semibold mb-1">Current Stage</h4>
-                <p class="text-text-muted">${app.current_stage}</p>
-              </div>
-            ` : ''}
-            ${app.funding ? `
-              <div>
-                <h4 class="font-semibold mb-1">Funding Type</h4>
-                <p class="text-text-muted">${app.funding}</p>
-              </div>
-            ` : ''}
-          </div>
-
-          ${app.project_description ? `
-            <div class="mt-6">
-              <h4 class="font-semibold mb-2">Project Description</h4>
-              <p class="text-text-muted">${app.project_description}</p>
-            </div>
-          ` : ''}
-
-          ${app.prototype_link ? `
-            <div class="mt-4">
-              <h4 class="font-semibold mb-2">Prototype Link</h4>
-              <p><a href="${app.prototype_link}" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">${app.prototype_link}</a></p>
-            </div>
-          ` : ''}
-
-          ${app.tech_stack ? `
-            <div class="mt-4">
-              <h4 class="font-semibold mb-2">Tech Stack</h4>
-              <p class="text-text-muted">${app.tech_stack}</p>
-            </div>
-          ` : ''}
-
-          ${app.target_users ? `
-            <div class="mt-4">
-              <h4 class="font-semibold mb-2">Target Users</h4>
-              <p class="text-text-muted">${app.target_users}</p>
-            </div>
-          ` : ''}
-
-          ${app.production_needs ? `
-            <div class="mt-4">
-              <h4 class="font-semibold mb-2">Production Needs</h4>
-              <p class="text-text-muted">${app.production_needs}</p>
-            </div>
-          ` : ''}
-        ` : ''}
-      `;
-
-      document.getElementById('detail-modal')?.classList.remove('hidden');
-    }
 
     function hideModal() {
       document.getElementById('detail-modal')?.classList.add('hidden');

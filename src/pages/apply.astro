@@ -767,6 +767,8 @@ async function handleFormSubmit(e, program) {
     data.motivation = formData.get('motivation');
     data.technicalExperience = formData.get('technicalExperience');
     data.commitment = formData.get('commitment');
+    data.protectedClass = formData.get('protectedClass');
+    data.careerGoals = formData.get('careerGoals');
     // Scholarship fields
     const scholarshipCheckbox = form.querySelector('#scholarship-requested');
     data.scholarshipRequested = scholarshipCheckbox?.checked || false;
@@ -784,6 +786,8 @@ async function handleFormSubmit(e, program) {
     data.currentStage = formData.get('currentStage');
     data.commitment = formData.get('commitment');
     data.funding = formData.get('funding');
+    data.protectedClass = formData.get('protectedClass');
+    data.careerGoals = formData.get('careerGoals');
   }
 
   // Validate passwords match
