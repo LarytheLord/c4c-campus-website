@@ -37,7 +37,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         <button id="show-accelerator" class="card border-2 border-accent hover:shadow-lg transition-all text-left program-selector">
           <div class="text-4xl mb-3">🚀</div>
           <h2 class="text-2xl font-bold mb-2">Full-Time Accelerator</h2>
-          <p class="text-text-muted mb-4">10 weeks: 1 week in-person, 8 weeks remote, 1 week in-person in Bengaluru. Take your prototype to production.</p>
+          <p class="text-text-muted mb-4">12 weeks in-person in Bengaluru. Optional 4-week pre-accelerator for animal advocacy projects. Take your prototype to production.</p>
           <p class="text-sm font-bold text-accent">→ Apply to Accelerator</p>
         </button>
       </div>
@@ -224,11 +224,14 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
           <div class="bg-accent/5 p-4 rounded-lg mb-6">
             <p class="text-sm text-text-muted mb-3">
-              <strong>10-week program:</strong> 1 week in-person at start, 8 weeks remote work, 1 week in-person at end in Bengaluru. Clear vision of how to take your tool to production.
+              <strong>12-week program:</strong> In-person at C4C Campus in Bengaluru. Intensive development, mentorship, pitch preparation, and investor introductions.
+            </p>
+            <p class="text-sm text-text-muted mb-3">
+              <strong>Animal Advocacy Pre-Accelerator (AARC):</strong> Optional 4-week programme (Feb 9 - Mar 8, 2026) for animal protection projects. Teams arrive with prototypes, pitch to investors in week 1, and successful teams graduate to the main accelerator.
             </p>
             <p class="text-sm text-text-muted">
               <strong>What we're looking for:</strong> Developers with an existing prototype or MVP.
-              We cover living costs and accommodation during the 2 in-person weeks in Bengaluru (week 1 and week 10).
+              We provide accommodation, meals, compute access, and per-team stipends (INR 200,000 - 1,000,000).
             </p>
           </div>
 
@@ -357,10 +360,12 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
             <!-- Commitment -->
             <div>
-              <label class="block font-bold mb-2">Can you commit to the 10-week program (with a minimum of 3 weeks in-person in Bengaluru)? *</label>
+              <label class="block font-bold mb-2">Can you commit to the 12-week program in-person in Bengaluru? *</label>
               <select name="commitment" required class="w-full px-4 py-3 border border-border rounded-lg">
                 <option value="">Select...</option>
-                <option>Yes, I can commit to the full program</option>
+                <option>Yes, I can commit to the full 12-week accelerator</option>
+                <option>Yes, interested in 4-week animal advocacy pre-accelerator (AARC)</option>
+                <option>Yes, interested in both pre-accelerator and full accelerator</option>
                 <option>Need to discuss timing</option>
                 <option>No, but interested in future cohorts</option>
               </select>
@@ -401,7 +406,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
               <label class="flex items-start gap-3">
                 <input type="checkbox" required class="mt-1" />
                 <span class="text-sm text-text-muted">
-                  I understand C4C will cover living costs and accommodation during the in-person weeks in Bengaluru for participants traveling from out of town.
+                  I understand C4C provides accommodation, meals, compute access, and stipends for accelerator participants in Bengaluru.
                 </span>
               </label>
             </div>
