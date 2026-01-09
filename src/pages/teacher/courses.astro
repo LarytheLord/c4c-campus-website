@@ -606,6 +606,19 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
       document.getElementById('teacher-content')?.classList.remove('hidden');
 
       setupEventListeners();
+
+      // Check for edit query parameter (from course page "Edit Course" button)
+      const urlParams = new URLSearchParams(window.location.search);
+      const editCourseId = urlParams.get('edit');
+      if (editCourseId) {
+        // Find the course and open edit tab
+        const courseToEdit = courses.find(c => c.id === editCourseId);
+        if (courseToEdit) {
+          editCourseInTab(editCourseId);
+        }
+        // Clean URL without reloading
+        window.history.replaceState({}, '', window.location.pathname);
+      }
     }
 
     async function loadCourses() {
@@ -1203,7 +1216,7 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
       e.preventDefault();
 
       const cohortData = {
-        course_id: parseInt((document.getElementById('cohort-course') as HTMLSelectElement).value),
+        course_id: (document.getElementById('cohort-course') as HTMLSelectElement).value,
         name: (document.getElementById('cohort-name') as HTMLInputElement).value,
         start_date: (document.getElementById('cohort-start-date') as HTMLInputElement).value,
         end_date: (document.getElementById('cohort-end-date') as HTMLInputElement).value || null,

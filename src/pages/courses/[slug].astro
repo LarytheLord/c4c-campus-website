@@ -697,9 +697,9 @@ export const prerender = false;
   }
 
   function setupEventListeners() {
-    // Edit course button - redirect to teacher dashboard
+    // Edit course button - redirect to teacher dashboard with edit parameter
     document.getElementById('edit-course-btn')?.addEventListener('click', () => {
-      window.location.href = '/teacher/courses';
+      window.location.href = `/teacher/courses?edit=${currentCourse.id}`;
     });
 
     // Module modal
@@ -717,12 +717,12 @@ export const prerender = false;
     document.getElementById('cancel-lesson-modal')?.addEventListener('click', closeLessonModal);
     document.getElementById('lesson-form')?.addEventListener('submit', handleLessonSubmit);
 
-    // Auto-generate lesson slug
-    document.getElementById('lesson-name')?.addEventListener('input', (e) => {
-      const name = (e.target as HTMLInputElement).value;
+    // Auto-generate lesson slug from title
+    document.getElementById('lesson-title')?.addEventListener('input', (e) => {
+      const title = (e.target as HTMLInputElement).value;
       const slugInput = document.getElementById('lesson-slug') as HTMLInputElement;
       if (!editingLesson && slugInput) {
-        slugInput.value = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        slugInput.value = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
       }
     });
 
