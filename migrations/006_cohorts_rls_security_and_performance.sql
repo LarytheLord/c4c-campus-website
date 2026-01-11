@@ -1,0 +1,32 @@
+-- Migration: Security & Performance improvements for cohorts RLS policies
+-- SECURITY FIX: Restricts cohorts SELECT from public to authenticated users only
+-- PERFORMANCE FIX: Adds composite index for faster RLS policy lookups
+
+-- ============================================================================
+-- SECURITY FIX: Update cohorts SELECT policy to require authentication
+-- Previously: USING (true) - allowed public access to all cohorts
+-- Now: USING (auth.role() = 'authenticated') - requires authentication
+-- ============================================================================
+
+-- Drop the public SELECT policy
+DROP POLICY IF EXISTS "cohorts_select_all" ON cohorts;
+
+-- Create new authenticated-only SELECT policy
+CREATE POLICY "cohorts_select_authenticated" ON cohorts
+    FOR SELECT
+    USING (auth.role() = 'authenticated');
+
+COMMENT ON POLICY "cohorts_select_authenticated" ON cohorts IS 
+    'Restricts cohort viewing to authenticated users only (security fix for preventing training schedule exposure)';
+
+-- ============================================================================
+-- PERFORMANCE: Add composite index for RLS policy lookups
+-- This significantly improves performance of the RLS checks that query:
+-- SELECT 1 FROM applications WHERE user_id = auth.uid() AND role IN (...)
+-- ============================================================================
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_applications_user_id_role 
+    ON applications(user_id, role);
+
+COMMENT ON INDEX idx_applications_user_id_role IS 
+    'Composite index to optimize RLS policy lookups for cohorts INSERT/UPDATE/DELETE operations';

@@ -1,10 +1,6 @@
--- Migration: Fix RLS policy security + performance improvements
--- Addresses PR review feedback for cohorts policies
-
--- ============================================================================
--- SECURITY FIX: Restrict cohorts access to authenticated users only
--- (Previously was public which exposed training schedules to anonymous users)
--- ============================================================================
+-- Migration: Fix RLS policy infinite recursion on cohorts table
+-- This fixes the "infinite recursion detected in policy for relation 'cohorts'" error
+-- The issue is typically caused by a policy that references itself or creates a circular dependency
 
 -- First, drop all existing policies on cohorts to start fresh
 DROP POLICY IF EXISTS "Cohorts are viewable by everyone" ON cohorts;
@@ -15,20 +11,19 @@ DROP POLICY IF EXISTS "cohorts_select_policy" ON cohorts;
 DROP POLICY IF EXISTS "cohorts_insert_policy" ON cohorts;
 DROP POLICY IF EXISTS "cohorts_update_policy" ON cohorts;
 DROP POLICY IF EXISTS "cohorts_delete_policy" ON cohorts;
-DROP POLICY IF EXISTS "cohorts_select_all" ON cohorts;
-DROP POLICY IF EXISTS "cohorts_insert_teachers_admins" ON cohorts;
-DROP POLICY IF EXISTS "cohorts_update_creator_admin" ON cohorts;
-DROP POLICY IF EXISTS "cohorts_delete_creator_admin" ON cohorts;
 
 -- Enable RLS on cohorts table if not already enabled
 ALTER TABLE cohorts ENABLE ROW LEVEL SECURITY;
 
--- SELECT: Only authenticated users can view cohorts (SECURITY FIX)
-CREATE POLICY "cohorts_select_authenticated" ON cohorts
+-- Create simple, non-recursive policies
+
+-- SELECT: Everyone can view cohorts
+CREATE POLICY "cohorts_select_all" ON cohorts
     FOR SELECT
-    USING (auth.role() = 'authenticated');
+    USING (true);
 
 -- INSERT: Only teachers and admins can create cohorts
+-- Uses a direct check against applications table without subqueries that could cause recursion
 CREATE POLICY "cohorts_insert_teachers_admins" ON cohorts
     FOR INSERT
     WITH CHECK (
@@ -71,8 +66,5 @@ CREATE POLICY "cohorts_delete_creator_admin" ON cohorts
         )
     );
 
--- ============================================================================
--- PERFORMANCE: Add composite index for RLS policy lookups
--- ============================================================================
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_applications_user_id_role 
-    ON applications(user_id, role);
+-- Note: If this migration doesn't fix the issue, the problem may be in related tables
+-- (cohort_enrollments, cohort_schedule, etc.) that have policies referencing cohorts.
