@@ -25,7 +25,8 @@ COMMENT ON POLICY "cohorts_select_authenticated" ON cohorts IS
 -- SELECT 1 FROM applications WHERE user_id = auth.uid() AND role IN (...)
 -- ============================================================================
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_applications_user_id_role 
+-- Note: Using regular CREATE INDEX (not CONCURRENTLY) to allow execution inside transaction
+CREATE INDEX IF NOT EXISTS idx_applications_user_id_role 
     ON applications(user_id, role);
 
 COMMENT ON INDEX idx_applications_user_id_role IS 
