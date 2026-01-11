@@ -1215,8 +1215,16 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
     async function handleCohortSubmit(e: Event) {
       e.preventDefault();
 
+      const courseId = (document.getElementById('cohort-course') as HTMLSelectElement).value;
+      
+      // Validate required fields before submission
+      if (!courseId) {
+        showNotification('Error', 'Please select a course before creating a cohort.', 'error');
+        return;
+      }
+
       const cohortData = {
-        course_id: (document.getElementById('cohort-course') as HTMLSelectElement).value,
+        course_id: courseId,
         name: (document.getElementById('cohort-name') as HTMLInputElement).value,
         start_date: (document.getElementById('cohort-start-date') as HTMLInputElement).value,
         end_date: (document.getElementById('cohort-end-date') as HTMLInputElement).value || null,

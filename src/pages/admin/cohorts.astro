@@ -526,8 +526,16 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       e.preventDefault();
 
       const cohortId = (document.getElementById('cohort-id') as HTMLInputElement).value;
+      const courseId = (document.getElementById('cohort-course') as HTMLSelectElement).value;
+      
+      // Validate required fields before submission
+      if (!courseId) {
+        showToast('Please select a course before creating a cohort.', 'error');
+        return;
+      }
+      
       const cohortData = {
-        course_id: (document.getElementById('cohort-course') as HTMLSelectElement).value,
+        course_id: courseId,
         name: (document.getElementById('cohort-name') as HTMLInputElement).value,
         start_date: (document.getElementById('cohort-start-date') as HTMLInputElement).value,
         end_date: (document.getElementById('cohort-end-date') as HTMLInputElement).value || null,
