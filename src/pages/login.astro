@@ -85,10 +85,27 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   <script>
     import { supabase } from '../lib/supabase';
 
-    // Check if user is already logged in and redirect appropriately
+    // Check authentication and load application
     async function checkExistingSession() {
-      const { data: { session } } = await supabase.auth.getSession();
+      const params = new URLSearchParams(window.location.search);
+      
+      // Check current session state
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      // If we were redirected due to session expiry AND we don't have a valid session, clear it and show message
+      if (params.get('error') === 'session-expired' && (sessionError || !session)) {
+        await supabase.auth.signOut();
+        const errorDiv = document.getElementById('error-message');
+        if (errorDiv) {
+          errorDiv.textContent = 'Your session has expired. Please log in again.';
+          errorDiv.classList.remove('hidden');
+        }
+        // Clean up URL
+        window.history.replaceState({}, '', '/login');
+        return;
+      }
 
+      // If we have a valid session, proceed with role-based redirect
       if (session) {
         // User is already logged in, redirect based on role
         const { data: application } = await supabase

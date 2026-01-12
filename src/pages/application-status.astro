@@ -247,9 +247,20 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
       userApplication = application;
 
-      // If approved, redirect to dashboard
+      // If approved, redirect to dashboard based on role
       if (application.status === 'approved') {
-        window.location.href = '/dashboard';
+        switch (application.role) {
+          case 'admin':
+            window.location.href = '/admin/dashboard';
+            break;
+          case 'teacher':
+            window.location.href = '/teacher/courses';
+            break;
+          case 'student':
+          default:
+            window.location.href = '/dashboard';
+            break;
+        }
         return;
       }
 
