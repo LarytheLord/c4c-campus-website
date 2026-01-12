@@ -72,19 +72,42 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   if (authCookieMatch) {
     try {
-      const decoded = decodeURIComponent(authCookieMatch[1]);
+      let decoded = decodeURIComponent(authCookieMatch[1]);
+
+      // Remove "base64-" prefix if present (common in some Supabase versions)
+      if (decoded.startsWith('base64-')) {
+        decoded = decoded.substring(7);
+      }
+
       // Handle base64 encoded JSON or raw JSON
       let tokenData;
       try {
+        // First try parsing as raw JSON
         tokenData = JSON.parse(decoded);
       } catch {
-        // Try base64 decode
-        tokenData = JSON.parse(atob(decoded));
+        // If that fails, might be base64 encoded
+        try {
+          // Check if it looks like base64 before trying atob to avoid InvalidCharacterError
+          if (/^[A-Za-z0-9+/=]+$/.test(decoded)) {
+            tokenData = JSON.parse(atob(decoded));
+          } else {
+            throw new Error('Not valid base64');
+          }
+        } catch (innerErr) {
+          // Last resort: simple string check or just fail
+          logger.debug('Cookie parsing failed internal checks', { error: String(innerErr) });
+          throw innerErr;
+        }
       }
-      accessToken = tokenData.access_token || tokenData[0];
-      refreshToken = tokenData.refresh_token || tokenData[1];
+
+      if (tokenData) {
+        accessToken = tokenData.access_token || tokenData[0];
+        refreshToken = tokenData.refresh_token || tokenData[1];
+      }
     } catch (e) {
-      logger.debug('Failed to parse auth cookie', { error: String(e) });
+      // Log the beginning of the cookie value to debug (safely)
+      const cookieStart = authCookieMatch[1] ? authCookieMatch[1].substring(0, 20) + '...' : 'undefined';
+      logger.debug('Failed to parse auth cookie', { error: String(e), cookieStart });
     }
   }
 
@@ -104,7 +127,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   if (sessionError || !session) {
     logger.debug('Invalid session', { pathname, error: sessionError?.message });
-    return redirect(`/login?redirect=${encodeURIComponent(pathname)}`);
+    return redirect(`/login?error=session-expired&redirect=${encodeURIComponent(pathname)}`);
   }
 
   const user = session.user;
