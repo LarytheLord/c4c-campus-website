@@ -606,19 +606,6 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
       document.getElementById('teacher-content')?.classList.remove('hidden');
 
       setupEventListeners();
-
-      // Check for edit query parameter (from course page "Edit Course" button)
-      const urlParams = new URLSearchParams(window.location.search);
-      const editCourseId = urlParams.get('edit');
-      if (editCourseId) {
-        // Find the course and open edit tab
-        const courseToEdit = courses.find(c => c.id === editCourseId);
-        if (courseToEdit) {
-          editCourseInTab(editCourseId);
-        }
-        // Clean URL without reloading
-        window.history.replaceState({}, '', window.location.pathname);
-      }
     }
 
     async function loadCourses() {
@@ -687,6 +674,21 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
           editCourseInTab(id!);
         });
       });
+
+      // Check for edit query parameter (from course page "Edit Course" button)
+      // This runs after courses are loaded to avoid race condition
+      const urlParams = new URLSearchParams(window.location.search);
+      const editCourseId = urlParams.get('edit');
+      if (editCourseId) {
+        const courseToEdit = courses.find(c => c.id === editCourseId);
+        if (courseToEdit) {
+          editCourseInTab(editCourseId);
+        } else {
+          showNotification('Course Not Found', 'The course you tried to edit was not found or you do not have permission to edit it.', 'warning');
+        }
+        // Clean URL without reloading
+        window.history.replaceState({}, '', window.location.pathname);
+      }
     }
 
     async function loadCohorts() {
