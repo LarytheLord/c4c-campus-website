@@ -617,10 +617,11 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
       });
       if (editCourseId) {
         // Find the course and open edit tab
-        const courseToEdit = courses.find(c => c.id === editCourseId);
+        // Use String() to handle both numeric and UUID IDs
+        const courseToEdit = courses.find(c => String(c.id) === String(editCourseId));
         console.log('[Teacher Courses Debug] Found course to edit:', courseToEdit);
         if (courseToEdit) {
-          editCourseInTab(editCourseId);
+          editCourseInTab(String(courseToEdit.id));
         } else {
           console.warn('[Teacher Courses Debug] Course not found in user courses array');
         }
@@ -940,7 +941,7 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
 
     function editCourseInTab(courseId: string) {
       // Course IDs are UUIDs (strings)
-      editingCourse = courses.find(c => c.id === courseId);
+      editingCourse = courses.find(c => String(c.id) === String(courseId));
       if (!editingCourse) return;
 
       // Show edit tab
