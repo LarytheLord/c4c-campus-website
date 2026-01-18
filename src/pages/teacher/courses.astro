@@ -1232,24 +1232,46 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
         return;
       }
 
+      const cohortName = (document.getElementById('cohort-name') as HTMLInputElement).value;
+      const startDate = (document.getElementById('cohort-start-date') as HTMLInputElement).value;
+      
+      if (!cohortName || !startDate) {
+        showNotification('Error', 'Please fill in all required fields.', 'error');
+        return;
+      }
+
       const cohortData = {
-        course_id: courseId,
-        name: (document.getElementById('cohort-name') as HTMLInputElement).value,
-        start_date: (document.getElementById('cohort-start-date') as HTMLInputElement).value,
+        course_id: parseInt(courseId, 10) || courseId, // Handle both numeric and UUID IDs
+        name: cohortName,
+        start_date: startDate,
         end_date: (document.getElementById('cohort-end-date') as HTMLInputElement).value || null,
-        max_students: parseInt((document.getElementById('cohort-max-students') as HTMLInputElement).value),
-        created_by: currentUser.id
+        max_students: parseInt((document.getElementById('cohort-max-students') as HTMLInputElement).value) || 50,
+        created_by: currentUser.id,
+        status: 'upcoming' // Default status
       };
 
-      const { error } = await supabase
+      console.log('[Cohort Create Debug] Attempting to create cohort:', cohortData);
+
+      const { data, error } = await supabase
         .from('cohorts')
-        .insert([cohortData]);
+        .insert([cohortData])
+        .select(); // Add .select() to get the inserted row back
+
+      console.log('[Cohort Create Debug] Insert result:', { data, error });
 
       if (error) {
+        console.error('[Cohort Create Debug] Error:', error);
         showNotification('Error', 'Error creating cohort: ' + error.message, 'error');
         return;
       }
 
+      if (!data || data.length === 0) {
+        console.error('[Cohort Create Debug] No data returned from insert');
+        showNotification('Error', 'Cohort creation failed. Please check permissions.', 'error');
+        return;
+      }
+
+      console.log('[Cohort Create Debug] Cohort created successfully:', data[0]);
       closeCohortModal();
       await loadCohorts();
       showNotification('Success', 'Cohort created successfully!', 'success');
