@@ -43,6 +43,15 @@ DROP POLICY IF EXISTS "Teachers enroll students in own cohorts" ON cohort_enroll
 DROP POLICY IF EXISTS "Teachers update cohort enrollments" ON cohort_enrollments;
 DROP POLICY IF EXISTS "Teachers delete cohort enrollments" ON cohort_enrollments;
 
+-- Also drop the new policy names in case migration was partially run before
+DROP POLICY IF EXISTS "enrollments_select_own" ON cohort_enrollments;
+DROP POLICY IF EXISTS "enrollments_insert_own" ON cohort_enrollments;
+DROP POLICY IF EXISTS "enrollments_update_own" ON cohort_enrollments;
+DROP POLICY IF EXISTS "enrollments_select_teachers" ON cohort_enrollments;
+DROP POLICY IF EXISTS "enrollments_insert_teachers" ON cohort_enrollments;
+DROP POLICY IF EXISTS "enrollments_update_teachers" ON cohort_enrollments;
+DROP POLICY IF EXISTS "enrollments_delete_teachers" ON cohort_enrollments;
+
 -- ============================================================================
 -- STEP 3: ENABLE RLS
 -- ============================================================================
