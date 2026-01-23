@@ -703,14 +703,18 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
       const grid = document.getElementById('cohorts-grid');
       const empty = document.getElementById('cohorts-empty');
 
+      console.log('[Cohorts Debug] Loading cohorts, courses count:', courses.length);
+
       loading?.classList.remove('hidden');
       grid?.classList.add('hidden');
       empty?.classList.add('hidden');
 
       // Fetch cohorts for teacher's courses
       const courseIds = courses.map(c => c.id);
+      console.log('[Cohorts Debug] Course IDs:', courseIds);
 
       if (courseIds.length === 0) {
+        console.log('[Cohorts Debug] No courses found, showing empty state');
         loading?.classList.add('hidden');
         empty?.classList.remove('hidden');
         return;
@@ -725,14 +729,16 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
       loading?.classList.add('hidden');
 
       if (error) {
-        console.error('Error loading cohorts:', error);
+        console.error('[Cohorts Debug] Error loading cohorts:', error);
         empty?.classList.remove('hidden');
         return;
       }
 
       cohorts = data || [];
+      console.log('[Cohorts Debug] Loaded cohorts:', cohorts.length);
 
       if (cohorts.length === 0) {
+        console.log('[Cohorts Debug] No cohorts found, showing empty state');
         empty?.classList.remove('hidden');
         return;
       }
