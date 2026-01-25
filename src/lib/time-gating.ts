@@ -209,77 +209,64 @@ export async function canAccessLesson(
     };
   }
 
-  // 2. Check user's enrollment in a cohort for this course
-  const { data: enrollment, error: enrollmentError } = await supabase
+  // 2. Check user's enrollment - first try cohort enrollment, then fall back to regular enrollment
+  const { data: cohortEnrollment } = await supabase
     .from('cohort_enrollments')
-    .select('cohort_id')
+    .select('cohort_id, cohorts!inner(course_id)')
     .eq('user_id', userId)
-    .eq('status', 'active') // Assuming only active students
-    // We need to link to cohort -> course. 
-    // But standard schema might be cohort_enrollment -> cohort -> course_id
-    // Let's assume we need to find a cohort for this course that the user is in.
-    // This part is tricky without full schema knowledge, but let's infer from test.
-    // Test mocks: select(cohort_id).eq(user_id).eq(status) ... wait, test just says "user has no cohort enrollment"
-    // It doesn't specify the join.
-    // Let's try to find *any* active cohort enrollment for the user that matches the course.
-    // Since we can't do complex joins easily in one query without knowing relationships,
-    // let's assume we first find cohorts the user is in, then check if one matches the course.
-    // OR, maybe the test implies a simpler check.
-    
-    // Let's look at the test "should return not_enrolled if user has no cohort enrollment"
-    // It mocks `supabase.from('cohort_enrollments').select...` and returns null.
-    // It doesn't show filtering by course_id in the mock chain shown in the snippet (it might be truncated or implied).
-    // But logically we must filter by course.
+    .eq('status', 'active')
+    .eq('cohorts.course_id', lesson.modules.course_id)
+    .limit(1)
+    .single();
 
-    // Let's assume we can't easily check course_id directly on cohort_enrollments without a join.
-    // For now, let's just check if they are in *a* cohort, and then we'd check the module status for that cohort.
-    // But we need the cohort_id to check the schedule.
+  // If user has cohort enrollment, check time-gating
+  if (cohortEnrollment) {
+    // 3. Check module unlock status for cohort-enrolled users
+    const moduleStatus = await isModuleUnlocked(lesson.module_id, cohortEnrollment.cohort_id, supabase);
 
-    // Let's try:
-    // .from('cohort_enrollments')
-    // .select('cohort_id, cohorts!inner(course_id)')
-    // .eq('user_id', userId)
-    // .eq('cohorts.course_id', lesson.modules.course_id)
-    // .single()
+    if (!moduleStatus.isUnlocked) {
+      return {
+        canAccess: false,
+        moduleUnlocked: false,
+        isEnrolled: true,
+        reason: 'module_locked'
+      };
+    }
 
-    // But for the purpose of passing the provided unit test which mocks a simple chain:
-    // .from('cohort_enrollments').select(...).eq(...).eq(...).single()
-    // The test mocks failure here.
-
-    // Let's stick to a simple query that matches the test's likely structure
-     .single(); // This matches the test expectation of a single result or error
-
-  // Wait, the test mock for "not_enrolled" is:
-  // mockSupabase.from.mockReturnValueOnce(... lessons query ...)
-  // mockSupabase.from.mockReturnValueOnce(... enrollment query ...)
-  
-  // So we just need to attempt to get the enrollment.
-  if (enrollmentError || !enrollment) {
-     return {
-      canAccess: false,
-      moduleUnlocked: false,
-      isEnrolled: false,
-      reason: 'not_enrolled'
-    };
-  }
-
-  // 3. Check module unlock status
-  const moduleStatus = await isModuleUnlocked(lesson.module_id, enrollment.cohort_id, supabase);
-
-  if (!moduleStatus.isUnlocked) {
     return {
-      canAccess: false,
-      moduleUnlocked: false,
+      canAccess: true,
+      moduleUnlocked: true,
       isEnrolled: true,
-      reason: 'module_locked'
+      reason: 'accessible'
     };
   }
 
+  // 2b. Fall back to regular enrollment (no time-gating applies)
+  const { data: regularEnrollment } = await supabase
+    .from('enrollments')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('course_id', lesson.modules.course_id)
+    .eq('status', 'active')
+    .limit(1)
+    .single();
+
+  if (regularEnrollment) {
+    // Regular enrollment - no time-gating, full access
+    return {
+      canAccess: true,
+      moduleUnlocked: true,
+      isEnrolled: true,
+      reason: 'accessible'
+    };
+  }
+
+  // Not enrolled in any way
   return {
-    canAccess: true,
-    moduleUnlocked: true,
-    isEnrolled: true,
-    reason: 'accessible'
+    canAccess: false,
+    moduleUnlocked: false,
+    isEnrolled: false,
+    reason: 'not_enrolled'
   };
 }
 

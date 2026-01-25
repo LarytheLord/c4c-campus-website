@@ -343,12 +343,14 @@ import TeacherLayout from '../../../layouts/TeacherLayout.astro';
 
       cohort = data;
 
-      // Update UI
-      document.getElementById('cohort-name-header')!.textContent = cohort.name;
-      document.getElementById('course-name-header')!.textContent = cohort.courses?.title || 'Unknown Course';
-      document.getElementById('cohort-name')!.textContent = cohort.name;
-      document.getElementById('course-name')!.textContent = cohort.courses?.title || 'Unknown Course';
-      document.getElementById('breadcrumb-cohort')!.textContent = cohort.name;
+      // Update UI (use optional chaining to prevent crashes if elements don't exist)
+      const cohortNameEl = document.getElementById('cohort-name');
+      const courseNameEl = document.getElementById('course-name');
+      const breadcrumbEl = document.getElementById('breadcrumb-cohort');
+      
+      if (cohortNameEl) cohortNameEl.textContent = cohort.name;
+      if (courseNameEl) courseNameEl.textContent = cohort.courses?.title || 'Unknown Course';
+      if (breadcrumbEl) breadcrumbEl.textContent = cohort.name;
 
       // Update status badge
       const badge = document.getElementById('cohort-status-badge');
@@ -383,24 +385,41 @@ import TeacherLayout from '../../../layouts/TeacherLayout.astro';
       empty?.classList.add('hidden');
 
       // Fetch cohort enrollments for this cohort
-      const { data, error } = await supabase
+      const { data: enrollments, error } = await supabase
         .from('cohort_enrollments')
-        .select(`
-          *,
-          applications!inner(name, email, user_id)
-        `)
+        .select('*')
         .eq('cohort_id', cohortId)
         .order('enrolled_at', { ascending: false });
-
-      loading?.classList.add('hidden');
-
+      
       if (error) {
         console.error('Error loading students:', error);
+        empty?.classList.remove('hidden');
+        loading?.classList.add('hidden');
+        return;
+      }
+
+      if (!enrollments || enrollments.length === 0) {
+        loading?.classList.add('hidden');
         empty?.classList.remove('hidden');
         return;
       }
 
-      students = data || [];
+      // Fetch student details
+      const userIds = enrollments.map(e => e.user_id);
+      const { data: apps } = await supabase
+        .from('applications')
+        .select('user_id, name, email')
+        .in('user_id', userIds);
+
+      students = enrollments.map(enrollment => {
+        const studentApp = apps?.find(a => a.user_id === enrollment.user_id) || { name: 'Unknown', email: 'Unknown' };
+        return {
+          ...enrollment,
+          applications: studentApp
+        };
+      });
+
+      loading?.classList.add('hidden');
 
       // Update stats
       document.getElementById('stat-total-students')!.textContent = students.length.toString();

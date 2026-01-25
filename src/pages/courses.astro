@@ -371,7 +371,7 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
 
       return `
         <div class="course-card-wrapper" data-course-id="${course.id}" data-slug="${course.slug}">
-          <img src="${thumbnailUrl}" alt="${course.title}" class="course-thumbnail" />
+          ${thumbnailUrl && thumbnailUrl !== 'null' ? `<img src="${thumbnailUrl}" alt="${course.title}" class="course-thumbnail" />` : ''}
           <div class="course-content">
             <h3 class="course-title">${course.title}</h3>
             ${course.description ? `<p class="course-description">${course.description}</p>` : ''}

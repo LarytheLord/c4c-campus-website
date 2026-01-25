@@ -437,7 +437,7 @@ export const prerender = false;
           ${lessons.length > 0 ? `
             <div class="space-y-2">
               ${lessons.map((lesson: any) => `
-                <div class="p-3 border border-border rounded-lg ${isLocked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-surface-hover cursor-pointer'} flex justify-between items-center">
+                <div class="p-3 border border-border rounded-lg ${isLocked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-surface-hover cursor-pointer'} flex justify-between items-center" ${!isLocked ? `onclick="window.location.href='/lessons/${lesson.slug}'"` : ''}>
                   <div class="flex-1">
                     <div class="flex items-center gap-2">
                       <span class="font-medium">${lesson.order_index}. ${lesson.title}</span>
@@ -450,7 +450,7 @@ export const prerender = false;
                     ${lesson.duration_minutes ? `<div class="text-xs text-text-muted">${lesson.duration_minutes} min</div>` : ''}
                   </div>
                   ${canEdit ? `
-                    <div class="flex gap-2">
+                    <div class="flex gap-2" onclick="event.stopPropagation()">
                       <button class="btn btn-sm btn-ghost edit-lesson" data-id="${lesson.id}" data-module-id="${module.id}">Edit</button>
                       <button class="btn btn-sm btn-ghost delete-lesson" data-id="${lesson.id}">Delete</button>
                     </div>
