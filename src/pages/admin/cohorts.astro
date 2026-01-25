@@ -621,7 +621,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       empty?.classList.add('hidden');
 
       const { data, error } = await supabase
-        .from('enrollments')
+        .from('cohort_enrollments')
         .select(`
           *,
           applications!inner(name, email, user_id)
@@ -678,7 +678,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
           if (!confirmed) return;
 
           const { error } = await supabase
-            .from('enrollments')
+            .from('cohort_enrollments')
             .delete()
             .eq('id', enrollmentId);
 
@@ -714,7 +714,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 
       // Check if already enrolled
       const { data: existing } = await supabase
-        .from('enrollments')
+        .from('cohort_enrollments')
         .select('id')
         .eq('cohort_id', currentCohortStudents.id)
         .eq('user_id', userData.user_id)
@@ -727,7 +727,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 
       // Add enrollment
       const { error: enrollError } = await supabase
-        .from('enrollments')
+        .from('cohort_enrollments')
         .insert([{
           cohort_id: currentCohortStudents.id,
           user_id: userData.user_id,

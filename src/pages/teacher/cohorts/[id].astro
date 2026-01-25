@@ -246,9 +246,9 @@ import TeacherLayout from '../../../layouts/TeacherLayout.astro';
     let students: any[] = [];
     let activeTab = 'students';
 
-    // Get cohort ID from URL
+    // Get cohort ID from URL (UUID string, not integer)
     const pathParts = window.location.pathname.split('/');
-    const cohortId = parseInt(pathParts[pathParts.length - 1]);
+    const cohortId = pathParts[pathParts.length - 1];
 
     // Modal helper functions
     function showNotification(title: string, message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info', actions?: { label: string, onClick: () => void, primary?: boolean }[]) {
@@ -382,9 +382,9 @@ import TeacherLayout from '../../../layouts/TeacherLayout.astro';
       list?.classList.add('hidden');
       empty?.classList.add('hidden');
 
-      // Fetch enrollments for this cohort
+      // Fetch cohort enrollments for this cohort
       const { data, error } = await supabase
-        .from('enrollments')
+        .from('cohort_enrollments')
         .select(`
           *,
           applications!inner(name, email, user_id)
@@ -458,16 +458,16 @@ import TeacherLayout from '../../../layouts/TeacherLayout.astro';
             'Remove Student',
             `Are you sure you want to remove ${studentName} from this cohort?`,
             async () => {
-              await removeStudent(parseInt(enrollmentId!));
+              await removeStudent(enrollmentId!);
             }
           );
         });
       });
     }
 
-    async function removeStudent(enrollmentId: number) {
+    async function removeStudent(enrollmentId: string) {
       const { error } = await supabase
-        .from('enrollments')
+        .from('cohort_enrollments')
         .delete()
         .eq('id', enrollmentId);
 
@@ -599,7 +599,7 @@ import TeacherLayout from '../../../layouts/TeacherLayout.astro';
 
       // Check if already enrolled
       const { data: existing } = await supabase
-        .from('enrollments')
+        .from('cohort_enrollments')
         .select('id')
         .eq('cohort_id', cohortId)
         .eq('user_id', userData.user_id)
@@ -612,7 +612,7 @@ import TeacherLayout from '../../../layouts/TeacherLayout.astro';
 
       // Add enrollment
       const { error: enrollError } = await supabase
-        .from('enrollments')
+        .from('cohort_enrollments')
         .insert([{
           cohort_id: cohortId,
           user_id: userData.user_id,

@@ -64,9 +64,9 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
       <!-- Track Filters -->
       <div class="mb-6 flex flex-wrap gap-2">
       <button class="filter-chip active" data-track="all">All Tracks</button>
-      <button class="filter-chip" data-track="animal-advocacy">Animal Advocacy</button>
+      <button class="filter-chip" data-track="animal_advocacy">Animal Advocacy</button>
       <button class="filter-chip" data-track="climate">Climate</button>
-      <button class="filter-chip" data-track="ai-safety">AI Safety</button>
+      <button class="filter-chip" data-track="ai_safety">AI Safety</button>
       <button class="filter-chip" data-track="general">General</button>
     </div>
 
@@ -367,7 +367,7 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
     // Render course cards
     grid!.innerHTML = filtered.map(course => {
       const isEnrolled = enrollments.has(course.id);
-      const thumbnailUrl = course.thumbnail_url || '/images/course-placeholder.jpg';
+      const thumbnailUrl = course.thumbnail_url;
 
       return `
         <div class="course-card-wrapper" data-course-id="${course.id}" data-slug="${course.slug}">
@@ -503,9 +503,9 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
 
   function formatTrack(track: string): string {
     const map: Record<string, string> = {
-      'animal-advocacy': 'Animal Advocacy',
+      'animal_advocacy': 'Animal Advocacy',
       'climate': 'Climate',
-      'ai-safety': 'AI Safety',
+      'ai_safety': 'AI Safety',
       'general': 'General'
     };
     return map[track] || track;

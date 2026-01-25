@@ -47,8 +47,8 @@ export default function CourseCard({
     }
   }
 
-  // Get thumbnail or placeholder
-  const thumbnailSrc = course.thumbnail_url || '/images/course-placeholder.jpg';
+  // Get thumbnail
+  const thumbnailSrc = course.thumbnail_url;
 
   return (
     <article
@@ -60,11 +60,13 @@ export default function CourseCard({
         <span className="draft-badge">Draft</span>
       )}
 
-      <img
-        src={thumbnailSrc}
-        alt={course.title}
-        role="img"
-      />
+      {thumbnailSrc && (
+        <img
+          src={thumbnailSrc}
+          alt={course.title}
+          role="img"
+        />
+      )}
 
       <h3>{course.title}</h3>
 
