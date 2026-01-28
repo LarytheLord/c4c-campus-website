@@ -187,8 +187,12 @@ export const DiscussionThread: React.FC<DiscussionThreadProps> = ({
 
       if (error) throw error;
 
+      // Manually refetch to ensure UI updates immediately
+      await fetchComments();
+
       setReplyingTo(null);
-      // Real-time subscription will update the list
+      // Real-time subscription will also trigger update, but manual fetch is safer
+
     } catch (err: any) {
       console.error('Error posting comment:', err);
       alert('Failed to post comment: ' + err.message);

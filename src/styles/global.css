@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 /* ========================================
    C4C CAMPUS DESIGN SYSTEM

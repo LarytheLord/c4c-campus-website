@@ -46,6 +46,7 @@
     "@stripe/stripe-js": "^8.5.3",
     "@supabase/storage-js": "^2.76.1",
     "@supabase/supabase-js": "^2.87.2",
+    "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.1.18",
     "@tiptap/extension-link": "^3.9.0",
     "@tiptap/extension-placeholder": "^3.9.0",

@@ -231,6 +231,7 @@ export const prerender = false;
   let userEnrollments: Set<string> = new Set();
   let userCohortId: string | null = null;
   let moduleStatuses: Map<number, ModuleUnlockStatus> = new Map();
+  let lessonProgress: Map<number, boolean> = new Map(); // lesson_id -> completed
   let editingModule: any = null;
   let editingLesson: any = null;
   let currentModuleId: number | null = null;
@@ -269,6 +270,7 @@ export const prerender = false;
     if (!isTeacher && currentCourse) {
       await loadCohorts();
       await loadModuleStatuses();
+      await loadLessonProgress();
     }
 
     // Show content
@@ -301,6 +303,35 @@ export const prerender = false;
       if (userCohortId) {
         moduleStatuses = await getCohortModuleStatuses(userCohortId, supabase, isTeacher);
       }
+    }
+  }
+
+  async function loadLessonProgress() {
+    if (!currentUser || !currentCourse) return;
+    
+    // Get all lesson IDs for this course
+    const { data: courseLessons } = await supabase
+      .from('lessons')
+      .select('id, module_id, modules!inner(course_id)')
+      .eq('modules.course_id', currentCourse.id);
+    
+    if (!courseLessons || courseLessons.length === 0) return;
+    
+    const lessonIds = courseLessons.map(l => l.id);
+    
+    // Fetch user's progress for these lessons
+    const { data: progressData } = await supabase
+      .from('lesson_progress')
+      .select('lesson_id, completed')
+      .eq('user_id', currentUser.id)
+      .in('lesson_id', lessonIds);
+    
+    // Build the progress map
+    lessonProgress.clear();
+    if (progressData) {
+      progressData.forEach(p => {
+        lessonProgress.set(p.lesson_id, p.completed === true);
+      });
     }
   }
 
@@ -449,6 +480,11 @@ export const prerender = false;
                     </div>
                     ${lesson.duration_minutes ? `<div class="text-xs text-text-muted">${lesson.duration_minutes} min</div>` : ''}
                   </div>
+                  ${!isTeacher && !isLocked ? `
+                    <span class="px-2 py-1 text-xs font-medium rounded-full ${lessonProgress.get(lesson.id) ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}">
+                      ${lessonProgress.get(lesson.id) ? 'Completed' : 'Not Started'}
+                    </span>
+                  ` : ''}
                   ${canEdit ? `
                     <div class="flex gap-2" onclick="event.stopPropagation()">
                       <button class="btn btn-sm btn-ghost edit-lesson" data-id="${lesson.id}" data-module-id="${module.id}">Edit</button>
