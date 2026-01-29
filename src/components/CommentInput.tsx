@@ -49,12 +49,14 @@ export const CommentInput: React.FC<CommentInputProps> = ({
       Placeholder.configure({
         placeholder,
       }),
+      /* Link extension duplicated
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
           class: 'text-primary underline hover:text-primary-dark',
         },
       }),
+      */
     ],
     content: initialContent,
     autofocus: autoFocus,
@@ -126,9 +128,8 @@ export const CommentInput: React.FC<CommentInputProps> = ({
         {/* Bold */}
         <button
           onClick={() => editor.chain().focus().toggleBold().run()}
-          className={`p-1.5 rounded hover:bg-surface-hover transition-colors ${
-            editor.isActive('bold') ? 'bg-primary/10 text-primary' : 'text-text-muted'
-          }`}
+          className={`p-1.5 rounded hover:bg-surface-hover transition-colors ${editor.isActive('bold') ? 'bg-primary/10 text-primary' : 'text-text-muted'
+            }`}
           title="Bold (Ctrl+B)"
           type="button"
         >
@@ -145,9 +146,8 @@ export const CommentInput: React.FC<CommentInputProps> = ({
         {/* Italic */}
         <button
           onClick={() => editor.chain().focus().toggleItalic().run()}
-          className={`p-1.5 rounded hover:bg-surface-hover transition-colors ${
-            editor.isActive('italic') ? 'bg-primary/10 text-primary' : 'text-text-muted'
-          }`}
+          className={`p-1.5 rounded hover:bg-surface-hover transition-colors ${editor.isActive('italic') ? 'bg-primary/10 text-primary' : 'text-text-muted'
+            }`}
           title="Italic (Ctrl+I)"
           type="button"
         >
@@ -166,9 +166,8 @@ export const CommentInput: React.FC<CommentInputProps> = ({
         {/* Bullet List */}
         <button
           onClick={() => editor.chain().focus().toggleBulletList().run()}
-          className={`p-1.5 rounded hover:bg-surface-hover transition-colors ${
-            editor.isActive('bulletList') ? 'bg-primary/10 text-primary' : 'text-text-muted'
-          }`}
+          className={`p-1.5 rounded hover:bg-surface-hover transition-colors ${editor.isActive('bulletList') ? 'bg-primary/10 text-primary' : 'text-text-muted'
+            }`}
           title="Bullet List"
           type="button"
         >
@@ -185,9 +184,8 @@ export const CommentInput: React.FC<CommentInputProps> = ({
         {/* Ordered List */}
         <button
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          className={`p-1.5 rounded hover:bg-surface-hover transition-colors ${
-            editor.isActive('orderedList') ? 'bg-primary/10 text-primary' : 'text-text-muted'
-          }`}
+          className={`p-1.5 rounded hover:bg-surface-hover transition-colors ${editor.isActive('orderedList') ? 'bg-primary/10 text-primary' : 'text-text-muted'
+            }`}
           title="Numbered List"
           type="button"
         >
@@ -206,9 +204,8 @@ export const CommentInput: React.FC<CommentInputProps> = ({
         {/* Link */}
         <button
           onClick={setLink}
-          className={`p-1.5 rounded hover:bg-surface-hover transition-colors ${
-            editor.isActive('link') ? 'bg-primary/10 text-primary' : 'text-text-muted'
-          }`}
+          className={`p-1.5 rounded hover:bg-surface-hover transition-colors ${editor.isActive('link') ? 'bg-primary/10 text-primary' : 'text-text-muted'
+            }`}
           title="Insert Link"
           type="button"
         >
@@ -225,9 +222,8 @@ export const CommentInput: React.FC<CommentInputProps> = ({
         {/* Character Count */}
         <div className="flex-1" />
         <span
-          className={`text-xs ${
-            isNearLimit ? 'text-orange-600' : 'text-text-muted'
-          }`}
+          className={`text-xs ${isNearLimit ? 'text-orange-600' : 'text-text-muted'
+            }`}
         >
           {characterCount}/{maxCharacters}
         </span>

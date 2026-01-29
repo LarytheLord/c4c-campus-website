@@ -316,12 +316,21 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           };
         });
 
+        // Helper to format track names (e.g., "animal_advocacy" -> "Animal Advocacy")
+        function formatTrackName(track: string): string {
+          return track
+            .split('_')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+        }
+
         // Display courses with real progress
         coursesList!.innerHTML = enrollments.map((enrollment: any) => {
           const course = enrollment.courses;
           const isCompleted = enrollment.completed_at !== null;
           const progress = progressByCourse[course.id] || { completedLessons: 0, totalLessons: 0, percentage: 0, timeSpentSeconds: 0 };
           const timeSpentHours = Math.round((progress.timeSpentSeconds / 3600) * 10) / 10;
+          const formattedTrack = course.track ? formatTrackName(course.track) : '';
 
           return `
             <a href="/courses/${course.slug}" class="block border border-border rounded-lg p-4 hover:bg-surface-hover transition-colors">
@@ -338,12 +347,12 @@ import BaseLayout from '../layouts/BaseLayout.astro';
                       <span>${progress.percentage}% complete</span>
                     </div>
                     <div class="w-full bg-gray-200 rounded-full h-2">
-                      <div class="bg-primary h-2 rounded-full transition-all" style="width: ${progress.percentage}%"></div>
+                      <div class="bg-fuchsia-500 h-2 rounded-full transition-all" style="width: ${progress.percentage}%"></div>
                     </div>
                   </div>
 
                   <div class="flex items-center gap-4 mt-3 text-sm text-text-muted">
-                    ${course.track ? `<span class="px-2 py-1 bg-primary/10 rounded">${course.track}</span>` : ''}
+                    ${formattedTrack ? `<span class="px-2 py-1 bg-fuchsia-100 text-fuchsia-800 rounded">${formattedTrack}</span>` : ''}
                     <span>⏱️ ${timeSpentHours}h spent</span>
                     ${isCompleted ? '<span class="text-green-500">✓ Completed</span>' : '<span class="text-blue-500">In Progress</span>'}
                   </div>

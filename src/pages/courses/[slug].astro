@@ -263,7 +263,7 @@ export const prerender = false;
     // User is consider a teacher if they have teacher or admin role AND are approved
     isTeacher = application?.status === 'approved' && (application.role === 'teacher' || application.role === 'admin');
 
-    // Load course
+    // Load course (but don't load modules yet)
     await loadCourse(slug);
 
     // Load cohorts and module statuses if not teacher
@@ -272,6 +272,9 @@ export const prerender = false;
       await loadModuleStatuses();
       await loadLessonProgress();
     }
+
+    // Now load modules after lesson progress is loaded
+    await loadModules();
 
     // Show content
     document.getElementById('loading-state')?.classList.add('hidden');
@@ -382,9 +385,6 @@ export const prerender = false;
     if (isCreator && isTeacher) {
       document.getElementById('teacher-actions')!.style.display = 'flex';
     }
-
-    // Load modules
-    await loadModules();
   }
 
   async function loadModules() {

@@ -227,8 +227,90 @@ import TeacherLayout from '../../../layouts/TeacherLayout.astro';
               <h3 id="notification-title" class="text-xl font-bold mb-2"></h3>
               <p id="notification-message" class="text-text-muted"></p>
             </div>
+    </div>
+      <div id="notification-actions" class="mt-6 flex gap-3"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Schedule Module Modal -->
+    <div id="schedule-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-lg max-w-md w-full shadow-2xl">
+        <div class="p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-bold" id="schedule-modal-title">Set Release Date</h3>
+            <button id="close-schedule-modal" class="text-text-muted hover:text-text-primary">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
           </div>
-          <div id="notification-actions" class="mt-6 flex gap-3"></div>
+          <p class="text-sm text-text-muted mb-4" id="schedule-module-name"></p>
+          <div class="mb-4">
+            <label class="block text-sm font-medium mb-2">Release Date</label>
+            <input type="date" id="schedule-date" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" />
+            <p class="text-xs text-text-muted mt-1">Module will be visible to students from this date</p>
+          </div>
+          <div class="flex gap-3">
+            <button id="save-schedule-btn" class="btn btn-primary flex-1">Save</button>
+            <button id="remove-schedule-btn" class="btn btn-error flex-1 hidden">Remove Date</button>
+            <button id="cancel-schedule-btn" class="btn btn-ghost flex-1">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Cohort Modal -->
+    <div id="edit-cohort-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-lg max-w-md w-full shadow-2xl">
+        <div class="p-6">
+          <div class="flex items-center justify-between mb-6">
+            <h3 class="text-xl font-bold">Edit Cohort</h3>
+            <button id="close-edit-cohort-modal" class="text-text-muted hover:text-text-primary">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+
+          <form id="edit-cohort-form" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium mb-2">Cohort Name</label>
+              <input type="text" id="edit-cohort-name" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" required />
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2">Status</label>
+              <select id="edit-cohort-status" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white">
+                <option value="upcoming">Upcoming</option>
+                <option value="active">Active</option>
+                <option value="completed">Completed</option>
+                <option value="archived">Archived</option>
+              </select>
+              <p class="text-xs text-text-muted mt-1">Set to "Active" to allow students to track progress</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium mb-2">Start Date</label>
+                <input type="date" id="edit-cohort-start-date" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" required />
+              </div>
+              <div>
+                <label class="block text-sm font-medium mb-2">End Date</label>
+                <input type="date" id="edit-cohort-end-date" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" />
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2">Max Students</label>
+              <input type="number" id="edit-cohort-max-students" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" min="1" />
+            </div>
+
+            <div class="flex gap-3 pt-4">
+              <button type="submit" class="btn btn-primary flex-1">Save Changes</button>
+              <button type="button" id="cancel-edit-cohort" class="btn btn-ghost flex-1">Cancel</button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
@@ -325,6 +407,9 @@ import TeacherLayout from '../../../layouts/TeacherLayout.astro';
 
       // Load students
       await loadStudents();
+      
+      // Calculate average progress after loading students
+      await calculateAverageProgress();
 
       setupEventListeners();
     }
@@ -426,8 +511,7 @@ import TeacherLayout from '../../../layouts/TeacherLayout.astro';
       const activeCount = students.filter(s => s.status === 'active').length;
       document.getElementById('stat-active-students')!.textContent = activeCount.toString();
 
-      // Calculate average progress (placeholder - would need progress data)
-      document.getElementById('stat-avg-progress')!.textContent = '0%';
+      // Average progress is calculated by calculateAverageProgress()
 
       if (students.length === 0) {
         empty?.classList.remove('hidden');
@@ -499,6 +583,58 @@ import TeacherLayout from '../../../layouts/TeacherLayout.astro';
       await loadStudents();
     }
 
+    async function calculateAverageProgress() {
+      if (!cohort || students.length === 0) {
+        document.getElementById('stat-avg-progress')!.textContent = '0%';
+        return;
+      }
+
+      // Get modules for this course
+      const { data: modules } = await supabase
+        .from('modules')
+        .select('id')
+        .eq('course_id', cohort.courses.id);
+
+      if (!modules || modules.length === 0) {
+        document.getElementById('stat-avg-progress')!.textContent = '0%';
+        return;
+      }
+
+      const moduleIds = modules.map(m => m.id);
+
+      // Get total lessons count for this course
+      const { data: lessons, count: totalLessons } = await supabase
+        .from('lessons')
+        .select('id', { count: 'exact' })
+        .in('module_id', moduleIds);
+
+      if (!totalLessons || totalLessons === 0) {
+        document.getElementById('stat-avg-progress')!.textContent = '0%';
+        return;
+      }
+
+      // Get completed lessons for enrolled students
+      const studentIds = students.map(s => s.user_id);
+      const lessonIds = lessons?.map(l => l.id) || [];
+
+      const { count: completedCount } = await supabase
+        .from('lesson_progress')
+        .select('id', { count: 'exact' })
+        .in('user_id', studentIds)
+        .in('lesson_id', lessonIds)
+        .eq('completed', true);
+
+      const totalCompletedLessons = completedCount || 0;
+      const enrolledStudents = students.length;
+
+      // Formula: (completed lessons) / (enrolled students) / (total lessons) * 100
+      // Example: 4 completed / 5 students / 4 lessons * 100 = 20%
+      const averageProgress = (totalCompletedLessons / enrolledStudents / totalLessons) * 100;
+
+      document.getElementById('stat-avg-progress')!.textContent = 
+        `${Math.round(averageProgress)}%`;
+    }
+
     function setupEventListeners() {
       // Tab switching
       document.querySelectorAll('.tab-button').forEach(btn => {
@@ -508,20 +644,25 @@ import TeacherLayout from '../../../layouts/TeacherLayout.astro';
         });
       });
 
-      // Edit cohort button - show notification that this is not yet implemented
-      document.getElementById('edit-cohort-btn')?.addEventListener('click', () => {
-        showNotification(
-          'Edit Cohort',
-          'Cohort editing functionality will be available soon. For now, please use the Admin Dashboard to edit cohort details.',
-          'info'
-        );
-      });
+      // Edit cohort button - open edit modal
+      document.getElementById('edit-cohort-btn')?.addEventListener('click', openEditCohortModal);
 
       // Add student
       document.getElementById('add-student-btn')?.addEventListener('click', showAddStudentModal);
       document.getElementById('close-add-student-modal')?.addEventListener('click', closeAddStudentModal);
       document.getElementById('cancel-add-student')?.addEventListener('click', closeAddStudentModal);
       document.getElementById('add-student-form')?.addEventListener('submit', handleAddStudent);
+
+      // Schedule modal
+      document.getElementById('close-schedule-modal')?.addEventListener('click', closeScheduleModal);
+      document.getElementById('cancel-schedule-btn')?.addEventListener('click', closeScheduleModal);
+      document.getElementById('save-schedule-btn')?.addEventListener('click', saveSchedule);
+      document.getElementById('remove-schedule-btn')?.addEventListener('click', removeSchedule);
+
+      // Edit cohort modal
+      document.getElementById('close-edit-cohort-modal')?.addEventListener('click', closeEditCohortModal);
+      document.getElementById('cancel-edit-cohort')?.addEventListener('click', closeEditCohortModal);
+      document.getElementById('edit-cohort-form')?.addEventListener('submit', handleEditCohort);
 
       // Logout
       document.getElementById('logout-btn')?.addEventListener('click', async () => {
@@ -574,20 +715,224 @@ import TeacherLayout from '../../../layouts/TeacherLayout.astro';
         return;
       }
 
-      container.innerHTML = modules.map(module => `
-        <div class="border border-gray-200 rounded-lg p-4">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <span class="text-2xl">📚</span>
-              <div>
-                <h4 class="font-semibold">${module.title}</h4>
-                <p class="text-sm text-text-muted">Module ${module.order_index}</p>
+      // Fetch existing schedules for this cohort
+      const { data: schedules } = await supabase
+        .from('cohort_schedules')
+        .select('*')
+        .eq('cohort_id', cohortId);
+
+      // Create a map of module_id -> schedule
+      const scheduleMap = new Map<number, any>();
+      if (schedules) {
+        schedules.forEach(s => scheduleMap.set(s.module_id, s));
+      }
+
+      container.innerHTML = modules.map(module => {
+        const schedule = scheduleMap.get(module.id);
+        const hasSchedule = schedule && schedule.unlock_date;
+        const displayDate = hasSchedule ? formatReleaseDate(schedule.unlock_date) : 'Available immediately';
+        const statusClass = hasSchedule ? 'text-blue-600 font-medium' : 'text-green-600';
+        const statusIcon = hasSchedule ? '📅' : '✅';
+
+        return `
+          <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="text-2xl">📚</span>
+                <div>
+                  <h4 class="font-semibold">${module.title}</h4>
+                  <p class="text-sm text-text-muted">Module ${module.order_index}</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="${statusClass} text-sm flex items-center gap-1">
+                  <span>${statusIcon}</span>
+                  ${hasSchedule ? `Available from ${displayDate}` : displayDate}
+                </span>
+                <button class="btn btn-sm btn-secondary set-schedule-btn" data-module-id="${module.id}" data-module-title="${module.title}" data-current-date="${schedule?.unlock_date || ''}">
+                  ${hasSchedule ? 'Edit Date' : 'Set Date'}
+                </button>
               </div>
             </div>
-            <span class="text-sm text-text-muted">Available immediately</span>
           </div>
-        </div>
-      `).join('');
+        `;
+      }).join('');
+
+      // Add event listeners for Set Date buttons
+      container.querySelectorAll('.set-schedule-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const moduleId = parseInt((btn as HTMLElement).getAttribute('data-module-id')!);
+          const moduleTitle = (btn as HTMLElement).getAttribute('data-module-title')!;
+          const currentDate = (btn as HTMLElement).getAttribute('data-current-date') || '';
+          openScheduleModal(moduleId, moduleTitle, currentDate);
+        });
+      });
+    }
+
+    // Format date as "Month DD, YYYY" (e.g., "January 28, 2026")
+    function formatReleaseDate(dateStr: string): string {
+      return new Date(dateStr).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    }
+
+    let editingModuleId: number | null = null;
+
+    function openScheduleModal(moduleId: number, moduleTitle: string, currentDate: string) {
+      editingModuleId = moduleId;
+      
+      document.getElementById('schedule-module-name')!.textContent = `Module: ${moduleTitle}`;
+      (document.getElementById('schedule-date') as HTMLInputElement).value = currentDate;
+      
+      // Show/hide remove button based on whether there's an existing date
+      const removeBtn = document.getElementById('remove-schedule-btn');
+      if (currentDate) {
+        removeBtn?.classList.remove('hidden');
+      } else {
+        removeBtn?.classList.add('hidden');
+      }
+      
+      document.getElementById('schedule-modal')?.classList.remove('hidden');
+    }
+
+    function closeScheduleModal() {
+      document.getElementById('schedule-modal')?.classList.add('hidden');
+      editingModuleId = null;
+    }
+
+    async function saveSchedule() {
+      if (!editingModuleId) return;
+
+      const dateInput = document.getElementById('schedule-date') as HTMLInputElement;
+      const unlockDate = dateInput.value;
+
+      if (!unlockDate) {
+        showNotification('Error', 'Please select a release date.', 'error');
+        return;
+      }
+
+      // Upsert into cohort_schedules
+      const { error } = await supabase
+        .from('cohort_schedules')
+        .upsert({
+          cohort_id: cohortId,
+          module_id: editingModuleId,
+          unlock_date: unlockDate
+        }, {
+          onConflict: 'cohort_id,module_id'
+        });
+
+      if (error) {
+        showNotification('Error', 'Failed to save schedule: ' + error.message, 'error');
+        return;
+      }
+
+      closeScheduleModal();
+      showNotification('Success', 'Module schedule updated successfully!', 'success');
+      await loadSchedule();
+    }
+
+    async function removeSchedule() {
+      if (!editingModuleId) return;
+
+      const { error } = await supabase
+        .from('cohort_schedules')
+        .delete()
+        .eq('cohort_id', cohortId)
+        .eq('module_id', editingModuleId);
+
+      if (error) {
+        showNotification('Error', 'Failed to remove schedule: ' + error.message, 'error');
+        return;
+      }
+
+      closeScheduleModal();
+      showNotification('Success', 'Module schedule removed. Module is now available immediately.', 'success');
+      await loadSchedule();
+    }
+
+    function openEditCohortModal() {
+      if (!cohort) return;
+      
+      // Populate form with current cohort data
+      (document.getElementById('edit-cohort-name') as HTMLInputElement).value = cohort.name || '';
+      (document.getElementById('edit-cohort-status') as HTMLSelectElement).value = cohort.status || 'upcoming';
+      (document.getElementById('edit-cohort-start-date') as HTMLInputElement).value = cohort.start_date || '';
+      (document.getElementById('edit-cohort-end-date') as HTMLInputElement).value = cohort.end_date || '';
+      (document.getElementById('edit-cohort-max-students') as HTMLInputElement).value = cohort.max_students?.toString() || '50';
+      
+      document.getElementById('edit-cohort-modal')?.classList.remove('hidden');
+    }
+
+    function closeEditCohortModal() {
+      document.getElementById('edit-cohort-modal')?.classList.add('hidden');
+    }
+
+    async function handleEditCohort(e: Event) {
+      e.preventDefault();
+      
+      const name = (document.getElementById('edit-cohort-name') as HTMLInputElement).value.trim();
+      const status = (document.getElementById('edit-cohort-status') as HTMLSelectElement).value;
+      const startDate = (document.getElementById('edit-cohort-start-date') as HTMLInputElement).value;
+      const endDate = (document.getElementById('edit-cohort-end-date') as HTMLInputElement).value || null;
+      const maxStudents = parseInt((document.getElementById('edit-cohort-max-students') as HTMLInputElement).value) || 50;
+
+      if (!name || !startDate) {
+        showNotification('Error', 'Please fill in all required fields.', 'error');
+        return;
+      }
+
+      // Validate end date is after start date
+      if (endDate && new Date(endDate) < new Date(startDate)) {
+        showNotification('Error', 'End date must be after start date.', 'error');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('cohorts')
+        .update({
+          name,
+          status,
+          start_date: startDate,
+          end_date: endDate,
+          max_students: maxStudents,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', cohortId);
+
+      if (error) {
+        showNotification('Error', 'Failed to update cohort: ' + error.message, 'error');
+        return;
+      }
+
+      closeEditCohortModal();
+      showNotification('Success', 'Cohort updated successfully!', 'success');
+      
+      // Reload cohort data to reflect changes
+      await loadCohort();
+      
+      // Update the status badge
+      updateStatusBadge();
+    }
+
+    function updateStatusBadge() {
+      if (!cohort) return;
+      
+      const badge = document.getElementById('cohort-status-badge');
+      if (!badge) return;
+      
+      const statusColors: Record<string, string> = {
+        'upcoming': 'bg-yellow-100 text-yellow-800',
+        'active': 'bg-green-100 text-green-800',
+        'completed': 'bg-blue-100 text-blue-800',
+        'archived': 'bg-gray-100 text-gray-800'
+      };
+      
+      // Remove all color classes
+      badge.className = 'px-3 py-1 rounded-full text-sm font-medium ' + (statusColors[cohort.status] || statusColors.upcoming);
+      badge.textContent = cohort.status.charAt(0).toUpperCase() + cohort.status.slice(1);
     }
 
     function showAddStudentModal() {

@@ -600,6 +600,7 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
       // Load courses and cohorts
       await loadCourses();
       await loadCohorts();
+      await loadUniqueStudentCount();
 
       // Show content
       document.getElementById('loading-state')?.classList.add('hidden');
@@ -813,6 +814,42 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
       });
     }
 
+    async function loadUniqueStudentCount() {
+      const courseIds = courses.map(c => c.id);
+      if (courseIds.length === 0) {
+        document.getElementById('stat-students')!.textContent = '0';
+        return;
+      }
+
+      // Get cohort IDs for teacher's courses
+      const { data: cohortData } = await supabase
+        .from('cohorts')
+        .select('id')
+        .in('course_id', courseIds);
+
+      if (!cohortData || cohortData.length === 0) {
+        document.getElementById('stat-students')!.textContent = '0';
+        return;
+      }
+
+      const cohortIds = cohortData.map(c => c.id);
+
+      // Get unique user_ids from cohort_enrollments
+      const { data: enrollments } = await supabase
+        .from('cohort_enrollments')
+        .select('user_id')
+        .in('cohort_id', cohortIds);
+
+      if (!enrollments) {
+        document.getElementById('stat-students')!.textContent = '0';
+        return;
+      }
+
+      // Count unique students
+      const uniqueStudents = new Set(enrollments.map(e => e.user_id));
+      document.getElementById('stat-students')!.textContent = uniqueStudents.size.toString();
+    }
+
     function updateStats(courses: any[]) {
       const published = courses.filter(c => c.is_published).length;
       const drafts = courses.filter(c => !c.is_published).length;
@@ -820,8 +857,7 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
       document.getElementById('stat-courses')!.textContent = courses.length.toString();
       document.getElementById('stat-published')!.textContent = published.toString();
       document.getElementById('stat-drafts')!.textContent = drafts.toString();
-      // TODO: Load actual student count from enrollments
-      document.getElementById('stat-students')!.textContent = '0';
+      // Student count is loaded separately by loadUniqueStudentCount()
     }
 
     function setupEventListeners() {

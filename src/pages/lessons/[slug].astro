@@ -14,7 +14,13 @@
  */
 
 import BaseLayout from '../../layouts/BaseLayout.astro';
-// Note: DiscussionThread is dynamically imported in client-side script
+import { createClient } from '@supabase/supabase-js';
+import { LessonDiscussionContainer } from '../../components/LessonDiscussionContainer';
+
+// Initialize Supabase for SSR (still needed for other potential future uses, or remove if unused)
+// But for now, we don't need to fetch lesson details for discussion here.
+const { slug } = Astro.params;
+
 
 export const prerender = false;
 ---
@@ -66,12 +72,7 @@ export const prerender = false;
               Your browser does not support the video tag.
             </video>
           </div>
-          <div class="mt-4 flex items-center justify-between">
-            <div>
-              <button id="mark-complete-btn" class="btn btn-primary">
-                Mark as Complete
-              </button>
-            </div>
+          <div class="mt-4 flex items-center justify-end">
             <div class="flex gap-2">
               <button id="prev-lesson-btn" class="btn btn-ghost btn-sm" style="display: none;">
                 ← Previous
@@ -111,13 +112,8 @@ export const prerender = false;
           <div id="quiz-root"></div>
         </div>
 
-        <!-- Discussion Section (shown by JS if user has cohort access) -->
-        <div id="discussion-container" class="card hidden">
-          <div id="discussion-root"></div>
-        </div>
-
         <!-- Lesson Completion Section (students only) -->
-        <div id="completion-section" class="hidden mt-8 pt-6 border-t border-border">
+        <div id="completion-section" class="hidden mb-8 pt-6 border-t border-border">
           <div class="flex items-center justify-between">
             <div>
               <h3 class="text-lg font-bold">Lesson Progress</h3>
@@ -128,6 +124,16 @@ export const prerender = false;
             </button>
           </div>
         </div>
+
+        <!-- Discussion Section -->
+        {slug && (
+          <div class="card">
+            <LessonDiscussionContainer
+              client:only="react"
+              slug={slug}
+            />
+          </div>
+        )}
       </div>
     </div>
   </div>
@@ -135,16 +141,49 @@ export const prerender = false;
 
 <script>
   import { createClient } from '@supabase/supabase-js';
+
+  import Plyr from 'plyr';
+  import confetti from 'canvas-confetti';
   import { marked } from 'marked';
   import { showToast } from '@/lib/notifications';
   import { canAccessLesson } from '@/lib/time-gating';
 
   const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
-  const supabase = createClient(supabaseUrl!, supabaseAnonKey!);
 
-  let currentUser: any = null;
+  // Manually configure client with same storage logic as src/lib/supabase.ts
+  // to ensure session sharing and avoid "Multiple GoTrueClient" issues
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      storage: {
+        getItem: (key) => {
+          const localValue = localStorage.getItem(key);
+          if (localValue) return localValue;
+          const cookies = document.cookie.split(';');
+          const cookie = cookies.find(c => c.trim().startsWith(`${key}=`));
+          return cookie ? decodeURIComponent(cookie.split('=')[1]) : null;
+        },
+        setItem: (key, value) => {
+          localStorage.setItem(key, value);
+          const isSecure = window.location.protocol === 'https:';
+          const cookieValue = encodeURIComponent(value);
+          document.cookie = `${key}=${cookieValue}; path=/; max-age=31536000; SameSite=Lax${isSecure ? '; Secure' : ''}`;
+        },
+        removeItem: (key) => {
+          localStorage.removeItem(key);
+          document.cookie = `${key}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+        }
+      },
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true
+    }
+  });
+
+  // State
+  let player: Plyr | null = null;
   let currentLesson: any = null;
+  let currentUser: any = null;
   let currentModule: any = null;
   let currentCourse: any = null;
   let userCohortId: string | null = null;
@@ -156,7 +195,8 @@ export const prerender = false;
   let existingProgressId: number | null = null; // Cache existing progress record ID for updates
   let existingProgressData: any = null; // Cached progress data
   let localTimeSpentSeconds = 0; // Accumulator for time tracking
-  let lastSaveTime = 0; // Track when we last saved (for 10s interval)
+  let lastSaveTime = Date.now(); // Track when we last saved (for 10s interval)
+  let progressInterval: number | null = null;
 
   async function init() {
     // Get slug from URL
@@ -189,8 +229,7 @@ export const prerender = false;
     document.getElementById('loading-state')?.classList.add('hidden');
     document.getElementById('lesson-content')?.classList.remove('hidden');
 
-    // Render discussion component
-    renderDiscussion();
+
 
     setupEventListeners();
   }
@@ -614,47 +653,10 @@ export const prerender = false;
     }
   }
 
-  function renderDiscussion() {
-    if (!userCohortId || !currentLesson) return;
 
-    const container = document.getElementById('discussion-container');
-    const root = document.getElementById('discussion-root');
-    if (!root) return;
 
-    // Show the container since user has cohort access
-    container?.classList.remove('hidden');
-
-    // Dynamically import React and Component to avoid bundler issues
-    Promise.all([
-      import('../../components/DiscussionThread'),
-      import('react-dom/client'),
-      import('react')
-    ]).then(([mod, clientMod, reactMod]) => {
-      const DiscussionThread = mod.DiscussionThread;
-      const createRoot = clientMod.createRoot;
-      const createElement = reactMod.createElement;
-
-      if (!DiscussionThread) {
-         throw new Error(`DiscussionThread export not found. Keys: ${Object.keys(mod).join(', ')}`);
-      }
-
-      try {
-        const reactRoot = createRoot(root);
-        reactRoot.render(createElement(DiscussionThread, {
-          lessonId: currentLesson.id,
-          cohortId: userCohortId!,
-          currentUserId: currentUser.id,
-          isTeacher: isTeacher,
-        }));
-      } catch (mountErr: any) {
-        console.error('Error mounting DiscussionThread:', mountErr);
-        root.innerHTML = `<div class="p-4 text-red-500">Error mounting: ${mountErr.message}</div>`;
-      }
-    }).catch(err => {
-      console.error('[DEBUG] Error importing DiscussionThread:', err);
-      root.innerHTML = `<div class="p-4 text-red-500">Error loading discussion: ${err.message}</div>`;
-    });
-  }
+  /* Discussion initialization removed - now handled by React component */
+  /* Was: function renderDiscussion() ... */
 
   function extractYouTubeId(url: string): string | null {
     const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
