@@ -508,7 +508,8 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
       'ai_safety': 'AI Safety',
       'general': 'General'
     };
-    return map[track] || track;
+    // Return mapped value, or convert snake_case to Title Case as fallback
+    return map[track] || track.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   }
 
   function formatDifficulty(difficulty: string): string {

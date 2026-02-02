@@ -453,19 +453,33 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
         }
 
         const cohortStats = await Promise.all(cohorts.map(async (cohort) => {
+          // Get student count
           const { count: studentCount } = await supabase
             .from('cohort_enrollments')
             .select('id', { count: 'exact', head: true })
             .eq('cohort_id', cohort.id);
 
+          // Get all student user_ids in this cohort
           const { data: enrollments } = await supabase
             .from('cohort_enrollments')
-            .select('completed_lessons')
+            .select('user_id')
             .eq('cohort_id', cohort.id);
 
-          const avgCompletion = enrollments && enrollments.length > 0
-            ? Math.round(enrollments.reduce((sum, e) => sum + e.completed_lessons, 0) / enrollments.length)
-            : 0;
+          const studentIds = enrollments?.map(e => e.user_id) || [];
+
+          // Calculate avg completion: total completed lessons / number of students
+          let avgCompletion = 0;
+          if (studentIds.length > 0) {
+            // Get total completed lessons for all students in this cohort
+            const { count: completedCount } = await supabase
+              .from('lesson_progress')
+              .select('id', { count: 'exact', head: true })
+              .in('user_id', studentIds)
+              .eq('cohort_id', cohort.id)
+              .eq('completed', true);
+
+            avgCompletion = Math.round((completedCount || 0) / studentIds.length);
+          }
 
           return {
             ...cohort,
