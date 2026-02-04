@@ -652,7 +652,7 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
             ${course.default_duration_weeks ? `<span>${course.default_duration_weeks} weeks</span>` : ''}
           </div>
           <div class="flex gap-2">
-            <button class="btn btn-sm btn-primary flex-1 edit-course-tab" data-id="${escapeHTML(course.id)}">Edit</button>
+            <button class="btn btn-sm btn-primary flex-1 edit-course-tab" data-id="${escapeHTML(String(course.id))}">Edit</button>
             <a href="/courses/${escapeHTML(course.slug)}" class="btn btn-sm btn-secondary">View</a>
           </div>
         </div>
