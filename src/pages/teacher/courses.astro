@@ -562,10 +562,11 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
       }
 
       // Load courses and cohorts with comprehensive error handling
+      // Note: loadCourses and loadCohorts are independent, so run in parallel
+      // loadUniqueStudentCount depends on both, so runs after
       let loadError: Error | null = null;
       try {
-        await loadCourses();
-        await loadCohorts();
+        await Promise.all([loadCourses(), loadCohorts()]);
         await loadUniqueStudentCount();
       } catch (err) {
         loadError = err instanceof Error ? err : new Error(String(err));
@@ -803,31 +804,15 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
 
     async function loadUniqueStudentCount() {
       const statStudents = document.getElementById('stat-students');
-      const courseIds = courses.map(c => c.id);
 
-      if (courseIds.length === 0) {
+      // Reuse already-loaded cohorts array instead of re-querying database
+      // This saves a network round-trip since loadCohorts() runs before this
+      if (!cohorts || cohorts.length === 0) {
         if (statStudents) statStudents.textContent = '0';
         return;
       }
 
-      // Get cohort IDs for teacher's courses
-      const { data: cohortData, error: cohortError } = await supabase
-        .from('cohorts')
-        .select('id')
-        .in('course_id', courseIds);
-
-      if (cohortError) {
-        console.error('Error fetching cohorts for student count:', cohortError);
-        if (statStudents) statStudents.textContent = '—';
-        return;
-      }
-
-      if (!cohortData || cohortData.length === 0) {
-        if (statStudents) statStudents.textContent = '0';
-        return;
-      }
-
-      const cohortIds = cohortData.map(c => c.id);
+      const cohortIds = cohorts.map(c => c.id);
 
       // Get unique user_ids from cohort_enrollments
       const { data: enrollments, error: enrollmentError } = await supabase
