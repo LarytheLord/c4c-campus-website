@@ -561,14 +561,29 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
         }
       }
 
-      // Load courses and cohorts
-      await loadCourses();
-      await loadCohorts();
-      await loadUniqueStudentCount();
+      // Load courses and cohorts with comprehensive error handling
+      let loadError: Error | null = null;
+      try {
+        await loadCourses();
+        await loadCohorts();
+        await loadUniqueStudentCount();
+      } catch (err) {
+        loadError = err instanceof Error ? err : new Error(String(err));
+        console.error('Error loading teacher dashboard:', loadError);
+      }
 
-      // Show content
+      // Always show content (hide loading state even on error)
       document.getElementById('loading-state')?.classList.add('hidden');
       document.getElementById('teacher-content')?.classList.remove('hidden');
+
+      // Show error notification if loading failed
+      if (loadError) {
+        showNotification(
+          'Loading Error',
+          'Some data failed to load. Please refresh the page to try again. If the problem persists, contact support.',
+          'error'
+        );
+      }
 
       setupEventListeners();
 
@@ -607,7 +622,7 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
       if (error) {
         console.error('Error loading courses:', error);
         empty?.classList.remove('hidden');
-        return;
+        throw new Error(`Failed to load courses: ${error.message}`);
       }
 
       courses = data || [];
@@ -618,8 +633,12 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
         return;
       }
 
-      // Render courses
-      grid!.innerHTML = courses.map(course => `
+      // Render courses (defensive check for grid element)
+      if (!grid) {
+        console.error('Courses grid element not found');
+        throw new Error('Page structure error: courses grid not found');
+      }
+      grid.innerHTML = courses.map(course => `
         <div class="card hover:shadow-lg transition-shadow">
           <div class="flex justify-between items-start mb-3">
             <h3 class="text-lg font-bold">${escapeHTML(course.title)}</h3>
@@ -698,7 +717,7 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
       if (error) {
         console.error('Error loading cohorts:', error);
         empty?.classList.remove('hidden');
-        return;
+        throw new Error(`Failed to load cohorts: ${error.message}`);
       }
 
       cohorts = data || [];
@@ -708,8 +727,12 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
         return;
       }
 
-      // Render cohorts
-      grid!.innerHTML = cohorts.map(cohort => `
+      // Render cohorts (defensive check for grid element)
+      if (!grid) {
+        console.error('Cohorts grid element not found');
+        throw new Error('Page structure error: cohorts grid not found');
+      }
+      grid.innerHTML = cohorts.map(cohort => `
         <div class="card hover:shadow-lg transition-all duration-300 border-2 hover:border-primary">
           <div class="flex justify-between items-start mb-4">
             <div class="flex-1">
@@ -719,7 +742,7 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
                 ${escapeHTML(cohort.courses?.title || 'Unknown Course')}
               </p>
             </div>
-            <span class="text-xs px-3 py-1 rounded-full font-semibold ${getCohortStatusColor(cohort.status)}">${escapeHTML(cohort.status.toUpperCase())}</span>
+            <span class="text-xs px-3 py-1 rounded-full font-semibold ${getCohortStatusColor(cohort.status || 'unknown')}">${escapeHTML((cohort.status || 'unknown').toUpperCase())}</span>
           </div>
           <div class="bg-surface-hover rounded-lg p-4 mb-4">
             <div class="grid grid-cols-2 gap-3 text-sm">
@@ -779,48 +802,66 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
     }
 
     async function loadUniqueStudentCount() {
+      const statStudents = document.getElementById('stat-students');
       const courseIds = courses.map(c => c.id);
+
       if (courseIds.length === 0) {
-        document.getElementById('stat-students')!.textContent = '0';
+        if (statStudents) statStudents.textContent = '0';
         return;
       }
 
       // Get cohort IDs for teacher's courses
-      const { data: cohortData } = await supabase
+      const { data: cohortData, error: cohortError } = await supabase
         .from('cohorts')
         .select('id')
         .in('course_id', courseIds);
 
+      if (cohortError) {
+        console.error('Error fetching cohorts for student count:', cohortError);
+        if (statStudents) statStudents.textContent = '—';
+        return;
+      }
+
       if (!cohortData || cohortData.length === 0) {
-        document.getElementById('stat-students')!.textContent = '0';
+        if (statStudents) statStudents.textContent = '0';
         return;
       }
 
       const cohortIds = cohortData.map(c => c.id);
 
       // Get unique user_ids from cohort_enrollments
-      const { data: enrollments } = await supabase
+      const { data: enrollments, error: enrollmentError } = await supabase
         .from('cohort_enrollments')
         .select('user_id')
         .in('cohort_id', cohortIds);
 
+      if (enrollmentError) {
+        console.error('Error fetching enrollments for student count:', enrollmentError);
+        if (statStudents) statStudents.textContent = '—';
+        return;
+      }
+
       if (!enrollments) {
-        document.getElementById('stat-students')!.textContent = '0';
+        if (statStudents) statStudents.textContent = '0';
         return;
       }
 
       // Count unique students
       const uniqueStudents = new Set(enrollments.map(e => e.user_id));
-      document.getElementById('stat-students')!.textContent = uniqueStudents.size.toString();
+      if (statStudents) statStudents.textContent = uniqueStudents.size.toString();
     }
 
     function updateStats(courses: any[]) {
       const published = courses.filter(c => c.is_published).length;
       const drafts = courses.filter(c => !c.is_published).length;
 
-      document.getElementById('stat-courses')!.textContent = courses.length.toString();
-      document.getElementById('stat-published')!.textContent = published.toString();
-      document.getElementById('stat-drafts')!.textContent = drafts.toString();
+      const statCourses = document.getElementById('stat-courses');
+      const statPublished = document.getElementById('stat-published');
+      const statDrafts = document.getElementById('stat-drafts');
+
+      if (statCourses) statCourses.textContent = courses.length.toString();
+      if (statPublished) statPublished.textContent = published.toString();
+      if (statDrafts) statDrafts.textContent = drafts.toString();
       // Student count is loaded separately by loadUniqueStudentCount()
     }
 
