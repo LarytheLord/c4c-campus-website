@@ -14,14 +14,13 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
 import type { LessonDiscussion, UserProfile } from '../types';
 import { Comment } from './Comment';
 import { CommentInput } from './CommentInput';
 
-const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl!, supabaseAnonKey!);
+// Removed manual createClient to use shared instance
+
 
 interface DiscussionThreadProps {
   lessonId: number;
@@ -76,7 +75,7 @@ export const DiscussionThread: React.FC<DiscussionThreadProps> = ({
       // Fetch user profiles (from applications table for now)
       const { data: profiles, error: profilesError } = await supabase
         .from('applications')
-        .select('user_id, email')
+        .select('user_id, email, role')
         .in('user_id', userIds);
 
       if (profilesError) throw profilesError;
@@ -88,7 +87,7 @@ export const DiscussionThread: React.FC<DiscussionThreadProps> = ({
           {
             id: p.user_id,
             email: p.email,
-            is_teacher: p.email.startsWith('teacher@'),
+            is_teacher: p.role === 'teacher',
           },
         ]) || []
       );
@@ -187,8 +186,12 @@ export const DiscussionThread: React.FC<DiscussionThreadProps> = ({
 
       if (error) throw error;
 
+      // Manually refetch to ensure UI updates immediately
+      await fetchComments();
+
       setReplyingTo(null);
-      // Real-time subscription will update the list
+      // Real-time subscription will also trigger update, but manual fetch is safer
+
     } catch (err: any) {
       console.error('Error posting comment:', err);
       alert('Failed to post comment: ' + err.message);

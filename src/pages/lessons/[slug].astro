@@ -14,7 +14,7 @@
  */
 
 import BaseLayout from '../../layouts/BaseLayout.astro';
-// Note: DiscussionThread is dynamically imported in client-side script
+
 
 export const prerender = false;
 ---
@@ -22,7 +22,7 @@ export const prerender = false;
 <BaseLayout title="Lesson - C4C Campus" hideHeader={true} hideFooter={true}>
   <div class="min-h-screen bg-background">
     <!-- Header -->
-    <div class="sticky top-0 z-50 bg-surface border-b border-border">
+    <div class="sticky top-0 z-50 bg-white border-b border-border">
       <div class="container mx-auto px-4 py-4">
         <div class="flex items-center justify-between gap-4">
           <div class="flex items-center gap-4 flex-1">
@@ -66,12 +66,7 @@ export const prerender = false;
               Your browser does not support the video tag.
             </video>
           </div>
-          <div class="mt-4 flex items-center justify-between">
-            <div>
-              <button id="mark-complete-btn" class="btn btn-primary">
-                Mark as Complete
-              </button>
-            </div>
+          <div class="mt-4 flex items-center justify-end">
             <div class="flex gap-2">
               <button id="prev-lesson-btn" class="btn btn-ghost btn-sm" style="display: none;">
                 ← Previous
@@ -111,27 +106,43 @@ export const prerender = false;
           <div id="quiz-root"></div>
         </div>
 
-        <!-- Discussion Section -->
-        <div id="discussion-container" class="card">
-          <div id="discussion-root"></div>
+        <!-- Lesson Completion Section (students only) -->
+        <div id="completion-section" class="hidden mb-8 pt-6 border-t border-border">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-lg font-bold">Lesson Progress</h3>
+              <p id="completion-hint" class="text-sm text-text-muted">Mark this lesson as complete when you're done.</p>
+            </div>
+            <button id="mark-complete-btn" class="btn btn-primary">
+              Mark as Complete
+            </button>
+          </div>
         </div>
+
+        <!-- Discussion Section - DISABLED FOR LAUNCH
+        {slug && (
+          <div class="card">
+            <LessonDiscussionContainer
+              client:only="react"
+              slug={slug}
+            />
+          </div>
+        )}
+        -->
       </div>
     </div>
   </div>
 </BaseLayout>
 
 <script>
-  import { createClient } from '@supabase/supabase-js';
+  import { supabase } from '@/lib/supabase';
   import { marked } from 'marked';
   import { showToast } from '@/lib/notifications';
   import { canAccessLesson } from '@/lib/time-gating';
 
-  const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
-  const supabase = createClient(supabaseUrl!, supabaseAnonKey!);
-
-  let currentUser: any = null;
+  // State
   let currentLesson: any = null;
+  let currentUser: any = null;
   let currentModule: any = null;
   let currentCourse: any = null;
   let userCohortId: string | null = null;
@@ -143,7 +154,7 @@ export const prerender = false;
   let existingProgressId: number | null = null; // Cache existing progress record ID for updates
   let existingProgressData: any = null; // Cached progress data
   let localTimeSpentSeconds = 0; // Accumulator for time tracking
-  let lastSaveTime = 0; // Track when we last saved (for 10s interval)
+  let lastSaveTime = Date.now(); // Track when we last saved (for 10s interval)
 
   async function init() {
     // Get slug from URL
@@ -160,14 +171,14 @@ export const prerender = false;
 
     currentUser = user;
 
-    // Check if user is teacher
+    // Check if user is teacher by role field (not email prefix)
     const { data: application } = await supabase
       .from('applications')
-      .select('email')
+      .select('email, role')
       .eq('user_id', user.id)
       .single();
 
-    isTeacher = application?.email?.startsWith('teacher@') || false;
+    isTeacher = application?.role === 'teacher';
 
     // Load lesson
     await loadLesson(slug);
@@ -176,8 +187,7 @@ export const prerender = false;
     document.getElementById('loading-state')?.classList.add('hidden');
     document.getElementById('lesson-content')?.classList.remove('hidden');
 
-    // Render discussion component
-    renderDiscussion();
+
 
     setupEventListeners();
   }
@@ -208,22 +218,37 @@ export const prerender = false;
     currentModule = lesson.modules;
     currentCourse = lesson.modules.courses;
 
-    // Get user's cohort for this course - filter by course to avoid mismatched cohorts
-    const { data: enrollment } = await supabase
+    // Get user's cohort for this course
+    // 1. Try Cohort Enrollments (Preferred) - Fetch all active and filter in JS for safety
+    const { data: allCohortEnrollments } = await supabase
       .from('cohort_enrollments')
       .select(`
         cohort_id,
-        cohorts!inner (
+        cohorts (
           course_id
         )
       `)
       .eq('user_id', currentUser.id)
-      .eq('status', 'active')
-      .eq('cohorts.course_id', currentCourse.id)
-      .limit(1)
-      .single();
+      .eq('status', 'active');
 
-    userCohortId = enrollment?.cohort_id || null;
+    const enrollment = allCohortEnrollments?.find((e: any) => e.cohorts?.course_id === currentCourse.id);
+
+    if (enrollment) {
+      userCohortId = enrollment.cohort_id;
+    } else {
+      // 2. Fallback to Legacy Enrollments
+      const { data: legacyEnrollment } = await supabase
+        .from('enrollments')
+        .select('cohort_id')
+        .eq('user_id', currentUser.id)
+        .eq('course_id', currentCourse.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (legacyEnrollment) {
+        userCohortId = legacyEnrollment.cohort_id;
+      }
+    }
 
     // Query existing lesson_progress for video resume and to cache record ID
     const { data: existingProgress } = await supabase
@@ -231,7 +256,7 @@ export const prerender = false;
       .select('id, video_position_seconds, time_spent_seconds, completed, watch_count')
       .eq('user_id', currentUser.id)
       .eq('lesson_id', currentLesson.id)
-      .single();
+      .maybeSingle();
 
     if (existingProgress) {
       existingProgressId = existingProgress.id;
@@ -291,19 +316,40 @@ export const prerender = false;
       `${currentCourse.title} / ${currentModule.title} / ${lesson.title}`;
 
     // Video with resume support
+    // Check both youtube_url (YouTube links) and video_url (uploaded videos)
     const videoDiv = document.querySelector('#video-container .bg-black') as HTMLElement;
     const resumePosition = existingProgressData?.video_position_seconds || 0;
+    const youtubeUrl = lesson.youtube_url;
+    const videoUrl = lesson.video_url;
 
-    if (lesson.video_url) {
-      // Check if it's a YouTube URL
-      const youtubeId = extractYouTubeId(lesson.video_url);
+    if (youtubeUrl) {
+      // YouTube video from youtube_url column
+      const youtubeId = extractYouTubeId(youtubeUrl);
       if (youtubeId && videoDiv) {
-        // For YouTube, pass start time via query parameter
         const startParam = resumePosition > 0 ? `&start=${Math.floor(resumePosition)}` : '';
         videoDiv.innerHTML = `
           <iframe
             class="w-full h-full"
-            src="https://www.youtube.com/embed/${youtubeId}?enablejsapi=1${startParam}"
+            src="https://www.youtube-nocookie.com/embed/${youtubeId}?enablejsapi=1${startParam}"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen
+          ></iframe>
+        `;
+      } else {
+        // Invalid YouTube URL - hide video container
+        document.getElementById('video-container')?.classList.add('hidden');
+      }
+    } else if (videoUrl) {
+      // Uploaded/hosted video from video_url column
+      // Also check if it's a YouTube URL stored in video_url (legacy data)
+      const youtubeId = extractYouTubeId(videoUrl);
+      if (youtubeId && videoDiv) {
+        const startParam = resumePosition > 0 ? `&start=${Math.floor(resumePosition)}` : '';
+        videoDiv.innerHTML = `
+          <iframe
+            class="w-full h-full"
+            src="https://www.youtube-nocookie.com/embed/${youtubeId}?enablejsapi=1${startParam}"
             frameborder="0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowfullscreen
@@ -312,7 +358,7 @@ export const prerender = false;
       } else {
         // Regular HTML5 video file
         const videoSource = document.getElementById('video-source') as HTMLSourceElement;
-        videoSource.src = lesson.video_url;
+        videoSource.src = videoUrl;
         const video = document.getElementById('lesson-video') as HTMLVideoElement;
         video.load();
 
@@ -376,6 +422,32 @@ export const prerender = false;
       backBtn.addEventListener('click', () => {
         window.location.href = `/courses/${currentCourse.slug}`;
       });
+    }
+
+    // Show completion section for students (not teachers)
+    if (!isTeacher) {
+      document.getElementById('completion-section')?.classList.remove('hidden');
+      updateCompletionButton();
+    }
+  }
+
+  function updateCompletionButton() {
+    const btn = document.getElementById('mark-complete-btn');
+    const hint = document.getElementById('completion-hint');
+    if (!btn) return;
+
+    const isCompleted = existingProgressData?.completed === true;
+    
+    if (isCompleted) {
+      btn.textContent = 'Lesson Completed';
+      btn.classList.remove('btn-primary');
+      btn.classList.add('btn-secondary');
+      if (hint) hint.textContent = 'Click to mark as not started.';
+    } else {
+      btn.textContent = 'Mark as Complete';
+      btn.classList.remove('btn-secondary');
+      btn.classList.add('btn-primary');
+      if (hint) hint.textContent = 'Mark this lesson as complete when you\'re done.';
     }
   }
 
@@ -526,32 +598,20 @@ export const prerender = false;
     }
   }
 
-  function renderDiscussion() {
-    if (!userCohortId || !currentLesson) return;
 
-    const root = document.getElementById('discussion-root');
-    if (!root) return;
 
-    // Import and render React component
-    import('../../components/DiscussionThread').then(({ DiscussionThread }) => {
-      import('react-dom/client').then(({ createRoot }) => {
-        import('react').then(({ createElement }) => {
-          const reactRoot = createRoot(root);
-          reactRoot.render(createElement(DiscussionThread, {
-            lessonId: currentLesson.id,
-            cohortId: userCohortId!,
-            currentUserId: currentUser.id,
-            isTeacher: isTeacher,
-          }));
-        });
-      });
-    });
-  }
+  /* Discussion initialization removed - now handled by React component */
+  /* Was: function renderDiscussion() ... */
 
   function extractYouTubeId(url: string): string | null {
     const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
     const match = url.match(regExp);
-    return (match && match[7].length === 11) ? match[7] : null;
+    const id = (match && match[7].length === 11) ? match[7] : null;
+    // Validate that the ID only contains safe characters (alphanumeric, -, _)
+    if (id && !/^[a-zA-Z0-9_-]+$/.test(id)) {
+      return null;
+    }
+    return id;
   }
 
   function formatBytes(bytes: number): string {
@@ -597,14 +657,28 @@ export const prerender = false;
       }
     });
 
-    // Save on page unload
+    // Save on page visibility change (more reliable than beforeunload for async operations)
+    let hasSavedOnHide = false;
+    document.addEventListener('visibilitychange', async () => {
+      if (document.visibilityState === 'hidden' && !hasSavedOnHide) {
+        hasSavedOnHide = true;
+        if (isPlaying) {
+          const elapsed = Math.floor((Date.now() - playStartTime) / 1000);
+          localTimeSpentSeconds += elapsed;
+        }
+        // Use authenticated Supabase client for reliable delivery
+        await saveVideoProgress(video.currentTime, false);
+      } else if (document.visibilityState === 'visible') {
+        hasSavedOnHide = false; // Reset flag when page becomes visible again
+      }
+    });
+
+    // Fallback for beforeunload - update local time spent
     window.addEventListener('beforeunload', () => {
       if (isPlaying) {
         const elapsed = Math.floor((Date.now() - playStartTime) / 1000);
         localTimeSpentSeconds += elapsed;
       }
-      // Use sendBeacon for reliable delivery on page close
-      saveVideoProgressSync(video.currentTime);
     });
   }
 
@@ -649,40 +723,15 @@ export const prerender = false;
     }
   }
 
-  // Synchronous save for beforeunload (uses sendBeacon fallback)
-  function saveVideoProgressSync(positionSeconds: number) {
-    if (!currentUser || !currentLesson) return;
-
-    const progressData: any = {
-      user_id: currentUser.id,
-      lesson_id: currentLesson.id,
-      video_position_seconds: Math.floor(positionSeconds),
-      time_spent_seconds: localTimeSpentSeconds,
-      last_accessed_at: new Date().toISOString(),
-    };
-
-    if (userCohortId) {
-      progressData.cohort_id = userCohortId;
-    }
-
-    // Attempt to use sendBeacon for reliable delivery
-    // This is a best-effort save on page close
-    // Note: sendBeacon doesn't support custom headers, so this is limited
-    try {
-      const url = `${supabaseUrl}/rest/v1/lesson_progress?on_conflict=user_id,lesson_id`;
-      const body = JSON.stringify(progressData);
-      if (navigator.sendBeacon) {
-        navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
-      }
-    } catch {
-      // Silently fail - best effort
-    }
-  }
 
   function setupEventListeners() {
-    // Mark complete button - enhanced to update existing record with full data
+    // Mark complete button - toggles between completed and not started
     document.getElementById('mark-complete-btn')?.addEventListener('click', async () => {
       if (!currentUser || !currentLesson) return;
+
+      // Determine new completion state (toggle)
+      const currentlyCompleted = existingProgressData?.completed === true;
+      const newCompletedState = !currentlyCompleted;
 
       // Get video duration if available
       const video = document.getElementById('lesson-video') as HTMLVideoElement;
@@ -691,15 +740,21 @@ export const prerender = false;
       const progressData: any = {
         user_id: currentUser.id,
         lesson_id: currentLesson.id,
-        completed: true,
-        completed_at: new Date().toISOString(),
+        completed: newCompletedState,
         last_accessed_at: new Date().toISOString(),
         time_spent_seconds: localTimeSpentSeconds,
       };
 
-      // Set video_position_seconds to lesson duration if available
-      if (videoDuration > 0) {
-        progressData.video_position_seconds = videoDuration;
+      // Set completed_at when marking as complete, clear it when un-completing
+      if (newCompletedState) {
+        progressData.completed_at = new Date().toISOString();
+        // Set video_position_seconds to lesson duration if available
+        if (videoDuration > 0) {
+          progressData.video_position_seconds = videoDuration;
+        }
+      } else {
+        // Clear completed_at when un-completing to avoid stale timestamps
+        progressData.completed_at = null;
       }
 
       // Include cohort_id when user is in a cohort
@@ -707,11 +762,13 @@ export const prerender = false;
         progressData.cohort_id = userCohortId;
       }
 
-      // Increment watch_count if this is a revisit completion
-      if (existingProgressData?.completed) {
-        progressData.watch_count = (existingProgressData.watch_count || 1) + 1;
+      // Handle watch_count - increment when marking as complete
+      if (newCompletedState) {
+        // Completing the lesson - increment watch count
+        progressData.watch_count = (existingProgressData?.watch_count || 0) + 1;
       } else {
-        progressData.watch_count = existingProgressData?.watch_count || 1;
+        // Uncompleting - keep the current count
+        progressData.watch_count = existingProgressData?.watch_count || 0;
       }
 
       let error;
@@ -728,15 +785,38 @@ export const prerender = false;
           .from('lesson_progress')
           .upsert(progressData, { onConflict: 'user_id,lesson_id' });
         error = result.error;
+        
+        // Get the new record ID for future updates
+        if (!error) {
+          const { data: newProgress } = await supabase
+            .from('lesson_progress')
+            .select('id')
+            .eq('user_id', currentUser.id)
+            .eq('lesson_id', currentLesson.id)
+            .single();
+          if (newProgress) {
+            existingProgressId = newProgress.id;
+          }
+        }
       }
 
       if (error) {
-        showToast('Failed to mark lesson as complete', 'error');
+        showToast('Failed to update lesson progress', 'error');
       } else {
-        showToast('Lesson marked as complete!', 'success');
         // Update local state
-        if (existingProgressData) {
-          existingProgressData.completed = true;
+        if (!existingProgressData) {
+          existingProgressData = {};
+        }
+        existingProgressData.completed = newCompletedState;
+        
+        // Update button UI
+        updateCompletionButton();
+        
+        // Show appropriate toast message
+        if (newCompletedState) {
+          showToast('Lesson marked as complete!', 'success');
+        } else {
+          showToast('Lesson marked as not started', 'info');
         }
       }
     });

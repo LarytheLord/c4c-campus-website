@@ -30,12 +30,12 @@ const securityMiddleware = defineMiddleware(async (_context, next) => {
   headers.set(
     'Content-Security-Policy',
     "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://*.google.com https://*.googleapis.com https://*.gstatic.com; " +
+    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://*.google.com https://*.googleapis.com https://*.gstatic.com; " +
     "style-src 'self' 'unsafe-inline' https://*.googleapis.com; " +
     "img-src 'self' data: https: blob:; " +
     "font-src 'self' data: https://fonts.gstatic.com; " +
     "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.googleapis.com https://*.google.com; " +
-    "frame-src 'self' https://www.google.com https://maps.google.com; " +
+    "frame-src 'self' https://www.google.com https://maps.google.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com; " +
     "frame-ancestors 'self';"
   );
 

@@ -207,14 +207,7 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   try {
-    // Log request details for debugging
-    console.log('[API /apply] Received POST request');
-    console.log('[API /apply] Content-Type:', request.headers.get('content-type'));
-
     const formData = await request.json();
-    console.log('[API /apply] Successfully parsed JSON');
-    console.log('[API /apply] Email:', formData.email);
-    console.log('[API /apply] Program:', formData.program);
 
     const { email, password, confirmPassword, program, ...applicationData } = formData;
 
@@ -307,10 +300,7 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
 
-    console.log('[API /apply] User account created:', authData.user.id);
-
     // Store application data in applications table (using admin client - bypasses RLS)
-    console.log('[API /apply] Saving application for user:', authData.user.id, 'program:', program);
     const { error: dbError } = await supabaseAdmin
       .from('applications')
       .insert({
@@ -361,19 +351,22 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
 
-    console.log('[API /apply] Application saved successfully for user:', authData.user.id);
-
-    // Send admin notification email (non-blocking)
-    sendApplicationReceivedEmail({
-      name: applicationData.name,
-      email,
-      program,
-      location: applicationData.location,
-      discord: applicationData.discord,
-      motivation: applicationData.motivation,
-      projectName: applicationData.projectName,
-      projectDescription: applicationData.projectDescription,
-    }).catch(err => console.error('Failed to send admin notification:', err));
+    // Send admin notification email (await to ensure delivery in serverless)
+    try {
+      await sendApplicationReceivedEmail({
+        name: applicationData.name,
+        email,
+        program,
+        location: applicationData.location,
+        discord: applicationData.discord,
+        motivation: applicationData.motivation,
+        projectName: applicationData.projectName,
+        projectDescription: applicationData.projectDescription,
+      });
+    } catch (err) {
+      // Log but don't fail - application was already saved to database
+      console.error('Failed to send admin notification:', err);
+    }
 
     return new Response(
       JSON.stringify({

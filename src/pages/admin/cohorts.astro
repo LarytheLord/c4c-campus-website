@@ -247,6 +247,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   <script>
     import { supabase } from '../../lib/supabase';
     import { showToast, showConfirm } from '../../lib/notifications';
+    import { escapeHTML } from '../../lib/security';
 
     let currentUser: any = null;
     let allCohorts: any[] = [];
@@ -302,7 +303,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       const select = document.getElementById('cohort-course') as HTMLSelectElement;
       if (!select) return;
 
-      const options = courses.map(c => `<option value="${c.id}">${c.title}</option>`).join('');
+      const options = courses.map(c => `<option value="${c.id}">${escapeHTML(c.title)}</option>`).join('');
       select.innerHTML = '<option value="">Select a course</option>' + options;
     }
 
@@ -381,10 +382,10 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
           <div class="card hover:shadow-lg transition-all duration-300 border-2 hover:border-primary">
             <div class="flex justify-between items-start mb-4">
               <div class="flex-1">
-                <h3 class="text-xl font-bold mb-1">${cohort.name}</h3>
+                <h3 class="text-xl font-bold mb-1">${escapeHTML(cohort.name)}</h3>
                 <p class="text-sm text-text-muted flex items-center gap-1">
                   <span>📚</span>
-                  ${cohort.courses?.title || 'Unknown Course'}
+                  ${escapeHTML(cohort.courses?.title || 'Unknown Course')}
                 </p>
               </div>
               <span class="text-xs px-3 py-1 rounded-full font-semibold ${getCohortStatusColor(cohort.status)}">${cohort.status.toUpperCase()}</span>
@@ -620,30 +621,52 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       list?.classList.add('hidden');
       empty?.classList.add('hidden');
 
-      const { data, error } = await supabase
-        .from('enrollments')
-        .select(`
-          *,
-          applications!inner(name, email, user_id)
-        `)
+      // 1. Fetch enrollments
+      const { data: enrollments, error } = await supabase
+        .from('cohort_enrollments')
+        .select('*')
         .eq('cohort_id', cohortId)
         .order('enrolled_at', { ascending: false });
-
-      loading?.classList.add('hidden');
 
       if (error) {
         console.error('Error loading students:', error);
         showToast('Failed to load students', 'error');
         empty?.classList.remove('hidden');
+        loading?.classList.add('hidden');
         return;
       }
 
-      const students = data || [];
-
-      if (students.length === 0) {
+      if (!enrollments || enrollments.length === 0) {
+        loading?.classList.add('hidden');
         empty?.classList.remove('hidden');
         return;
       }
+
+      // 2. Fetch student details from applications
+      const userIds = enrollments.map(e => e.user_id);
+      const { data: apps, error: appsError } = await supabase
+        .from('applications')
+        .select('user_id, name, email')
+        .in('user_id', userIds);
+
+      if (appsError) {
+        console.error('Error loading student details:', appsError);
+        showToast('Failed to load student details', 'error');
+        loading?.classList.add('hidden');
+        return;
+      }
+
+      // 3. Join data using Map for O(1) lookups instead of O(N) find()
+      const appsMap = new Map(apps?.map(a => [a.user_id, a]) || []);
+      const students = enrollments.map(enrollment => {
+        const studentApp = appsMap.get(enrollment.user_id) || { name: 'Unknown', email: 'Unknown' };
+        return {
+          ...enrollment,
+          applications: studentApp
+        };
+      });
+
+      loading?.classList.add('hidden');
 
       list!.innerHTML = students.map(enrollment => {
         const student = enrollment.applications;
@@ -654,11 +677,11 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
                 <span>👤</span>
               </div>
               <div class="flex-1 min-w-0">
-                <p class="font-medium truncate">${student.name}</p>
-                <p class="text-xs text-text-muted truncate">${student.email}</p>
+                <p class="font-medium truncate">${escapeHTML(student.name)}</p>
+                <p class="text-xs text-text-muted truncate">${escapeHTML(student.email)}</p>
               </div>
             </div>
-            <button class="btn btn-sm btn-error remove-student-btn" data-enrollment-id="${enrollment.id}" data-name="${student.name}">
+            <button class="btn btn-sm btn-error remove-student-btn" data-enrollment-id="${escapeHTML(enrollment.id)}" data-name="${escapeHTML(student.name)}">
               Remove
             </button>
           </div>
@@ -678,7 +701,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
           if (!confirmed) return;
 
           const { error } = await supabase
-            .from('enrollments')
+            .from('cohort_enrollments')
             .delete()
             .eq('id', enrollmentId);
 
@@ -714,7 +737,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 
       // Check if already enrolled
       const { data: existing } = await supabase
-        .from('enrollments')
+        .from('cohort_enrollments')
         .select('id')
         .eq('cohort_id', currentCohortStudents.id)
         .eq('user_id', userData.user_id)
@@ -727,7 +750,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 
       // Add enrollment
       const { error: enrollError } = await supabase
-        .from('enrollments')
+        .from('cohort_enrollments')
         .insert([{
           cohort_id: currentCohortStudents.id,
           user_id: userData.user_id,

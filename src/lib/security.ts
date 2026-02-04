@@ -5,8 +5,7 @@
  * and protection against common web vulnerabilities.
  */
 
-// Use a simple regex-based sanitizer for server-side to avoid jsdom ESM issues
-// DOMPurify is only used client-side where the DOM is available
+import DOMPurify from 'isomorphic-dompurify';
 
 // --- Input Validation ---
 
@@ -149,47 +148,38 @@ export function isStrongPassword(password: string): {
 
 // Default allowed tags for rich text
 const DEFAULT_ALLOWED_TAGS = ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'a', 'code', 'pre'];
-// Note: DEFAULT_ALLOWED_ATTRS reserved for future attribute whitelist functionality
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const DEFAULT_ALLOWED_ATTRS = ['href', 'title', 'target'];
 
-// Server-safe HTML sanitizer that doesn't require jsdom
+/**
+ * Server-safe HTML sanitizer using isomorphic-dompurify
+ * @param html - The HTML string to sanitize
+ * @param allowedTags - Optional array of allowed tag names (defaults to DEFAULT_ALLOWED_TAGS)
+ * @returns Sanitized HTML string
+ */
 export function sanitizeHTML(html: string, allowedTags?: string[]): string {
   if (!html) return '';
 
   const tags = allowedTags || DEFAULT_ALLOWED_TAGS;
 
-  // Remove script tags and their contents
-  let sanitized = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  // If empty array passed, strip all HTML (return text only)
+  if (tags.length === 0) {
+    return DOMPurify.sanitize(html, { ALLOWED_TAGS: [] });
+  }
 
-  // Remove on* event handlers
-  sanitized = sanitized.replace(/\s*on\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]*)/gi, '');
-
-  // Remove javascript: and data: URLs from href/src attributes
-  sanitized = sanitized.replace(/(href|src)\s*=\s*["']?\s*(javascript|data|vbscript):[^"'\s>]*/gi, '$1=""');
-
-  // Remove style tags
-  sanitized = sanitized.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
-
-  // Remove any tags not in allowed list
-  const tagPattern = /<\/?([a-z][a-z0-9]*)\b[^>]*>/gi;
-  sanitized = sanitized.replace(tagPattern, (match, tagName) => {
-    if (tags.includes(tagName.toLowerCase())) {
-      // Keep allowed tags but strip dangerous attributes
-      return match
-        .replace(/\s+style\s*=\s*("[^"]*"|'[^']*'|[^\s>]*)/gi, '')
-        .replace(/\s+class\s*=\s*("[^"]*"|'[^']*'|[^\s>]*)/gi, '');
-    }
-    return '';
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: tags,
+    ALLOWED_ATTR: DEFAULT_ALLOWED_ATTRS,
   });
-
-  return sanitized;
 }
 
+/**
+ * Strip all HTML tags from a string using DOMPurify
+ * @param html - The HTML string to strip
+ * @returns Plain text with all HTML removed
+ */
 export function stripHTML(html: string): string {
   if (!html) return '';
-  // Remove all HTML tags
-  return html.replace(/<[^>]*>/g, '');
+  return DOMPurify.sanitize(html, { ALLOWED_TAGS: [] });
 }
 
 export function escapeHTML(str: string): string {
@@ -238,7 +228,7 @@ export function validateCSRFToken(token: string, expectedToken: string): boolean
 export function generateSecureToken(length: number = 32): string {
   // length is the number of bytes of entropy desired
   // The output hex string will be 2 * length characters
-  
+
   if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
     const array = new Uint8Array(length);
     crypto.getRandomValues(array);
@@ -258,37 +248,37 @@ export function generateSecureToken(length: number = 32): string {
 export function maskSensitiveData(data: string): string {
   if (!data) return '';
   if (data.length <= 8) return '****';
-  
+
   // Keep first 4 and last 4 chars visible? No, tests expect masking.
   // Test says: "should mask API keys" -> expect(masked).not.toContain('1234567890')
   // Test says: "should mask short strings completely" -> expect(maskSensitiveData(short)).toBe('****')
-  
+
   // Let's implement a simple masking strategy
   // If it looks like a key (long string), mask middle
   // If short, mask all
-  
+
   if (data.length < 10) return '****';
-  
+
   // For API keys like sk_test_..., keep prefix maybe?
   // But test expects '****' in result.
-  
+
   // Let's just return a masked string based on length
   const visibleChars = 4;
   if (data.length > visibleChars * 2) {
-      // Show first 4, mask rest? Or mask middle?
-      // Let's try masking all but first 4 chars if it's long?
-      // Actually, standard practice for API keys is often to show last 4.
-      // Let's look at the test expectation again:
-      // expect(masked).toContain('****');
-      // expect(masked).not.toContain('1234567890');
-      
-      // Let's mask everything except maybe the first few chars if it has a prefix like sk_test_
-      if (data.startsWith('sk_')) {
-          return data.substring(0, 8) + '****' + data.substring(data.length - 4);
-      }
-      return data.substring(0, 2) + '****' + data.substring(data.length - 2);
+    // Show first 4, mask rest? Or mask middle?
+    // Let's try masking all but first 4 chars if it's long?
+    // Actually, standard practice for API keys is often to show last 4.
+    // Let's look at the test expectation again:
+    // expect(masked).toContain('****');
+    // expect(masked).not.toContain('1234567890');
+
+    // Let's mask everything except maybe the first few chars if it has a prefix like sk_test_
+    if (data.startsWith('sk_')) {
+      return data.substring(0, 8) + '****' + data.substring(data.length - 4);
+    }
+    return data.substring(0, 2) + '****' + data.substring(data.length - 2);
   }
-  
+
   return '****';
 }
 
@@ -304,8 +294,8 @@ export function getSecurityHeaders(): Record<string, string> {
     'Permissions-Policy': 'geolocation=(), microphone=(), camera=()',
     'Content-Security-Policy': [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://translate.google.com",
-      "style-src 'self' 'unsafe-inline' https://translate.googleapis.com",
+      "script-src 'self' 'unsafe-inline' https://translate.google.com",
+      "style-src 'self' 'unsafe-inline' https://translate.googleapis.com https://*.gstatic.com",
       "img-src 'self' data: https: blob:",
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
       "frame-ancestors 'none'",

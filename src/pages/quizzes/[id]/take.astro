@@ -19,7 +19,7 @@ export const prerender = false;
 <BaseLayout title="Take Quiz - C4C Campus" hideHeader={true} hideFooter={true}>
   <div class="min-h-screen bg-background">
     <!-- Header -->
-    <div class="sticky top-0 z-50 bg-surface border-b border-border shadow-md">
+    <div class="sticky top-0 z-50 bg-white border-b border-border shadow-md">
       <div class="container mx-auto px-4 py-4">
         <div class="flex items-center justify-between gap-4">
           <div class="flex items-center gap-4 flex-1">
@@ -178,7 +178,8 @@ export const prerender = false;
   window.addEventListener('beforeunload', (e) => {
     if (preventNavigation && hasStarted) {
       e.preventDefault();
-      e.returnValue = '';
+      // returnValue is deprecated but required for cross-browser compatibility
+      (e as any).returnValue = '';
       return '';
     }
   });

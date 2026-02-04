@@ -465,6 +465,7 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
 
   <script>
     import { createClient } from '@supabase/supabase-js';
+    import { escapeHTML } from '../../lib/security';
 
     const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
     const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
@@ -527,43 +528,6 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
       ]);
     }
 
-    // Reserved for future use - input prompt modal utility
-    function _showPrompt(title: string, onSubmit: (value: string) => void) {
-      const modal = document.getElementById('input-modal');
-      const titleEl = document.getElementById('input-title');
-      const inputField = document.getElementById('input-field') as HTMLInputElement;
-      const submitBtn = document.getElementById('input-submit');
-      const cancelBtn = document.getElementById('input-cancel');
-
-      if (titleEl) titleEl.textContent = title;
-      if (inputField) inputField.value = '';
-
-      const handleSubmit = () => {
-        const value = inputField?.value.trim();
-        if (value) {
-          modal?.classList.add('hidden');
-          onSubmit(value);
-        }
-      };
-
-      const handleCancel = () => {
-        modal?.classList.add('hidden');
-      };
-
-      submitBtn?.replaceWith(submitBtn.cloneNode(true));
-      cancelBtn?.replaceWith(cancelBtn.cloneNode(true));
-
-      document.getElementById('input-submit')?.addEventListener('click', handleSubmit);
-      document.getElementById('input-cancel')?.addEventListener('click', handleCancel);
-
-      inputField?.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') handleSubmit();
-      });
-
-      modal?.classList.remove('hidden');
-      inputField?.focus();
-    }
-
     async function init() {
       // Check authentication
       const { data: { user } } = await supabase.auth.getUser();
@@ -600,12 +564,26 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
       // Load courses and cohorts
       await loadCourses();
       await loadCohorts();
+      await loadUniqueStudentCount();
 
       // Show content
       document.getElementById('loading-state')?.classList.add('hidden');
       document.getElementById('teacher-content')?.classList.remove('hidden');
 
       setupEventListeners();
+
+      // Check for edit query parameter (from course page "Edit Course" button)
+      const urlParams = new URLSearchParams(window.location.search);
+      const editCourseId = urlParams.get('edit');
+      if (editCourseId) {
+        // Find the course and open edit tab
+        const courseToEdit = courses.find(c => String(c.id) === String(editCourseId));
+        if (courseToEdit) {
+          editCourseInTab(String(courseToEdit.id));
+        }
+        // Clean URL without reloading
+        window.history.replaceState({}, '', window.location.pathname);
+      }
     }
 
     async function loadCourses() {
@@ -644,18 +622,18 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
       grid!.innerHTML = courses.map(course => `
         <div class="card hover:shadow-lg transition-shadow">
           <div class="flex justify-between items-start mb-3">
-            <h3 class="text-lg font-bold">${course.title}</h3>
+            <h3 class="text-lg font-bold">${escapeHTML(course.title)}</h3>
             ${!course.is_published ? '<span class="text-xs px-2 py-1 bg-orange-500/10 text-orange-500 rounded">Draft</span>' : '<span class="text-xs px-2 py-1 bg-green-500/10 text-green-500 rounded">Published</span>'}
           </div>
-          <p class="text-sm text-text-muted mb-3 line-clamp-2">${course.description || 'No description'}</p>
+          <p class="text-sm text-text-muted mb-3 line-clamp-2">${escapeHTML(course.description || 'No description')}</p>
           <div class="flex items-center gap-2 text-xs text-text-muted mb-4">
-            <span class="px-2 py-1 bg-primary/10 rounded">${formatTrack(course.track)}</span>
-            <span class="px-2 py-1 bg-primary/10 rounded">${formatDifficulty(course.difficulty)}</span>
+            <span class="px-2 py-1 bg-primary/10 rounded">${escapeHTML(formatTrack(course.track))}</span>
+            <span class="px-2 py-1 bg-primary/10 rounded">${escapeHTML(formatDifficulty(course.difficulty))}</span>
             ${course.default_duration_weeks ? `<span>${course.default_duration_weeks} weeks</span>` : ''}
           </div>
           <div class="flex gap-2">
-            <button class="btn btn-sm btn-primary flex-1 edit-course-tab" data-id="${course.id}">Edit</button>
-            <a href="/courses/${course.slug}" class="btn btn-sm btn-secondary">View</a>
+            <button class="btn btn-sm btn-primary flex-1 edit-course-tab" data-id="${escapeHTML(course.id)}">Edit</button>
+            <a href="/courses/${escapeHTML(course.slug)}" class="btn btn-sm btn-secondary">View</a>
           </div>
         </div>
       `).join('');
@@ -735,13 +713,13 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
         <div class="card hover:shadow-lg transition-all duration-300 border-2 hover:border-primary">
           <div class="flex justify-between items-start mb-4">
             <div class="flex-1">
-              <h3 class="text-xl font-bold mb-1">${cohort.name}</h3>
+              <h3 class="text-xl font-bold mb-1">${escapeHTML(cohort.name)}</h3>
               <p class="text-sm text-text-muted flex items-center gap-1">
                 <span>📚</span>
-                ${cohort.courses?.title || 'Unknown Course'}
+                ${escapeHTML(cohort.courses?.title || 'Unknown Course')}
               </p>
             </div>
-            <span class="text-xs px-3 py-1 rounded-full font-semibold ${getCohortStatusColor(cohort.status)}">${cohort.status.toUpperCase()}</span>
+            <span class="text-xs px-3 py-1 rounded-full font-semibold ${getCohortStatusColor(cohort.status)}">${escapeHTML(cohort.status.toUpperCase())}</span>
           </div>
           <div class="bg-surface-hover rounded-lg p-4 mb-4">
             <div class="grid grid-cols-2 gap-3 text-sm">
@@ -800,6 +778,42 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
       });
     }
 
+    async function loadUniqueStudentCount() {
+      const courseIds = courses.map(c => c.id);
+      if (courseIds.length === 0) {
+        document.getElementById('stat-students')!.textContent = '0';
+        return;
+      }
+
+      // Get cohort IDs for teacher's courses
+      const { data: cohortData } = await supabase
+        .from('cohorts')
+        .select('id')
+        .in('course_id', courseIds);
+
+      if (!cohortData || cohortData.length === 0) {
+        document.getElementById('stat-students')!.textContent = '0';
+        return;
+      }
+
+      const cohortIds = cohortData.map(c => c.id);
+
+      // Get unique user_ids from cohort_enrollments
+      const { data: enrollments } = await supabase
+        .from('cohort_enrollments')
+        .select('user_id')
+        .in('cohort_id', cohortIds);
+
+      if (!enrollments) {
+        document.getElementById('stat-students')!.textContent = '0';
+        return;
+      }
+
+      // Count unique students
+      const uniqueStudents = new Set(enrollments.map(e => e.user_id));
+      document.getElementById('stat-students')!.textContent = uniqueStudents.size.toString();
+    }
+
     function updateStats(courses: any[]) {
       const published = courses.filter(c => c.is_published).length;
       const drafts = courses.filter(c => !c.is_published).length;
@@ -807,8 +821,7 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
       document.getElementById('stat-courses')!.textContent = courses.length.toString();
       document.getElementById('stat-published')!.textContent = published.toString();
       document.getElementById('stat-drafts')!.textContent = drafts.toString();
-      // TODO: Load actual student count from enrollments
-      document.getElementById('stat-students')!.textContent = '0';
+      // Student count is loaded separately by loadUniqueStudentCount()
     }
 
     function setupEventListeners() {
@@ -934,7 +947,7 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
 
     function editCourseInTab(courseId: string) {
       // Course IDs are UUIDs (strings)
-      editingCourse = courses.find(c => c.id === courseId);
+      editingCourse = courses.find(c => String(c.id) === String(courseId));
       if (!editingCourse) return;
 
       // Show edit tab
@@ -993,7 +1006,7 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
             <div class="flex items-center gap-3 flex-1">
               <span class="text-2xl">📚</span>
               <div>
-                <h4 class="font-semibold">${module.title}</h4>
+                <h4 class="font-semibold">${escapeHTML(module.title)}</h4>
                 <p class="text-sm text-text-muted">Order: ${module.order_index}</p>
               </div>
             </div>
@@ -1225,21 +1238,38 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
         return;
       }
 
+      const cohortName = (document.getElementById('cohort-name') as HTMLInputElement).value;
+      const startDate = (document.getElementById('cohort-start-date') as HTMLInputElement).value;
+      
+      if (!cohortName || !startDate) {
+        showNotification('Error', 'Please fill in all required fields.', 'error');
+        return;
+      }
+
       const cohortData = {
-        course_id: courseId,
-        name: (document.getElementById('cohort-name') as HTMLInputElement).value,
-        start_date: (document.getElementById('cohort-start-date') as HTMLInputElement).value,
+        course_id: parseInt(courseId, 10) || courseId, // Handle both numeric and UUID IDs
+        name: cohortName,
+        start_date: startDate,
         end_date: (document.getElementById('cohort-end-date') as HTMLInputElement).value || null,
-        max_students: parseInt((document.getElementById('cohort-max-students') as HTMLInputElement).value),
-        created_by: currentUser.id
+        max_students: parseInt((document.getElementById('cohort-max-students') as HTMLInputElement).value) || 50,
+        created_by: currentUser.id,
+        status: 'upcoming' // Default status
       };
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('cohorts')
-        .insert([cohortData]);
+        .insert([cohortData])
+        .select(); // Add .select() to get the inserted row back
 
       if (error) {
+        console.error('Error creating cohort:', error);
         showNotification('Error', 'Error creating cohort: ' + error.message, 'error');
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        console.error('No data returned from cohort insert');
+        showNotification('Error', 'Cohort creation failed. Please check permissions.', 'error');
         return;
       }
 
@@ -1274,7 +1304,7 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
         if (!select) return;
 
         const currentValue = (select as HTMLSelectElement).value;
-        const options = courses.map(c => `<option value="${c.id}">${c.title}</option>`).join('');
+        const options = courses.map(c => `<option value="${c.id}">${escapeHTML(c.title)}</option>`).join('');
 
         if (select.id === 'cohort-course') {
           select.innerHTML = '<option value="">Select a course</option>' + options;
