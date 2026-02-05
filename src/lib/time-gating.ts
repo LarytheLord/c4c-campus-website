@@ -81,7 +81,7 @@ export async function isModuleUnlocked(
     .select('unlock_date, lock_date')
     .eq('cohort_id', cohortId)
     .eq('module_id', moduleId)
-    .single();
+    .maybeSingle();
 
   if (error || !data) {
     // If no schedule exists, it's considered not scheduled (and thus accessible/visible but maybe marked as such)
@@ -155,7 +155,7 @@ export async function getUnlockDate(
     .select('unlock_date')
     .eq('cohort_id', cohortId)
     .eq('module_id', moduleId)
-    .single();
+    .maybeSingle();
 
   if (error || !data) {
     return null;

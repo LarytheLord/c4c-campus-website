@@ -137,6 +137,9 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
       </div>
     </div>
 
+    <!-- Google Translate target div (must always exist for widget initialization) -->
+    <div id="google_translate_element" style="display: none;"></div>
+
     {!hideHeader && (
     <header class="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200">
       <nav class="w-full mx-auto px-4 sm:px-6 lg:px-8">
@@ -169,7 +172,6 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
               <option value="ko">한국어</option>
               <option value="ar">العربية</option>
             </select>
-            <div id="google_translate_element" style="display: none;"></div>
           </div>
 
           <!-- Mobile Menu Button -->
