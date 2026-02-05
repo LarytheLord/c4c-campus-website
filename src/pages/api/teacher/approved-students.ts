@@ -43,22 +43,6 @@ export const GET: APIRoute = async ({ request }) => {
       });
     }
 
-    // Fetch approved students
-    const { data: approvedStudents, error: studentsError } = await supabase
-      .from('applications')
-      .select('user_id, name, email')
-      .eq('status', 'approved')
-      .or('role.eq.student,role.is.null')
-      .order('name', { ascending: true });
-
-    if (studentsError) {
-      console.error('[approved-students] Error fetching students:', studentsError);
-      return new Response(JSON.stringify({ error: 'Failed to fetch students' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
     // Fetch existing enrollments for this cohort
     const { data: enrollments, error: enrollError } = await supabase
       .from('cohort_enrollments')
@@ -73,19 +57,36 @@ export const GET: APIRoute = async ({ request }) => {
       });
     }
 
-    const enrolledUserIds = new Set((enrollments || []).map(e => e.user_id));
+    const enrolledUserIds = (enrollments || []).map(e => e.user_id);
 
-    // Filter out already-enrolled students and apply search
-    let students = (approvedStudents || []).filter(s => !enrolledUserIds.has(s.user_id));
+    // Build filtered DB query — search + exclusion at database level
+    let query = supabase
+      .from('applications')
+      .select('user_id, name, email')
+      .eq('status', 'approved')
+      .or('role.eq.student,role.is.null')
+      .order('name', { ascending: true })
+      .limit(50);
 
     if (search) {
-      students = students.filter(s =>
-        (s.name || '').toLowerCase().includes(search) ||
-        (s.email || '').toLowerCase().includes(search)
-      );
+      query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%`);
     }
 
-    return new Response(JSON.stringify({ students }), {
+    if (enrolledUserIds.length > 0) {
+      query = query.not('user_id', 'in', `(${enrolledUserIds.join(',')})`);
+    }
+
+    const { data: students, error: studentsError } = await query;
+
+    if (studentsError) {
+      console.error('[approved-students] Error fetching students:', studentsError);
+      return new Response(JSON.stringify({ error: 'Failed to fetch students' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    return new Response(JSON.stringify({ students: students || [] }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });

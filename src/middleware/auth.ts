@@ -65,39 +65,15 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return redirect(`/login?redirect=${encodeURIComponent(pathname)}`);
   }
 
-  // Verify JWT signature (defense-in-depth; PostgREST also validates via anon key)
-  let user: { id: string; email: string };
+  // Verify JWT signature cryptographically — fail closed if verification fails
   const jwtPayload = await verifyJWT(accessToken);
 
-  if (jwtPayload) {
-    // JWT verified cryptographically
-    user = { id: jwtPayload.sub, email: jwtPayload.email || '' };
-  } else {
-    // verifyJWT returned null — either invalid token OR no verification method available.
-    // Fall back to local decode since this middleware uses an anon-key client
-    // (PostgREST validates the JWT on every DB query, so this is safe).
-    try {
-      const parts = accessToken.split('.');
-      if (parts.length !== 3) {
-        return redirect(`/login?error=session-expired&redirect=${encodeURIComponent(pathname)}`);
-      }
-      const payload = JSON.parse(
-        Buffer.from(parts[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString()
-      );
-      if (!payload.sub) {
-        return redirect(`/login?error=session-expired&redirect=${encodeURIComponent(pathname)}`);
-      }
-      // Check expiration manually since we're not using jose
-      const now = Math.floor(Date.now() / 1000);
-      if (payload.exp && payload.exp < now) {
-        logger.debug('Token expired', { pathname, exp: payload.exp, now });
-        return redirect(`/login?error=session-expired&redirect=${encodeURIComponent(pathname)}`);
-      }
-      user = { id: payload.sub, email: payload.email || '' };
-    } catch {
-      return redirect(`/login?error=session-expired&redirect=${encodeURIComponent(pathname)}`);
-    }
+  if (!jwtPayload) {
+    logger.debug('JWT verification failed', { pathname });
+    return redirect(`/login?error=session-expired&redirect=${encodeURIComponent(pathname)}`);
   }
+
+  const user = { id: jwtPayload.sub, email: jwtPayload.email || '' };
 
   // Create Supabase client with the access token for database queries
   const supabase = createClient(supabaseUrl, supabaseAnonKey, {
