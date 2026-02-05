@@ -5,7 +5,7 @@
  * and protection against common web vulnerabilities.
  */
 
-import DOMPurify from 'isomorphic-dompurify';
+import sanitize from 'sanitize-html';
 
 // --- Input Validation ---
 
@@ -151,7 +151,7 @@ const DEFAULT_ALLOWED_TAGS = ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 
 const DEFAULT_ALLOWED_ATTRS = ['href', 'title', 'target'];
 
 /**
- * Server-safe HTML sanitizer using isomorphic-dompurify
+ * Server-safe HTML sanitizer using sanitize-html
  * @param html - The HTML string to sanitize
  * @param allowedTags - Optional array of allowed tag names (defaults to DEFAULT_ALLOWED_TAGS)
  * @returns Sanitized HTML string
@@ -163,23 +163,23 @@ export function sanitizeHTML(html: string, allowedTags?: string[]): string {
 
   // If empty array passed, strip all HTML (return text only)
   if (tags.length === 0) {
-    return DOMPurify.sanitize(html, { ALLOWED_TAGS: [] });
+    return sanitize(html, { allowedTags: [], allowedAttributes: {} });
   }
 
-  return DOMPurify.sanitize(html, {
-    ALLOWED_TAGS: tags,
-    ALLOWED_ATTR: DEFAULT_ALLOWED_ATTRS,
+  return sanitize(html, {
+    allowedTags: tags,
+    allowedAttributes: { 'a': DEFAULT_ALLOWED_ATTRS },
   });
 }
 
 /**
- * Strip all HTML tags from a string using DOMPurify
+ * Strip all HTML tags from a string
  * @param html - The HTML string to strip
  * @returns Plain text with all HTML removed
  */
 export function stripHTML(html: string): string {
   if (!html) return '';
-  return DOMPurify.sanitize(html, { ALLOWED_TAGS: [] });
+  return sanitize(html, { allowedTags: [], allowedAttributes: {} });
 }
 
 export function escapeHTML(str: string): string {
