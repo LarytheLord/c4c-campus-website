@@ -213,7 +213,7 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
         renderComponents(null, true);
 
         // Fetch analytics data from API
-        const response = await fetch(`/api/teacher/cohort-analytics?cohortId=${cohortId}`, { cache: 'no-store' });
+        const response = await fetch(`/api/teacher/cohort-analytics?cohort_id=${cohortId}`, { cache: 'no-store' });
 
         if (!response.ok) {
           throw new Error('Failed to fetch analytics data');

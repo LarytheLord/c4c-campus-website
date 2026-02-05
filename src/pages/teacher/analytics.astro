@@ -338,7 +338,7 @@ const defaultCohort = cohortsWithCounts?.[0];
 
       if (currentCohortId) {
         try {
-          const response = await fetch(`/api/teacher/cohort-analytics?cohortId=${currentCohortId}`, {
+          const response = await fetch(`/api/teacher/cohort-analytics?cohort_id=${currentCohortId}`, {
             headers: {
               'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`
             }

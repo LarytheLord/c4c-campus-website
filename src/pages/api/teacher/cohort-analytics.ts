@@ -1,6 +1,6 @@
 /**
  * Teacher Cohort Analytics API
- * GET /api/teacher/cohort-analytics?cohortId=123
+ * GET /api/teacher/cohort-analytics?cohort_id=123
  *
  * Returns comprehensive analytics for a cohort including:
  * - Overall statistics (students, completion rates, etc.)
@@ -51,9 +51,9 @@ export const GET: APIRoute = async ({ request, url }) => {
       .single();
 
     // Get cohort ID from query params
-    const cohortId = url.searchParams.get('cohortId');
+    const cohortId = url.searchParams.get('cohort_id');
     if (!cohortId) {
-      return new Response(JSON.stringify({ error: 'cohortId parameter required' }), {
+      return new Response(JSON.stringify({ error: 'cohort_id parameter required' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });
