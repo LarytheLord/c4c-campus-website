@@ -1,99 +1,15 @@
 import type { APIRoute } from 'astro';
-import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
+import {
+  authenticateRequest,
+  verifyAdminAccess,
+  createServiceClient,
+} from '../../../lib/auth';
 
 export const prerender = false;
 
-/** Decode a JWT payload locally without a network call */
-function decodeJWTPayload(token: string): Record<string, any> | null {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-    return JSON.parse(Buffer.from(payload, 'base64').toString());
-  } catch {
-    return null;
-  }
-}
-
-const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
 const resendApiKey = import.meta.env.RESEND_API_KEY;
 const resend = new Resend(resendApiKey);
-
-function checkConfiguration(): { valid: boolean; error?: string } {
-  if (!supabaseUrl) {
-    console.error('[update-application-status] Missing PUBLIC_SUPABASE_URL');
-    return { valid: false, error: 'Server configuration error' };
-  }
-  if (!supabaseServiceKey) {
-    console.error('[update-application-status] Missing SUPABASE_SERVICE_ROLE_KEY');
-    return { valid: false, error: 'Server configuration error' };
-  }
-  if (!resendApiKey) {
-    console.error('[update-application-status] Missing RESEND_API_KEY');
-    return { valid: false, error: 'Server configuration error' };
-  }
-  return { valid: true };
-}
-
-async function verifyAdminAccess(request: Request) {
-  const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
-
-  // Try to get access token from cookies (Supabase auth cookie format)
-  const cookies = request.headers.get('cookie') || '';
-  const authCookieMatch = cookies.match(/sb-[^=]+-auth-token=([^;]+)/);
-
-  let accessToken: string | null = null;
-  let refreshToken: string | null = null;
-
-  if (authCookieMatch) {
-    try {
-      const decoded = decodeURIComponent(authCookieMatch[1]);
-      let tokenData;
-      try {
-        tokenData = JSON.parse(decoded);
-      } catch {
-        tokenData = JSON.parse(atob(decoded));
-      }
-      accessToken = tokenData.access_token || tokenData[0];
-      refreshToken = tokenData.refresh_token || tokenData[1];
-    } catch (e) {
-      console.error('Failed to parse auth cookie', e);
-    }
-  }
-
-  if (!accessToken) {
-    console.warn('[update-application-status] Auth failed: No access token found in cookies');
-    return { authorized: false, error: 'Unauthorized', status: 401 };
-  }
-
-  // Decode JWT locally instead of setSession (which makes a network call that can fail)
-  const jwtPayload = decodeJWTPayload(accessToken);
-  if (!jwtPayload || !jwtPayload.sub) {
-    console.warn('[update-application-status] Auth failed: Invalid JWT payload');
-    return { authorized: false, error: 'Unauthorized', status: 401 };
-  }
-
-  const user = { id: jwtPayload.sub as string };
-
-  // Check if user is admin
-  const { data: application } = await supabase
-    .from('applications')
-    .select('role')
-    .eq('user_id', user.id)
-    .single();
-
-  if (!application || application.role !== 'admin') {
-    console.warn('[update-application-status] Auth failed: Admin role check failed', {
-      userId: user.id,
-      currentRole: application?.role ?? 'no application found'
-    });
-    return { authorized: false, error: 'Forbidden: Admin access required', status: 403 };
-  }
-
-  return { authorized: true, user, supabase };
-}
 
 function generateEmailTemplate(heading: string, bodyContent: string, ctaButton?: { text: string; url: string }) {
   return `<!DOCTYPE html>
@@ -155,25 +71,33 @@ function generateEmailTemplate(heading: string, bodyContent: string, ctaButton?:
 
 export const POST: APIRoute = async ({ request }) => {
   try {
-    // Configuration sanity check
-    const configCheck = checkConfiguration();
-    if (!configCheck.valid) {
+    // Check Resend configuration
+    if (!resendApiKey) {
+      console.error('[update-application-status] Missing RESEND_API_KEY');
       return new Response(
-        JSON.stringify({ error: configCheck.error }),
+        JSON.stringify({ error: 'Server configuration error' }),
         { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    // Verify admin access
-    const authResult = await verifyAdminAccess(request);
-    if (!authResult.authorized) {
+    // Authenticate: verify JWT signature + extract user
+    const authResult = await authenticateRequest(request);
+    if (authResult instanceof Response) return authResult;
+    const { user } = authResult;
+
+    const supabase = createServiceClient();
+
+    const isAdmin = await verifyAdminAccess(supabase, user.id);
+    if (!isAdmin) {
+      console.warn('[update-application-status] Auth failed: Admin role check failed', {
+        userId: user.id
+      });
       return new Response(
-        JSON.stringify({ error: authResult.error }),
-        { status: authResult.status, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Forbidden: Admin access required' }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    const supabaseAdmin = authResult.supabase!;
     const { application_ids, status, decision_note, send_email } = await request.json();
 
     if (!application_ids || !Array.isArray(application_ids) || application_ids.length === 0) {
@@ -205,7 +129,7 @@ export const POST: APIRoute = async ({ request }) => {
     if (status === 'approved') {
       // First, fetch applications to check their current roles
       // Only set role to 'student' for those with null role
-      const { data: existingApps, error: fetchError } = await supabaseAdmin
+      const { data: existingApps, error: fetchError } = await supabase
         .from('applications')
         .select('id, role')
         .in('id', application_ids);
@@ -224,7 +148,7 @@ export const POST: APIRoute = async ({ request }) => {
 
       // Update applications that need role assignment (set role to 'student')
       if (needsRoleAssignment.length > 0) {
-        const { error } = await supabaseAdmin
+        const { error } = await supabase
           .from('applications')
           .update({ ...updateData, role: 'student' })
           .in('id', needsRoleAssignment);
@@ -237,7 +161,7 @@ export const POST: APIRoute = async ({ request }) => {
 
       // Update applications that already have a role (don't change their role)
       if (hasExistingRole.length > 0 && !updateError) {
-        const { error } = await supabaseAdmin
+        const { error } = await supabase
           .from('applications')
           .update(updateData)
           .in('id', hasExistingRole);
@@ -250,7 +174,7 @@ export const POST: APIRoute = async ({ request }) => {
 
       // Fetch the updated applications for email sending
       if (!updateError) {
-        const { data, error } = await supabaseAdmin
+        const { data, error } = await supabase
           .from('applications')
           .select('id, email, name, program')
           .in('id', application_ids);
@@ -260,7 +184,7 @@ export const POST: APIRoute = async ({ request }) => {
       }
     } else {
       // For non-approved statuses, simple update without role change
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await supabase
         .from('applications')
         .update(updateData)
         .in('id', application_ids)

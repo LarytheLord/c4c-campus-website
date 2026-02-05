@@ -9,97 +9,22 @@
  */
 
 import type { APIRoute } from 'astro';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
-
-/** Decode a JWT payload locally without a network call */
-function decodeJWTPayload(token: string): Record<string, any> | null {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-    return JSON.parse(Buffer.from(payload, 'base64').toString());
-  } catch {
-    return null;
-  }
-}
+import {
+  authenticateRequest,
+  verifyTeacherOrAdminAccess,
+  createServiceClient,
+} from '../../../lib/auth';
 
 export const prerender = false;
 
-function checkConfiguration(): { valid: boolean; error?: string } {
-  if (!supabaseUrl) {
-    console.error('[enroll-student] Missing PUBLIC_SUPABASE_URL');
-    return { valid: false, error: 'Server configuration error' };
-  }
-  if (!supabaseServiceKey) {
-    console.error('[enroll-student] Missing SUPABASE_SERVICE_ROLE_KEY');
-    return { valid: false, error: 'Server configuration error' };
-  }
-  return { valid: true };
-}
-
-async function verifyTeacherOrAdminAccess(supabase: any, userId: string): Promise<boolean> {
-  const { data: application } = await supabase
-    .from('applications')
-    .select('role')
-    .eq('user_id', userId)
-    .single();
-
-  return application && (application.role === 'teacher' || application.role === 'admin');
-}
-
 export const POST: APIRoute = async ({ request }) => {
   try {
-    const configCheck = checkConfiguration();
-    if (!configCheck.valid) {
-      return new Response(JSON.stringify({ error: configCheck.error }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
+    // Authenticate: verify JWT signature + extract user
+    const authResult = await authenticateRequest(request);
+    if (authResult instanceof Response) return authResult;
+    const { user } = authResult;
 
-    const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
-
-    // Parse auth cookie (same pattern as approved-students.ts)
-    const cookies = request.headers.get('cookie') || '';
-    const authCookieMatch = cookies.match(/sb-[^=]+-auth-token=([^;]+)/);
-    let accessToken: string | null = null;
-    let refreshToken: string | null = null;
-
-    if (authCookieMatch) {
-      try {
-        const decoded = decodeURIComponent(authCookieMatch[1]);
-        let tokenData;
-        try {
-          tokenData = JSON.parse(decoded);
-        } catch {
-          tokenData = JSON.parse(atob(decoded));
-        }
-        accessToken = tokenData.access_token || tokenData[0];
-        refreshToken = tokenData.refresh_token || tokenData[1];
-      } catch (e) {
-        console.error('[enroll-student] Failed to parse auth cookie', e);
-      }
-    }
-
-    if (!accessToken) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    const jwtPayload = decodeJWTPayload(accessToken);
-    if (!jwtPayload || !jwtPayload.sub) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    const user = { id: jwtPayload.sub as string };
+    const supabase = createServiceClient();
 
     const isTeacherOrAdmin = await verifyTeacherOrAdminAccess(supabase, user.id);
     if (!isTeacherOrAdmin) {

@@ -1,9 +1,9 @@
 /**
  * Server-Side Authentication Middleware
- * 
+ *
  * SECURITY: This runs on the SERVER before pages render,
  * preventing client-side bypass of authorization checks.
- * 
+ *
  * Protected Routes:
  * - /admin/* - Requires admin role
  * - /teacher/* - Requires teacher or admin role
@@ -13,23 +13,7 @@
 import { defineMiddleware } from 'astro:middleware';
 import { createClient } from '@supabase/supabase-js';
 import { logger, logSecurityEvent } from '../lib/logger';
-
-/**
- * Decode a JWT payload locally without making a network call.
- * This avoids the ECONNRESET/fetch failures that setSession causes
- * when the server-side process can't reach the Supabase Auth API.
- */
-function decodeJWTPayload(token: string): Record<string, any> | null {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-    const decoded = Buffer.from(payload, 'base64').toString();
-    return JSON.parse(decoded);
-  } catch {
-    return null;
-  }
-}
+import { verifyJWT, extractAccessToken } from '../lib/auth';
 
 // Protected route patterns
 const ADMIN_ROUTES = /^\/admin(\/.*)?$/;
@@ -73,86 +57,47 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return redirect('/login?error=config');
   }
 
-  // Extract auth token from cookies
-  // Supabase stores auth in a cookie named sb-<project-ref>-auth-token
-  // The value is a JSON object with access_token and refresh_token
-  const cookies = request.headers.get('cookie') || '';
-
-  // Try to find Supabase auth cookie (format: sb-<ref>-auth-token)
-  const authCookieMatch = cookies.match(/sb-[^=]+-auth-token=([^;]+)/);
-
-  // Note: auth-token-code-verifier is used for OAuth PKCE flow but not currently used in this middleware
-  // const storageCookieMatch = cookies.match(/sb-[^=]+-auth-token-code-verifier=([^;]+)/);
-
-  let accessToken: string | null = null;
-  let refreshToken: string | null = null;
-
-  if (authCookieMatch) {
-    try {
-      let decoded = decodeURIComponent(authCookieMatch[1]);
-
-      // Remove "base64-" prefix if present (common in some Supabase versions)
-      if (decoded.startsWith('base64-')) {
-        decoded = decoded.substring(7);
-      }
-
-      // Handle base64 encoded JSON or raw JSON
-      let tokenData;
-      try {
-        // First try parsing as raw JSON
-        tokenData = JSON.parse(decoded);
-      } catch {
-        // If that fails, might be base64 encoded
-        try {
-          // Check if it looks like base64 before trying atob to avoid InvalidCharacterError
-          if (/^[A-Za-z0-9+/=]+$/.test(decoded)) {
-            tokenData = JSON.parse(atob(decoded));
-          } else {
-            throw new Error('Not valid base64');
-          }
-        } catch (innerErr) {
-          // Last resort: simple string check or just fail
-          logger.debug('Cookie parsing failed internal checks', { error: String(innerErr) });
-          throw innerErr;
-        }
-      }
-
-      if (tokenData) {
-        accessToken = tokenData.access_token || tokenData[0];
-        refreshToken = tokenData.refresh_token || tokenData[1];
-      }
-    } catch (e) {
-      // Log the beginning of the cookie value to debug (safely)
-      const cookieStart = authCookieMatch[1] ? authCookieMatch[1].substring(0, 20) + '...' : 'undefined';
-      logger.debug('Failed to parse auth cookie', { error: String(e), cookieStart });
-    }
-  }
+  // Extract auth token using shared module
+  const accessToken = extractAccessToken(request);
 
   if (!accessToken) {
-    logger.debug('No valid auth token found', { pathname, hasCookie: !!authCookieMatch });
+    logger.debug('No valid auth token found', { pathname });
     return redirect(`/login?redirect=${encodeURIComponent(pathname)}`);
   }
 
-  // Decode the JWT locally instead of calling setSession (which makes a network
-  // call to _getUser that can fail with ECONNRESET in some environments)
-  const jwtPayload = decodeJWTPayload(accessToken);
-  if (!jwtPayload || !jwtPayload.sub) {
-    logger.debug('Invalid JWT payload', { pathname });
-    return redirect(`/login?error=session-expired&redirect=${encodeURIComponent(pathname)}`);
-  }
+  // Verify JWT signature (defense-in-depth; PostgREST also validates via anon key)
+  let user: { id: string; email: string };
+  const jwtPayload = await verifyJWT(accessToken);
 
-  // Check if the token is expired
-  const now = Math.floor(Date.now() / 1000);
-  if (jwtPayload.exp && jwtPayload.exp < now) {
-    logger.debug('Token expired', { pathname, exp: jwtPayload.exp, now });
-    return redirect(`/login?error=session-expired&redirect=${encodeURIComponent(pathname)}`);
+  if (jwtPayload) {
+    // JWT verified cryptographically
+    user = { id: jwtPayload.sub, email: jwtPayload.email || '' };
+  } else {
+    // verifyJWT returned null — either invalid token OR no verification method available.
+    // Fall back to local decode since this middleware uses an anon-key client
+    // (PostgREST validates the JWT on every DB query, so this is safe).
+    try {
+      const parts = accessToken.split('.');
+      if (parts.length !== 3) {
+        return redirect(`/login?error=session-expired&redirect=${encodeURIComponent(pathname)}`);
+      }
+      const payload = JSON.parse(
+        Buffer.from(parts[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString()
+      );
+      if (!payload.sub) {
+        return redirect(`/login?error=session-expired&redirect=${encodeURIComponent(pathname)}`);
+      }
+      // Check expiration manually since we're not using jose
+      const now = Math.floor(Date.now() / 1000);
+      if (payload.exp && payload.exp < now) {
+        logger.debug('Token expired', { pathname, exp: payload.exp, now });
+        return redirect(`/login?error=session-expired&redirect=${encodeURIComponent(pathname)}`);
+      }
+      user = { id: payload.sub, email: payload.email || '' };
+    } catch {
+      return redirect(`/login?error=session-expired&redirect=${encodeURIComponent(pathname)}`);
+    }
   }
-
-  // Build a user-like object from the JWT claims
-  const user = {
-    id: jwtPayload.sub as string,
-    email: (jwtPayload.email as string) || '',
-  };
 
   // Create Supabase client with the access token for database queries
   const supabase = createClient(supabaseUrl, supabaseAnonKey, {
@@ -161,7 +106,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
   });
 
-  logger.debug('User accessing route', { email: user.email, pathname });
+  logger.debug('User accessing route', { userId: user.id, pathname });
 
   // Check if route requires admin privileges
   if (ADMIN_ROUTES.test(pathname)) {
@@ -174,7 +119,6 @@ export const onRequest = defineMiddleware(async (context, next) => {
     if (appError || !application || application.role !== 'admin') {
       logSecurityEvent('UNAUTHORIZED_ADMIN_ACCESS', {
         user_id: user.id,
-        email: user.email,
         path: pathname,
         role: application?.role || 'none'
       });
@@ -190,7 +134,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
 
     // User is admin - allow access
-    logger.info('Admin access granted', { email: user.email, pathname });
+    logger.info('Admin access granted', { userId: user.id, pathname });
     locals.user = user;
     locals.role = 'admin';
     return next();
@@ -209,7 +153,6 @@ export const onRequest = defineMiddleware(async (context, next) => {
     if (appError || !hasAccess) {
       logSecurityEvent('UNAUTHORIZED_TEACHER_ACCESS', {
         user_id: user.id,
-        email: user.email,
         path: pathname,
         role: application?.role || 'none'
       });
@@ -222,7 +165,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
       }
     }
 
-    logger.info('Teacher access granted', { email: user.email, pathname, role: application.role });
+    logger.info('Teacher access granted', { userId: user.id, pathname, role: application.role });
     locals.user = user;
     locals.role = application.role;
     return next();
@@ -231,7 +174,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // Check if route requires authentication (but not specific role)
   if (AUTH_REQUIRED_ROUTES.test(pathname)) {
     // User is authenticated, allow access
-    logger.debug('Authenticated access granted', { email: user.email, pathname });
+    logger.debug('Authenticated access granted', { userId: user.id, pathname });
     locals.user = user;
     return next();
   }

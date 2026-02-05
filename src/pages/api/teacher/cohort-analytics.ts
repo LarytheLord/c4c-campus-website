@@ -11,88 +11,44 @@
  */
 
 import type { APIRoute } from 'astro';
-import { createClient } from '@supabase/supabase-js';
 import type {
   CohortAnalytics,
   StudentWithProgress,
   ProgressOverTime,
   LeaderboardEntry
 } from '../../../types';
+import {
+  authenticateRequest,
+  verifyTeacherOrAdminAccess,
+  createServiceClient,
+} from '../../../lib/auth';
 
 export const prerender = false;
 
-const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
-
-/** Decode a JWT payload locally without a network call */
-function decodeJWTPayload(token: string): Record<string, any> | null {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-    return JSON.parse(Buffer.from(payload, 'base64').toString());
-  } catch {
-    return null;
-  }
-}
-
 export const GET: APIRoute = async ({ request, url }) => {
   try {
-    // Create Supabase client with service role key (bypasses RLS)
-    const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
+    // Authenticate: verify JWT signature + extract user
+    const authResult = await authenticateRequest(request);
+    if (authResult instanceof Response) return authResult;
+    const { user } = authResult;
 
-    // Get access token from cookies
-    const cookieHeader = request.headers.get('cookie') || '';
-    const authCookieMatch = cookieHeader.match(/sb-[^=]+-auth-token=([^;]+)/);
-
-    let accessToken: string | null = null;
-
-    if (authCookieMatch) {
-      try {
-        const decoded = decodeURIComponent(authCookieMatch[1]);
-        let tokenData;
-        try {
-          tokenData = JSON.parse(decoded);
-        } catch {
-          tokenData = JSON.parse(atob(decoded));
-        }
-        accessToken = tokenData.access_token || tokenData[0];
-      } catch (e) {
-        console.error('[cohort-analytics] Failed to parse auth cookie', e);
-      }
-    }
-
-    if (!accessToken) {
-      return new Response(JSON.stringify({ error: 'Unauthorized: Authentication required' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    // Decode JWT locally instead of getUser() (which makes a network call that can fail)
-    const jwtPayload = decodeJWTPayload(accessToken);
-    if (!jwtPayload || !jwtPayload.sub) {
-      return new Response(JSON.stringify({ error: 'Unauthorized: Invalid session' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    const user = { id: jwtPayload.sub as string };
+    const supabase = createServiceClient();
 
     // Verify teacher role
-    const { data: application } = await supabase
-      .from('applications')
-      .select('role')
-      .eq('user_id', user.id)
-      .single();
-
-    if (!application || (application.role !== 'teacher' && application.role !== 'admin')) {
+    const isTeacherOrAdmin = await verifyTeacherOrAdminAccess(supabase, user.id);
+    if (!isTeacherOrAdmin) {
       return new Response(JSON.stringify({ error: 'Forbidden: Teacher access required' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json' }
       });
     }
+
+    // Need the role for admin bypass check below
+    const { data: application } = await supabase
+      .from('applications')
+      .select('role')
+      .eq('user_id', user.id)
+      .single();
 
     // Get cohort ID from query params
     const cohortId = url.searchParams.get('cohortId');
@@ -117,7 +73,7 @@ export const GET: APIRoute = async ({ request, url }) => {
       });
     }
 
-    if (cohort.courses.created_by !== user.id && application.role !== 'admin') {
+    if (cohort.courses.created_by !== user.id && application?.role !== 'admin') {
       return new Response(JSON.stringify({ error: 'Forbidden: Not your cohort' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json' }

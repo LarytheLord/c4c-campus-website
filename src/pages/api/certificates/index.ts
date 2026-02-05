@@ -5,20 +5,9 @@
 
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
+import { verifyJWT, extractAccessToken } from '../../../lib/auth';
 
 export const prerender = false;
-
-/** Decode a JWT payload locally without a network call */
-function decodeJWTPayload(token: string): Record<string, any> | null {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-    return JSON.parse(Buffer.from(payload, 'base64').toString());
-  } catch {
-    return null;
-  }
-}
 
 const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY!;
@@ -26,12 +15,9 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY!;
 /**
  * GET - List all certificates for the authenticated user
  */
-export const GET: APIRoute = async ({ cookies }) => {
+export const GET: APIRoute = async ({ request }) => {
   try {
-    // Get tokens from cookies (server-side auth)
-    const accessToken = cookies.get('sb-access-token')?.value;
-    const refreshToken = cookies.get('sb-refresh-token')?.value;
-
+    const accessToken = extractAccessToken(request);
     if (!accessToken) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized: Authentication required' }),
@@ -39,16 +25,38 @@ export const GET: APIRoute = async ({ cookies }) => {
       );
     }
 
-    // Decode JWT locally instead of setSession (which makes a network call that can fail)
-    const jwtPayload = decodeJWTPayload(accessToken);
-    if (!jwtPayload || !jwtPayload.sub) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized: Invalid session' }),
-        { status: 401, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
+    // Verify JWT signature (defense-in-depth; PostgREST also validates via anon key)
+    let userId: string;
+    const jwtPayload = await verifyJWT(accessToken);
 
-    const userId = jwtPayload.sub as string;
+    if (jwtPayload) {
+      userId = jwtPayload.sub;
+    } else {
+      // verifyJWT returned null — fall back to local decode since this route
+      // uses an anon-key client (PostgREST validates the JWT on every DB query)
+      try {
+        const parts = accessToken.split('.');
+        if (parts.length !== 3) {
+          return new Response(
+            JSON.stringify({ error: 'Unauthorized: Invalid session' }),
+            { status: 401, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        const payload = JSON.parse(Buffer.from(parts[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString());
+        if (!payload.sub) {
+          return new Response(
+            JSON.stringify({ error: 'Unauthorized: Invalid session' }),
+            { status: 401, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        userId = payload.sub;
+      } catch {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized: Invalid session' }),
+          { status: 401, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+    }
 
     // Create Supabase client with the access token for RLS
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {

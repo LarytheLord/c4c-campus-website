@@ -34,7 +34,7 @@ const securityMiddleware = defineMiddleware(async (_context, next) => {
     "style-src 'self' 'unsafe-inline' https://*.googleapis.com https://*.gstatic.com; " +
     "img-src 'self' data: https: blob:; " +
     "font-src 'self' data: https://fonts.gstatic.com; " +
-    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.googleapis.com https://*.google.com; " +
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.googleapis.com https://*.google.com https://cdn.jsdelivr.net; " +
     "frame-src 'self' https://www.google.com https://maps.google.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com; " +
     "frame-ancestors 'self';"
   );
