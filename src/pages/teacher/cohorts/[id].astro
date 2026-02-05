@@ -334,12 +334,8 @@ import TeacherLayout from '../../../layouts/TeacherLayout.astro';
   </div>
 
   <script>
-    import { createClient } from '@supabase/supabase-js';
+    import { supabase } from '@/lib/supabase';
     import { escapeHTML } from '../../../lib/security';
-
-    const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
-    const supabase = createClient(supabaseUrl!, supabaseAnonKey!);
 
     let currentUser: any = null;
     let cohort: any = null;
@@ -971,7 +967,7 @@ import TeacherLayout from '../../../layouts/TeacherLayout.astro';
       if (listEl) listEl.innerHTML = '';
 
       try {
-        const response = await fetch(`/api/teacher/approved-students?cohortId=${cohortId}`);
+        const response = await fetch(`/api/teacher/approved-students?cohortId=${cohortId}`, { cache: 'no-store' });
         if (!response.ok) {
           throw new Error('Failed to fetch students');
         }
@@ -1065,7 +1061,34 @@ import TeacherLayout from '../../../layouts/TeacherLayout.astro';
           return;
         }
 
-        showNotification('Success', `${name} has been added to the cohort!`, 'success');
+        // Also create a course enrollment via server-side API
+        // (dashboard and course pages query the enrollments table, and RLS
+        // only allows users to insert their own enrollments)
+        const courseId = cohort?.course_id;
+        let courseEnrollmentFailed = false;
+        if (courseId) {
+          try {
+            const res = await fetch('/api/teacher/enroll-student', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId, courseId, cohortId }),
+            });
+            if (!res.ok) {
+              const errData = await res.json().catch(() => ({}));
+              console.error('Error creating course enrollment:', errData.error || res.statusText);
+              courseEnrollmentFailed = true;
+            }
+          } catch (err) {
+            console.error('Error creating course enrollment:', err);
+            courseEnrollmentFailed = true;
+          }
+        }
+
+        if (courseEnrollmentFailed) {
+          showNotification('Warning', `${name} was added to the cohort, but course enrollment failed. The student may not see the course in their dashboard. Please try removing and re-adding the student.`, 'warning');
+        } else {
+          showNotification('Success', `${name} has been added to the cohort!`, 'success');
+        }
 
         // Remove student from available list and re-render
         availableStudents = availableStudents.filter(s => s.user_id !== userId);

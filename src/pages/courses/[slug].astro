@@ -211,7 +211,7 @@ export const prerender = false;
 </BaseLayout>
 
 <script>
-  import { createClient } from '@supabase/supabase-js';
+  import { supabase } from '@/lib/supabase';
   import {
     getCohortModuleStatuses,
     formatUnlockDate,
@@ -219,10 +219,6 @@ export const prerender = false;
     type ModuleUnlockStatus
   } from '@/lib/time-gating';
   import { showToast, showConfirm, setButtonLoading, dismissToast } from '@/lib/notifications';
-
-  const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
-  const supabase = createClient(supabaseUrl!, supabaseAnonKey!);
 
   let currentUser: any = null;
   let currentCourse: any = null;

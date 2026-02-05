@@ -96,7 +96,7 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
   </div>
 
   <script>
-    import { createClient } from '@supabase/supabase-js';
+    import { supabase } from '@/lib/supabase';
     import { exportToCSV } from '../../lib/utils';
 
     // Dynamic imports for React components to prevent script failure if React preamble detection fails
@@ -129,10 +129,6 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
         return false;
       }
     }
-
-    const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
-    const supabase = createClient(supabaseUrl!, supabaseAnonKey!);
 
     let currentUser: any = null;
     let cohorts: any[] = [];

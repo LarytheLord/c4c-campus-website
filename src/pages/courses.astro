@@ -251,13 +251,9 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
 </style>
 
 <script>
-  import { createClient } from '@supabase/supabase-js';
+  import { supabase } from '@/lib/supabase';
   import { showToast, setButtonLoading, dismissToast } from '@/lib/notifications';
   import { escapeHTML } from '@/lib/security';
-
-  const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
-  const supabase = createClient(supabaseUrl!, supabaseAnonKey!);
 
   let allCourses: any[] = [];
   let enrollments: Set<number> = new Set();

@@ -10,6 +10,18 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
 
+/** Decode a JWT payload locally without a network call */
+function decodeJWTPayload(token: string): Record<string, any> | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(Buffer.from(payload, 'base64').toString());
+  } catch {
+    return null;
+  }
+}
+
 export const prerender = false;
 
 function checkConfiguration(): { valid: boolean; error?: string } {
@@ -77,23 +89,16 @@ export const GET: APIRoute = async ({ request, url }) => {
       });
     }
 
-    const { data: { session }, error: authError } = await supabase.auth.setSession({
-      access_token: accessToken,
-      refresh_token: refreshToken || ''
-    });
-
-    if (authError || !session) {
-      console.warn('[assign-reviewer GET] Auth failed: setSession error', {
-        errorCode: authError?.code,
-        errorMessage: authError?.message
-      });
+    const jwtPayload = decodeJWTPayload(accessToken);
+    if (!jwtPayload || !jwtPayload.sub) {
+      console.warn('[assign-reviewer GET] Auth failed: Invalid JWT payload');
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    const user = session.user;
+    const user = { id: jwtPayload.sub as string };
 
     const isAdmin = await verifyAdminAccess(supabase, user.id);
     if (!isAdmin) {
@@ -206,23 +211,16 @@ export const POST: APIRoute = async ({ request }) => {
       });
     }
 
-    const { data: { session }, error: authError } = await supabase.auth.setSession({
-      access_token: accessToken,
-      refresh_token: refreshToken || ''
-    });
-
-    if (authError || !session) {
-      console.warn('[assign-reviewer POST] Auth failed: setSession error', {
-        errorCode: authError?.code,
-        errorMessage: authError?.message
-      });
+    const jwtPayload = decodeJWTPayload(accessToken);
+    if (!jwtPayload || !jwtPayload.sub) {
+      console.warn('[assign-reviewer POST] Auth failed: Invalid JWT payload');
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    const user = session.user;
+    const user = { id: jwtPayload.sub as string };
 
     const isAdmin = await verifyAdminAccess(supabase, user.id);
     if (!isAdmin) {

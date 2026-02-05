@@ -39,8 +39,8 @@ const CACHE_CONFIG = {
 function getCacheStrategy(url: URL): keyof typeof CACHE_CONFIG {
   const path = url.pathname;
 
-  // No cache for mutations (POST, PUT, DELETE)
-  if (path.includes('/apply') || path.includes('/enroll') || path.includes('/update')) {
+  // No cache for mutations (POST, PUT, DELETE) and teacher/admin endpoints
+  if (path.includes('/apply') || path.includes('/enroll') || path.includes('/update') || path.includes('/teacher')) {
     return 'noCache';
   }
 

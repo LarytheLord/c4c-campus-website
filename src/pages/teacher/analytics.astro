@@ -227,15 +227,9 @@ const defaultCohort = cohortsWithCounts?.[0];
     import { createRoot } from 'react-dom/client';
     import { createElement } from 'react';
     import { Chart, registerables } from 'chart.js';
-    import { createClient } from '@supabase/supabase-js';
+    import { supabase } from '@/lib/supabase';
 
     Chart.register(...registerables);
-
-    // Supabase client for auth token
-    const supabase = createClient(
-      import.meta.env.PUBLIC_SUPABASE_URL,
-      import.meta.env.PUBLIC_SUPABASE_ANON_KEY
-    );
 
     // Global state
     let currentCohortId: string | null = null; // UUID string, not number

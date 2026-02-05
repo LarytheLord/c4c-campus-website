@@ -77,13 +77,8 @@ export const prerender = false;
   </div>
 
   <script>
-    import { createClient } from '@supabase/supabase-js';
+    import { supabase } from '@/lib/supabase';
     import { formatFileSize, getFileIcon } from '@/lib/file-upload';
-
-    const supabase = createClient(
-      import.meta.env.PUBLIC_SUPABASE_URL,
-      import.meta.env.PUBLIC_SUPABASE_ANON_KEY
-    );
 
     const pathParts = window.location.pathname.split('/');
     const assignmentId = pathParts[2];

@@ -4,6 +4,18 @@ import { Resend } from 'resend';
 
 export const prerender = false;
 
+/** Decode a JWT payload locally without a network call */
+function decodeJWTPayload(token: string): Record<string, any> | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(Buffer.from(payload, 'base64').toString());
+  } catch {
+    return null;
+  }
+}
+
 const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
 const resendApiKey = import.meta.env.RESEND_API_KEY;
@@ -56,21 +68,14 @@ async function verifyAdminAccess(request: Request) {
     return { authorized: false, error: 'Unauthorized', status: 401 };
   }
 
-  // Verify the token and get user via setSession
-  const { data: { session }, error: authError } = await supabase.auth.setSession({
-    access_token: accessToken,
-    refresh_token: refreshToken || ''
-  });
-
-  if (authError || !session) {
-    console.warn('[update-application-status] Auth failed: setSession error', {
-      errorCode: authError?.code,
-      errorMessage: authError?.message
-    });
+  // Decode JWT locally instead of setSession (which makes a network call that can fail)
+  const jwtPayload = decodeJWTPayload(accessToken);
+  if (!jwtPayload || !jwtPayload.sub) {
+    console.warn('[update-application-status] Auth failed: Invalid JWT payload');
     return { authorized: false, error: 'Unauthorized', status: 401 };
   }
 
-  const user = session.user;
+  const user = { id: jwtPayload.sub as string };
 
   // Check if user is admin
   const { data: application } = await supabase

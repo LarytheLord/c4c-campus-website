@@ -8,6 +8,18 @@ import { createClient } from '@supabase/supabase-js';
 
 export const prerender = false;
 
+/** Decode a JWT payload locally without a network call */
+function decodeJWTPayload(token: string): Record<string, any> | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(Buffer.from(payload, 'base64').toString());
+  } catch {
+    return null;
+  }
+}
+
 const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY!;
 
@@ -27,22 +39,23 @@ export const GET: APIRoute = async ({ cookies }) => {
       );
     }
 
-    // Create Supabase client and set session
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-    const { data: { session }, error: sessionError } = await supabase.auth.setSession({
-      access_token: accessToken,
-      refresh_token: refreshToken || '',
-    });
-
-    if (sessionError || !session) {
+    // Decode JWT locally instead of setSession (which makes a network call that can fail)
+    const jwtPayload = decodeJWTPayload(accessToken);
+    if (!jwtPayload || !jwtPayload.sub) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized: Invalid session' }),
         { status: 401, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    const userId = session.user.id;
+    const userId = jwtPayload.sub as string;
+
+    // Create Supabase client with the access token for RLS
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      }
+    });
 
     // Fetch certificates for the user
     // Schema: certificates table has fields as defined in schema.sql

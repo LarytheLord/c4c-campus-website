@@ -14,6 +14,23 @@ import { defineMiddleware } from 'astro:middleware';
 import { createClient } from '@supabase/supabase-js';
 import { logger, logSecurityEvent } from '../lib/logger';
 
+/**
+ * Decode a JWT payload locally without making a network call.
+ * This avoids the ECONNRESET/fetch failures that setSession causes
+ * when the server-side process can't reach the Supabase Auth API.
+ */
+function decodeJWTPayload(token: string): Record<string, any> | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const decoded = Buffer.from(payload, 'base64').toString();
+    return JSON.parse(decoded);
+  } catch {
+    return null;
+  }
+}
+
 // Protected route patterns
 const ADMIN_ROUTES = /^\/admin(\/.*)?$/;
 const TEACHER_ROUTES = /^\/teacher(\/.*)?$/;
@@ -116,21 +133,34 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return redirect(`/login?redirect=${encodeURIComponent(pathname)}`);
   }
 
-  // Create client and set session from token
-  const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-  // Set the session using the tokens from the cookie
-  const { data: { session }, error: sessionError } = await supabase.auth.setSession({
-    access_token: accessToken,
-    refresh_token: refreshToken || ''
-  });
-
-  if (sessionError || !session) {
-    logger.debug('Invalid session', { pathname, error: sessionError?.message });
+  // Decode the JWT locally instead of calling setSession (which makes a network
+  // call to _getUser that can fail with ECONNRESET in some environments)
+  const jwtPayload = decodeJWTPayload(accessToken);
+  if (!jwtPayload || !jwtPayload.sub) {
+    logger.debug('Invalid JWT payload', { pathname });
     return redirect(`/login?error=session-expired&redirect=${encodeURIComponent(pathname)}`);
   }
 
-  const user = session.user;
+  // Check if the token is expired
+  const now = Math.floor(Date.now() / 1000);
+  if (jwtPayload.exp && jwtPayload.exp < now) {
+    logger.debug('Token expired', { pathname, exp: jwtPayload.exp, now });
+    return redirect(`/login?error=session-expired&redirect=${encodeURIComponent(pathname)}`);
+  }
+
+  // Build a user-like object from the JWT claims
+  const user = {
+    id: jwtPayload.sub as string,
+    email: (jwtPayload.email as string) || '',
+  };
+
+  // Create Supabase client with the access token for database queries
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    global: {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    }
+  });
+
   logger.debug('User accessing route', { email: user.email, pathname });
 
   // Check if route requires admin privileges

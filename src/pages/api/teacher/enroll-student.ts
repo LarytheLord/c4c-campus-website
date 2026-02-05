@@ -1,8 +1,11 @@
 /**
- * Approved Students API
- * GET /api/teacher/approved-students?cohortId=<uuid>&search=<text>
- * Returns approved students not yet enrolled in the given cohort.
- * Uses service role key to bypass RLS on applications table.
+ * Teacher Enroll Student API
+ * POST /api/teacher/enroll-student
+ * Body: { userId: string, courseId: number, cohortId: string }
+ *
+ * Creates an enrollment record in the enrollments table on behalf of a student.
+ * Uses service role key to bypass RLS (the enrollments table only allows
+ * users to insert their own enrollments, so teachers need elevated access).
  */
 
 import type { APIRoute } from 'astro';
@@ -27,11 +30,11 @@ export const prerender = false;
 
 function checkConfiguration(): { valid: boolean; error?: string } {
   if (!supabaseUrl) {
-    console.error('[approved-students] Missing PUBLIC_SUPABASE_URL');
+    console.error('[enroll-student] Missing PUBLIC_SUPABASE_URL');
     return { valid: false, error: 'Server configuration error' };
   }
   if (!supabaseServiceKey) {
-    console.error('[approved-students] Missing SUPABASE_SERVICE_ROLE_KEY');
+    console.error('[enroll-student] Missing SUPABASE_SERVICE_ROLE_KEY');
     return { valid: false, error: 'Server configuration error' };
   }
   return { valid: true };
@@ -47,7 +50,7 @@ async function verifyTeacherOrAdminAccess(supabase: any, userId: string): Promis
   return application && (application.role === 'teacher' || application.role === 'admin');
 }
 
-export const GET: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request }) => {
   try {
     const configCheck = checkConfiguration();
     if (!configCheck.valid) {
@@ -59,9 +62,8 @@ export const GET: APIRoute = async ({ request }) => {
 
     const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
 
-    // Parse auth cookie (same pattern as admin/reviewers.ts)
+    // Parse auth cookie (same pattern as approved-students.ts)
     const cookies = request.headers.get('cookie') || '';
-    console.log('[approved-students] Cookie header length:', cookies.length, 'has auth token:', /sb-[^=]+-auth-token=/.test(cookies));
     const authCookieMatch = cookies.match(/sb-[^=]+-auth-token=([^;]+)/);
     let accessToken: string | null = null;
     let refreshToken: string | null = null;
@@ -78,7 +80,7 @@ export const GET: APIRoute = async ({ request }) => {
         accessToken = tokenData.access_token || tokenData[0];
         refreshToken = tokenData.refresh_token || tokenData[1];
       } catch (e) {
-        console.error('[approved-students] Failed to parse auth cookie', e);
+        console.error('[enroll-student] Failed to parse auth cookie', e);
       }
     }
 
@@ -89,8 +91,6 @@ export const GET: APIRoute = async ({ request }) => {
       });
     }
 
-    // Decode JWT locally instead of calling setSession (which makes a network
-    // call that can fail with ECONNRESET/ConnectTimeout in some environments)
     const jwtPayload = decodeJWTPayload(accessToken);
     if (!jwtPayload || !jwtPayload.sub) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -109,67 +109,78 @@ export const GET: APIRoute = async ({ request }) => {
       });
     }
 
-    // Parse query params
-    const url = new URL(request.url);
-    const cohortId = url.searchParams.get('cohortId');
-    const search = url.searchParams.get('search')?.trim().toLowerCase() || '';
+    // Parse request body
+    const body = await request.json();
+    const { userId, courseId, cohortId } = body;
 
-    if (!cohortId) {
-      return new Response(JSON.stringify({ error: 'cohortId parameter is required' }), {
+    if (!userId || courseId == null || !cohortId) {
+      return new Response(JSON.stringify({ error: 'userId, courseId, and cohortId are required' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    // Fetch approved students
-    const { data: approvedStudents, error: studentsError } = await supabase
-      .from('applications')
-      .select('user_id, name, email')
-      .eq('status', 'approved')
-      .or('role.eq.student,role.is.null')
-      .order('name', { ascending: true });
+    // Verify teacher owns this course
+    const { data: course, error: courseError } = await supabase
+      .from('courses')
+      .select('id, created_by')
+      .eq('id', courseId)
+      .single();
 
-    if (studentsError) {
-      console.error('[approved-students] Error fetching students:', studentsError);
-      return new Response(JSON.stringify({ error: 'Failed to fetch students' }), {
-        status: 500,
+    if (courseError || !course) {
+      return new Response(JSON.stringify({ error: 'Course not found' }), {
+        status: 404,
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    // Fetch existing enrollments for this cohort
-    const { data: enrollments, error: enrollError } = await supabase
-      .from('cohort_enrollments')
-      .select('user_id')
-      .eq('cohort_id', cohortId);
+    if (course.created_by !== user.id) {
+      return new Response(JSON.stringify({ error: 'Forbidden: You do not own this course' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Check for existing enrollment
+    const { data: existingEnrollment } = await supabase
+      .from('enrollments')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('course_id', courseId)
+      .single();
+
+    if (existingEnrollment) {
+      return new Response(JSON.stringify({ success: true, alreadyEnrolled: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Create the enrollment (service role bypasses RLS)
+    const { error: enrollError } = await supabase
+      .from('enrollments')
+      .insert([{
+        user_id: userId,
+        course_id: courseId,
+        cohort_id: cohortId,
+        status: 'active',
+      }]);
 
     if (enrollError) {
-      console.error('[approved-students] Error fetching enrollments:', enrollError);
-      return new Response(JSON.stringify({ error: 'Failed to fetch enrollments' }), {
+      console.error('[enroll-student] Error creating enrollment:', enrollError);
+      return new Response(JSON.stringify({ error: 'Failed to create enrollment' }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    const enrolledUserIds = new Set((enrollments || []).map(e => e.user_id));
-
-    // Filter out already-enrolled students and apply search
-    let students = (approvedStudents || []).filter(s => !enrolledUserIds.has(s.user_id));
-
-    if (search) {
-      students = students.filter(s =>
-        (s.name || '').toLowerCase().includes(search) ||
-        (s.email || '').toLowerCase().includes(search)
-      );
-    }
-
-    return new Response(JSON.stringify({ students }), {
+    return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
-    console.error('[approved-students] Error:', error);
+    console.error('[enroll-student] Error:', error);
     return new Response(JSON.stringify({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'
