@@ -186,9 +186,9 @@ import TeacherLayout from '../../../layouts/TeacherLayout.astro';
 
     <!-- Add Student Modal -->
     <div id="add-student-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-lg max-w-md w-full shadow-2xl">
-        <div class="p-6">
-          <div class="flex items-center justify-between mb-6">
+      <div class="bg-white rounded-lg max-w-lg w-full shadow-2xl max-h-[80vh] flex flex-col">
+        <div class="p-6 pb-0">
+          <div class="flex items-center justify-between mb-4">
             <h3 class="text-xl font-bold">Add Student to Cohort</h3>
             <button id="close-add-student-modal" class="text-text-muted hover:text-text-primary">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -197,22 +197,39 @@ import TeacherLayout from '../../../layouts/TeacherLayout.astro';
             </button>
           </div>
 
-          <form id="add-student-form" class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium mb-2">Student Email*</label>
-              <input type="email" id="student-email" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" placeholder="student@example.com" required />
-              <p class="text-xs text-text-muted mt-1">Student must have an existing account</p>
-            </div>
+          <!-- Search Input -->
+          <div class="mb-4">
+            <input type="text" id="student-search" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" placeholder="Search by name or email..." />
+          </div>
+        </div>
 
-            <div class="flex gap-3 pt-4">
-              <button type="submit" class="btn btn-primary flex-1">
-                Add Student
-              </button>
-              <button type="button" id="cancel-add-student" class="btn btn-ghost flex-1">
-                Cancel
-              </button>
-            </div>
-          </form>
+        <!-- Student List -->
+        <div class="px-6 pb-6 overflow-y-auto flex-1 min-h-0">
+          <!-- Loading State -->
+          <div id="student-list-loading" class="text-center py-8">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
+            <p class="mt-2 text-sm text-text-muted">Loading students...</p>
+          </div>
+
+          <!-- Empty State -->
+          <div id="student-list-empty" class="hidden text-center py-8">
+            <p class="text-text-muted">No approved students available to add.</p>
+          </div>
+
+          <!-- No Search Results -->
+          <div id="student-list-no-results" class="hidden text-center py-8">
+            <p class="text-text-muted">No students match your search.</p>
+          </div>
+
+          <!-- Student List Container -->
+          <div id="student-list" class="space-y-2"></div>
+        </div>
+
+        <!-- Footer -->
+        <div class="p-4 border-t">
+          <button type="button" id="cancel-add-student" class="btn btn-ghost w-full">
+            Close
+          </button>
         </div>
       </div>
     </div>
@@ -655,7 +672,7 @@ import TeacherLayout from '../../../layouts/TeacherLayout.astro';
       document.getElementById('add-student-btn')?.addEventListener('click', showAddStudentModal);
       document.getElementById('close-add-student-modal')?.addEventListener('click', closeAddStudentModal);
       document.getElementById('cancel-add-student')?.addEventListener('click', closeAddStudentModal);
-      document.getElementById('add-student-form')?.addEventListener('submit', handleAddStudent);
+      document.getElementById('student-search')?.addEventListener('input', filterStudentList);
 
       // Schedule modal
       document.getElementById('close-schedule-modal')?.addEventListener('click', closeScheduleModal);
@@ -939,63 +956,131 @@ import TeacherLayout from '../../../layouts/TeacherLayout.astro';
       badge.textContent = cohort.status.charAt(0).toUpperCase() + cohort.status.slice(1);
     }
 
-    function showAddStudentModal() {
+    let availableStudents: any[] = [];
+
+    async function showAddStudentModal() {
       document.getElementById('add-student-modal')?.classList.remove('hidden');
-      (document.getElementById('student-email') as HTMLInputElement).value = '';
+      const searchInput = document.getElementById('student-search') as HTMLInputElement;
+      if (searchInput) searchInput.value = '';
+
+      // Show loading, hide other states
+      document.getElementById('student-list-loading')?.classList.remove('hidden');
+      document.getElementById('student-list-empty')?.classList.add('hidden');
+      document.getElementById('student-list-no-results')?.classList.add('hidden');
+      const listEl = document.getElementById('student-list');
+      if (listEl) listEl.innerHTML = '';
+
+      try {
+        const response = await fetch(`/api/teacher/approved-students?cohortId=${cohortId}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch students');
+        }
+        const data = await response.json();
+        availableStudents = data.students || [];
+      } catch (err) {
+        console.error('Error loading available students:', err);
+        availableStudents = [];
+      }
+
+      document.getElementById('student-list-loading')?.classList.add('hidden');
+
+      if (availableStudents.length === 0) {
+        document.getElementById('student-list-empty')?.classList.remove('hidden');
+      } else {
+        renderStudentList(availableStudents);
+      }
+    }
+
+    function renderStudentList(students: any[]) {
+      const listEl = document.getElementById('student-list');
+      if (!listEl) return;
+
+      document.getElementById('student-list-empty')?.classList.add('hidden');
+      document.getElementById('student-list-no-results')?.classList.add('hidden');
+
+      if (students.length === 0) {
+        document.getElementById('student-list-no-results')?.classList.remove('hidden');
+        listEl.innerHTML = '';
+        return;
+      }
+
+      listEl.innerHTML = students.map(s => `
+        <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0 text-sm">
+              ${escapeHTML((s.name || '?')[0].toUpperCase())}
+            </div>
+            <div class="min-w-0">
+              <p class="text-sm font-medium truncate">${escapeHTML(s.name || 'Unknown')}</p>
+              <p class="text-xs text-text-muted truncate">${escapeHTML(s.email || '')}</p>
+            </div>
+          </div>
+          <button class="btn btn-sm btn-primary flex-shrink-0 add-student-btn" data-user-id="${escapeHTML(String(s.user_id))}" data-name="${escapeHTML(s.name || 'Student')}">
+            Add
+          </button>
+        </div>
+      `).join('');
+
+      // Attach click handlers
+      listEl.querySelectorAll('.add-student-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const userId = (btn as HTMLElement).getAttribute('data-user-id');
+          const name = (btn as HTMLElement).getAttribute('data-name');
+          if (userId) {
+            await enrollStudent(userId, name || 'Student');
+          }
+        });
+      });
+    }
+
+    function filterStudentList() {
+      const searchInput = document.getElementById('student-search') as HTMLInputElement;
+      const query = (searchInput?.value || '').toLowerCase().trim();
+
+      if (!query) {
+        renderStudentList(availableStudents);
+        return;
+      }
+
+      const filtered = availableStudents.filter(s =>
+        (s.name || '').toLowerCase().includes(query) ||
+        (s.email || '').toLowerCase().includes(query)
+      );
+      renderStudentList(filtered);
+    }
+
+    async function enrollStudent(userId: string, name: string) {
+      try {
+        const { error: enrollError } = await supabase
+          .from('cohort_enrollments')
+          .insert([{
+            cohort_id: cohortId,
+            user_id: userId,
+            status: 'active',
+            enrolled_at: new Date().toISOString()
+          }]);
+
+        if (enrollError) {
+          showNotification('Error', 'Failed to add student: ' + enrollError.message, 'error');
+          return;
+        }
+
+        showNotification('Success', `${name} has been added to the cohort!`, 'success');
+
+        // Remove student from available list and re-render
+        availableStudents = availableStudents.filter(s => s.user_id !== userId);
+        filterStudentList();
+
+        // Refresh the main students list
+        await loadStudents();
+      } catch (err) {
+        console.error('Error enrolling student:', err);
+        showNotification('Error', 'An unexpected error occurred.', 'error');
+      }
     }
 
     function closeAddStudentModal() {
       document.getElementById('add-student-modal')?.classList.add('hidden');
-    }
-
-    async function handleAddStudent(e: Event) {
-      e.preventDefault();
-
-      const email = (document.getElementById('student-email') as HTMLInputElement).value;
-
-      // Find user by email
-      const { data: userData, error: userError } = await supabase
-        .from('applications')
-        .select('user_id, name')
-        .eq('email', email)
-        .single();
-
-      if (userError || !userData) {
-        showNotification('Error', 'No user found with this email address.', 'error');
-        return;
-      }
-
-      // Check if already enrolled
-      const { data: existing } = await supabase
-        .from('cohort_enrollments')
-        .select('id')
-        .eq('cohort_id', cohortId)
-        .eq('user_id', userData.user_id)
-        .single();
-
-      if (existing) {
-        showNotification('Error', 'This student is already enrolled in this cohort.', 'error');
-        return;
-      }
-
-      // Add enrollment
-      const { error: enrollError } = await supabase
-        .from('cohort_enrollments')
-        .insert([{
-          cohort_id: cohortId,
-          user_id: userData.user_id,
-          status: 'active',
-          enrolled_at: new Date().toISOString()
-        }]);
-
-      if (enrollError) {
-        showNotification('Error', 'Failed to add student: ' + enrollError.message, 'error');
-        return;
-      }
-
-      closeAddStudentModal();
-      showNotification('Success', `${userData.name} has been added to the cohort!`, 'success');
-      await loadStudents();
     }
 
     function formatDate(dateStr: string): string {
