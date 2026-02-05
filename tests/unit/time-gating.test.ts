@@ -29,7 +29,8 @@ const createMockSupabase = () => ({
     select: vi.fn(() => ({
       eq: vi.fn(() => ({
         eq: vi.fn(() => ({
-          single: vi.fn()
+          single: vi.fn(),
+          maybeSingle: vi.fn()
         })),
         single: vi.fn()
       })),
@@ -89,7 +90,7 @@ describe('Time-Gating Utility Functions', () => {
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } })
+              maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null })
             })
           })
         })
@@ -109,7 +110,7 @@ describe('Time-Gating Utility Functions', () => {
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
+              maybeSingle: vi.fn().mockResolvedValue({
                 data: {
                   unlock_date: yesterday.toISOString().split('T')[0],
                   lock_date: null
@@ -135,7 +136,7 @@ describe('Time-Gating Utility Functions', () => {
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
+              maybeSingle: vi.fn().mockResolvedValue({
                 data: {
                   unlock_date: tomorrow.toISOString().split('T')[0],
                   lock_date: null
@@ -163,7 +164,7 @@ describe('Time-Gating Utility Functions', () => {
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
+              maybeSingle: vi.fn().mockResolvedValue({
                 data: {
                   unlock_date: yesterday.toISOString().split('T')[0],
                   lock_date: tomorrow.toISOString().split('T')[0]
@@ -191,7 +192,7 @@ describe('Time-Gating Utility Functions', () => {
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
+              maybeSingle: vi.fn().mockResolvedValue({
                 data: {
                   unlock_date: twoDaysAgo.toISOString().split('T')[0],
                   lock_date: yesterday.toISOString().split('T')[0]
@@ -216,7 +217,7 @@ describe('Time-Gating Utility Functions', () => {
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
+              maybeSingle: vi.fn().mockResolvedValue({
                 data: {
                   unlock_date: today.toISOString().split('T')[0],
                   lock_date: null
@@ -247,7 +248,7 @@ describe('Time-Gating Utility Functions', () => {
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
+              maybeSingle: vi.fn().mockResolvedValue({
                 data: {
                   unlock_date: unlockDate.toISOString().split('T')[0]
                 },
@@ -269,9 +270,9 @@ describe('Time-Gating Utility Functions', () => {
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
+              maybeSingle: vi.fn().mockResolvedValue({
                 data: null,
-                error: { code: 'PGRST116' }
+                error: null
               })
             })
           })
@@ -309,7 +310,7 @@ describe('Time-Gating Utility Functions', () => {
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
+              maybeSingle: vi.fn().mockResolvedValue({
                 data: { unlock_date: dateString },
                 error: null
               })
