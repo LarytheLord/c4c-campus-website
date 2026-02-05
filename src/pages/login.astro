@@ -90,10 +90,11 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       const params = new URLSearchParams(window.location.search);
       
       // Check current session state
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       
-      // If we were redirected due to session expiry AND we don't have a valid session, clear it and show message
-      if (params.get('error') === 'session-expired' && (sessionError || !session)) {
+      // If we were redirected due to session expiry, always clear local session and show message
+      // (local session may appear valid but be expired server-side, causing redirect loops)
+      if (params.get('error') === 'session-expired') {
         await supabase.auth.signOut();
         const errorDiv = document.getElementById('error-message');
         if (errorDiv) {

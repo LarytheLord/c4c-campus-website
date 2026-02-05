@@ -459,7 +459,7 @@ describe('Analytics API Authentication - Teacher Analytics', () => {
   describe('GET /api/teacher/cohort-analytics', () => {
     it('should reject unauthenticated requests', async () => {
       const response = await fetch(
-        `${API_URL}/api/teacher/cohort-analytics?cohortId=1`,
+        `${API_URL}/api/teacher/cohort-analytics?cohort_id=1`,
         { method: 'GET' }
       );
 
@@ -468,7 +468,7 @@ describe('Analytics API Authentication - Teacher Analytics', () => {
 
     it('should require teacher/admin role', async () => {
       const response = await fetch(
-        `${API_URL}/api/teacher/cohort-analytics?cohortId=1`,
+        `${API_URL}/api/teacher/cohort-analytics?cohort_id=1`,
         {
           method: 'GET',
           headers: {
@@ -480,9 +480,9 @@ describe('Analytics API Authentication - Teacher Analytics', () => {
       expect(response.status).toBe(403);
     });
 
-    itWithToken(teacherToken)('should accept teacher requests with cohortId', async () => {
+    itWithToken(teacherToken)('should accept teacher requests with cohort_id', async () => {
       const response = await fetch(
-        `${API_URL}/api/teacher/cohort-analytics?cohortId=1`,
+        `${API_URL}/api/teacher/cohort-analytics?cohort_id=1`,
         {
           method: 'GET',
           headers: {
@@ -494,7 +494,7 @@ describe('Analytics API Authentication - Teacher Analytics', () => {
       expect([200, 404, 500]).toContain(response.status);
     });
 
-    itWithToken(teacherToken)('should require cohortId parameter', async () => {
+    itWithToken(teacherToken)('should require cohort_id parameter', async () => {
       const response = await fetch(
         `${API_URL}/api/teacher/cohort-analytics`,
         {
@@ -507,12 +507,12 @@ describe('Analytics API Authentication - Teacher Analytics', () => {
 
       expect(response.status).toBe(400);
       const data = await response.json();
-      expect(data.error).toContain('cohortId');
+      expect(data.error).toContain('cohort_id');
     });
 
     itWithToken(adminToken)('should accept admin requests', async () => {
       const response = await fetch(
-        `${API_URL}/api/teacher/cohort-analytics?cohortId=1`,
+        `${API_URL}/api/teacher/cohort-analytics?cohort_id=1`,
         {
           method: 'GET',
           headers: {

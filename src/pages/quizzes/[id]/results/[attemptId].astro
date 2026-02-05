@@ -66,13 +66,9 @@ export const prerender = false;
 </BaseLayout>
 
 <script>
-  import { createClient } from '@supabase/supabase-js';
+  import { supabase } from '@/lib/supabase';
   import { showToast } from '@/lib/notifications';
   import type { Quiz, QuizAttempt } from '@/types/quiz';
-
-  const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
-  const supabase = createClient(supabaseUrl!, supabaseAnonKey!);
 
   let quiz: Quiz | null = null;
   let attempt: QuizAttempt | null = null;

@@ -8,7 +8,6 @@
  * - Average completion rate
  */
 
-import React from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,

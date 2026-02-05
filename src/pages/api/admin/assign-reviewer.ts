@@ -5,101 +5,26 @@
  */
 
 import type { APIRoute } from 'astro';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
+import {
+  authenticateRequest,
+  verifyAdminAccess,
+  createServiceClient,
+} from '../../../lib/auth';
 
 export const prerender = false;
-
-function checkConfiguration(): { valid: boolean; error?: string } {
-  if (!supabaseUrl) {
-    console.error('[assign-reviewer] Missing PUBLIC_SUPABASE_URL');
-    return { valid: false, error: 'Server configuration error' };
-  }
-  if (!supabaseServiceKey) {
-    console.error('[assign-reviewer] Missing SUPABASE_SERVICE_ROLE_KEY');
-    return { valid: false, error: 'Server configuration error' };
-  }
-  return { valid: true };
-}
-
-async function verifyAdminAccess(supabase: any, userId: string) {
-  const { data: application } = await supabase
-    .from('applications')
-    .select('role')
-    .eq('user_id', userId)
-    .single();
-
-  return application && application.role === 'admin';
-}
 
 // GET - Get current assignment for an application
 export const GET: APIRoute = async ({ request, url }) => {
   try {
-    // Configuration sanity check
-    const configCheck = checkConfiguration();
-    if (!configCheck.valid) {
-      return new Response(JSON.stringify({ error: configCheck.error }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
+    // Authenticate: verify JWT signature + extract user
+    const authResult = await authenticateRequest(request);
+    if (authResult instanceof Response) return authResult;
+    const { user } = authResult;
 
-    const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
-
-    const cookies = request.headers.get('cookie') || '';
-    const authCookieMatch = cookies.match(/sb-[^=]+-auth-token=([^;]+)/);
-    let accessToken: string | null = null;
-    let refreshToken: string | null = null;
-
-    if (authCookieMatch) {
-      try {
-        const decoded = decodeURIComponent(authCookieMatch[1]);
-        let tokenData;
-        try {
-          tokenData = JSON.parse(decoded);
-        } catch {
-          tokenData = JSON.parse(atob(decoded));
-        }
-        accessToken = tokenData.access_token || tokenData[0];
-        refreshToken = tokenData.refresh_token || tokenData[1];
-      } catch (e) {
-        console.error('[assign-reviewer GET] Failed to parse auth cookie', e);
-      }
-    }
-
-    if (!accessToken) {
-      console.warn('[assign-reviewer GET] Auth failed: No access token found in cookies');
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    const { data: { session }, error: authError } = await supabase.auth.setSession({
-      access_token: accessToken,
-      refresh_token: refreshToken || ''
-    });
-
-    if (authError || !session) {
-      console.warn('[assign-reviewer GET] Auth failed: setSession error', {
-        errorCode: authError?.code,
-        errorMessage: authError?.message
-      });
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    const user = session.user;
+    const supabase = createServiceClient();
 
     const isAdmin = await verifyAdminAccess(supabase, user.id);
     if (!isAdmin) {
-      console.warn('[assign-reviewer GET] Auth failed: Admin role check failed', {
-        userId: user.id
-      });
       return new Response(JSON.stringify({ error: 'Forbidden: Admin access required' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json' }
@@ -166,69 +91,15 @@ export const GET: APIRoute = async ({ request, url }) => {
 // POST - Assign/reassign reviewer(s) to application(s)
 export const POST: APIRoute = async ({ request }) => {
   try {
-    // Configuration sanity check
-    const configCheck = checkConfiguration();
-    if (!configCheck.valid) {
-      return new Response(JSON.stringify({ error: configCheck.error }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
+    // Authenticate: verify JWT signature + extract user
+    const authResult = await authenticateRequest(request);
+    if (authResult instanceof Response) return authResult;
+    const { user } = authResult;
 
-    const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
-
-    const cookies = request.headers.get('cookie') || '';
-    const authCookieMatch = cookies.match(/sb-[^=]+-auth-token=([^;]+)/);
-    let accessToken: string | null = null;
-    let refreshToken: string | null = null;
-
-    if (authCookieMatch) {
-      try {
-        const decoded = decodeURIComponent(authCookieMatch[1]);
-        let tokenData;
-        try {
-          tokenData = JSON.parse(decoded);
-        } catch {
-          tokenData = JSON.parse(atob(decoded));
-        }
-        accessToken = tokenData.access_token || tokenData[0];
-        refreshToken = tokenData.refresh_token || tokenData[1];
-      } catch (e) {
-        console.error('[assign-reviewer POST] Failed to parse auth cookie', e);
-      }
-    }
-
-    if (!accessToken) {
-      console.warn('[assign-reviewer POST] Auth failed: No access token found in cookies');
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    const { data: { session }, error: authError } = await supabase.auth.setSession({
-      access_token: accessToken,
-      refresh_token: refreshToken || ''
-    });
-
-    if (authError || !session) {
-      console.warn('[assign-reviewer POST] Auth failed: setSession error', {
-        errorCode: authError?.code,
-        errorMessage: authError?.message
-      });
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    const user = session.user;
+    const supabase = createServiceClient();
 
     const isAdmin = await verifyAdminAccess(supabase, user.id);
     if (!isAdmin) {
-      console.warn('[assign-reviewer POST] Auth failed: Admin role check failed', {
-        userId: user.id
-      });
       return new Response(JSON.stringify({ error: 'Forbidden: Admin access required' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json' }

@@ -93,10 +93,17 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
         <p class="text-text-muted mb-4">This cohort doesn't have any student data yet.</p>
       </div>
     </div>
-  </div>
+
+  <!-- Vite React refresh preamble stub: Astro doesn't inject it for pages
+       that only use React via <script> tags (no client:* directives) -->
+  <script is:inline>
+    window.$RefreshReg$ = window.$RefreshReg$ || (() => {});
+    window.$RefreshSig$ = window.$RefreshSig$ || ((type) => type);
+    window.__vite_plugin_react_preamble_installed__ = true;
+  </script>
 
   <script>
-    import { createClient } from '@supabase/supabase-js';
+    import { supabase } from '@/lib/supabase';
     import { exportToCSV } from '../../lib/utils';
     import CohortStats from '../../components/CohortStats';
     import ProgressChart from '../../components/ProgressChart';
@@ -104,10 +111,6 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
     import Leaderboard from '../../components/Leaderboard';
     import { createElement } from 'react';
     import { createRoot } from 'react-dom/client';
-
-    const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
-    const supabase = createClient(supabaseUrl!, supabaseAnonKey!);
 
     let currentUser: any = null;
     let cohorts: any[] = [];
@@ -122,6 +125,7 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
     let leaderboardRoot: any = null;
 
     async function init() {
+      try {
       // Check authentication
       const { data: { user } } = await supabase.auth.getUser();
 
@@ -154,6 +158,13 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
 
       setupEventListeners();
       setupAutoRefresh();
+      } catch (err) {
+        console.error('Error initializing progress dashboard:', err);
+        // Always hide loading state to prevent infinite spinner
+        document.getElementById('loading-state')?.classList.add('hidden');
+        document.getElementById('main-content')?.classList.remove('hidden');
+        document.getElementById('no-data')?.classList.remove('hidden');
+      }
     }
 
     async function loadCohorts() {
@@ -202,7 +213,7 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
         renderComponents(null, true);
 
         // Fetch analytics data from API
-        const response = await fetch(`/api/teacher/cohort-analytics?cohortId=${cohortId}`);
+        const response = await fetch(`/api/teacher/cohort-analytics?cohort_id=${cohortId}`, { cache: 'no-store' });
 
         if (!response.ok) {
           throw new Error('Failed to fetch analytics data');

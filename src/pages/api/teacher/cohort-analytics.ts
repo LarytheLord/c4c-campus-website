@@ -1,6 +1,6 @@
 /**
  * Teacher Cohort Analytics API
- * GET /api/teacher/cohort-analytics?cohortId=123
+ * GET /api/teacher/cohort-analytics?cohort_id=123
  *
  * Returns comprehensive analytics for a cohort including:
  * - Overall statistics (students, completion rates, etc.)
@@ -11,63 +11,49 @@
  */
 
 import type { APIRoute } from 'astro';
-import { createClient } from '@supabase/supabase-js';
 import type {
   CohortAnalytics,
   StudentWithProgress,
   ProgressOverTime,
   LeaderboardEntry
 } from '../../../types';
+import {
+  authenticateRequest,
+  verifyTeacherOrAdminAccess,
+  createServiceClient,
+} from '../../../lib/auth';
 
-const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
-const supabaseKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+export const prerender = false;
 
 export const GET: APIRoute = async ({ request, url }) => {
   try {
-    // Create Supabase client with auth header
-    const supabase = createClient(supabaseUrl!, supabaseKey!, {
-      global: {
-        headers: {
-          Authorization: request.headers.get('Authorization') || ''
-        }
-      }
-    });
+    // Authenticate: verify JWT signature + extract user
+    const authResult = await authenticateRequest(request);
+    if (authResult instanceof Response) return authResult;
+    const { user } = authResult;
 
-    // Verify user is authenticated and is a teacher
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Unauthorized: Authorization header required' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized: Invalid authentication token' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
+    const supabase = createServiceClient();
 
     // Verify teacher role
-    const { data: application } = await supabase
-      .from('applications')
-      .select('role')
-      .eq('user_id', user.id)
-      .single();
-
-    if (!application || (application.role !== 'teacher' && application.role !== 'admin')) {
+    const isTeacherOrAdmin = await verifyTeacherOrAdminAccess(supabase, user.id);
+    if (!isTeacherOrAdmin) {
       return new Response(JSON.stringify({ error: 'Forbidden: Teacher access required' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
+    // Need the role for admin bypass check below
+    const { data: application } = await supabase
+      .from('applications')
+      .select('role')
+      .eq('user_id', user.id)
+      .single();
+
     // Get cohort ID from query params
-    const cohortId = url.searchParams.get('cohortId');
+    const cohortId = url.searchParams.get('cohort_id');
     if (!cohortId) {
-      return new Response(JSON.stringify({ error: 'cohortId parameter required' }), {
+      return new Response(JSON.stringify({ error: 'cohort_id parameter required' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });
@@ -76,7 +62,7 @@ export const GET: APIRoute = async ({ request, url }) => {
     // Verify teacher owns this cohort
     const { data: cohort, error: cohortError } = await supabase
       .from('cohorts')
-      .select('*, courses!inner(name, created_by)')
+      .select('*, courses!inner(title, created_by)')
       .eq('id', cohortId)
       .single();
 
@@ -87,7 +73,7 @@ export const GET: APIRoute = async ({ request, url }) => {
       });
     }
 
-    if (cohort.courses.created_by !== user.id && application.role !== 'admin') {
+    if (cohort.courses.created_by !== user.id && application?.role !== 'admin') {
       return new Response(JSON.stringify({ error: 'Forbidden: Not your cohort' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json' }
@@ -112,17 +98,10 @@ export const GET: APIRoute = async ({ request, url }) => {
       totalLessons = lessons?.length || 0;
     }
 
-    // Get all enrollments for this cohort with student info
+    // Get all enrollments for this cohort (no join — cohort_enrollments has no FK to applications)
     const { data: enrollments, error: enrollError } = await supabase
       .from('cohort_enrollments')
-      .select(`
-        user_id,
-        enrolled_at,
-        status,
-        completed_lessons,
-        last_activity_at,
-        applications!inner(name, email)
-      `)
+      .select('user_id, enrolled_at, status, completed_lessons, last_activity_at')
       .eq('cohort_id', cohortId);
 
     if (enrollError) {
@@ -134,10 +113,25 @@ export const GET: APIRoute = async ({ request, url }) => {
     }
 
     const studentsList = enrollments || [];
+    const userIds = studentsList.map(e => e.user_id);
+
+    // Fetch student names/emails from applications table separately
+    let appsByUserId: Record<string, { name: string; email: string }> = {};
+    if (userIds.length > 0) {
+      const { data: apps } = await supabase
+        .from('applications')
+        .select('user_id, name, email')
+        .in('user_id', userIds);
+
+      if (apps) {
+        for (const a of apps) {
+          appsByUserId[a.user_id] = { name: a.name, email: a.email };
+        }
+      }
+    }
 
     // Get lesson progress for all students in this cohort
     // Include lesson_id, completed, completed_at, last_accessed_at for accurate cohort-scoped aggregation
-    const userIds = studentsList.map(e => e.user_id);
     const { data: progressData } = await supabase
       .from('lesson_progress')
       .select('user_id, lesson_id, time_spent_seconds, completed, completed_at, last_accessed_at')
@@ -186,8 +180,8 @@ export const GET: APIRoute = async ({ request, url }) => {
 
       return {
         user_id: enrollment.user_id,
-        name: enrollment.applications.name,
-        email: enrollment.applications.email,
+        name: appsByUserId[enrollment.user_id]?.name || 'Unknown',
+        email: appsByUserId[enrollment.user_id]?.email || '',
         enrolled_at: enrollment.enrolled_at,
         status: enrollment.status,
         completed_lessons: completedLessons,

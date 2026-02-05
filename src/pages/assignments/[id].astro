@@ -80,7 +80,7 @@ export const prerender = false;
   </div>
 
   <script>
-    import { createClient } from '@supabase/supabase-js';
+    import { supabase } from '@/lib/supabase';
     import type { AssignmentWithCourse } from '@/types/assignment';
     import { createRoot } from 'react-dom/client';
     import { createElement } from 'react';
@@ -90,11 +90,6 @@ export const prerender = false;
     import FileUploader from '@/components/student/FileUploader';
     // Note: SubmissionHistory component available but not currently rendered
     import { getAssignmentStatus, getStatusBadgeHtml, type AssignmentStatus } from '@/lib/assignment-status';
-
-    const supabase = createClient(
-      import.meta.env.PUBLIC_SUPABASE_URL,
-      import.meta.env.PUBLIC_SUPABASE_ANON_KEY
-    );
 
     const assignmentId = window.location.pathname.split('/')[2];
     let assignment: AssignmentWithCourse | null = null;

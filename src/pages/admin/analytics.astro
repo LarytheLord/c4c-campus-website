@@ -580,9 +580,23 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     }
 
     // Initialize
-    initAnalytics();
+    initAnalytics().catch(error => {
+      console.error('Failed to initialize analytics:', error);
+      document.getElementById('loading-state')?.classList.add('hidden');
+      // Show a user-friendly error instead of infinite spinner
+      const content = document.getElementById('analytics-content');
+      if (content) {
+        content.classList.remove('hidden');
+        content.innerHTML = `
+          <div class="container mx-auto px-4 py-12">
+            <div class="max-w-md mx-auto text-center card">
+              <h2 class="text-2xl font-bold mb-4">Failed to Load Analytics</h2>
+              <p class="text-text-muted mb-6">An error occurred while loading the analytics dashboard. Please try refreshing the page.</p>
+              <button onclick="window.location.reload()" class="btn btn-primary">Refresh Page</button>
+            </div>
+          </div>
+        `;
+      }
+    });
   </script>
-
-  <!-- Chart.js CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </AdminLayout>

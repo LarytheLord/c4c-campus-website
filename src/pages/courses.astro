@@ -4,8 +4,8 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
 
 <BaseLayout title="Courses - C4C Campus" hideHeader={true} hideFooter={true}>
   <div class="min-h-screen bg-background">
-    <!-- Internal Header (same as dashboard) -->
-    <div class="sticky top-0 z-50 bg-white border-b border-border">
+    <!-- Internal Header -->
+    <header class="sticky top-0 z-50 bg-white/95 backdrop-blur-sm shadow-sm">
       <div class="container mx-auto px-4 py-4">
         <div class="flex items-center justify-between gap-4">
           <div class="flex items-center gap-4 flex-1">
@@ -13,7 +13,7 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
               <img src="/logo.jpeg" alt="C4C Campus" class="h-10 w-10 rounded-lg" />
             </a>
             <div>
-              <h1 class="text-xl sm:text-2xl font-bold">Browse Courses</h1>
+              <h1 class="text-xl sm:text-2xl font-bold text-text">Browse Courses</h1>
               <p class="text-text-muted text-sm" id="welcome-text">Welcome back!</p>
             </div>
           </div>
@@ -22,7 +22,7 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
             <a href="/dashboard" class="hidden sm:block btn btn-ghost btn-sm">Dashboard</a>
 
             <!-- Language Selector -->
-            <select id="language-selector" class="hidden sm:block border border-border rounded-lg px-3 py-2 text-sm bg-background">
+            <select id="language-selector" class="notranslate hidden sm:block border border-border rounded-lg px-3 py-2 text-sm bg-background" translate="no">
               <option value="">Language</option>
               <option value="hi">हिन्दी</option>
               <option value="ta">தமிழ்</option>
@@ -49,7 +49,8 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
           </div>
         </div>
       </div>
-    </div>
+      <div class="h-0.5 bg-gradient-to-r from-primary/50 via-primary to-primary/50"></div>
+    </header>
 
     <!-- Main Content -->
     <div class="container mx-auto px-4 py-8">
@@ -91,7 +92,7 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
   </div>
 </BaseLayout>
 
-<style>
+<style is:global>
   .tab-btn {
     padding: 0.75rem 1rem;
     font-weight: 500;
@@ -101,12 +102,12 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
   }
 
   .tab-btn:hover {
-    color: hsl(0 0% 10%);
+    color: hsl(var(--primary));
   }
 
   .tab-btn.active {
-    color: hsl(300 100% 35%);
-    border-bottom-color: hsl(300 100% 35%);
+    color: hsl(var(--primary));
+    border-bottom-color: hsl(var(--primary));
   }
 
   .filter-chip {
@@ -120,55 +121,35 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
   }
 
   .filter-chip:hover {
-    background: hsl(300 20% 95%);
-    border-color: hsl(300 100% 35%);
+    background: hsl(var(--primary) / 0.08);
+    border-color: hsl(var(--primary));
+    color: hsl(var(--primary));
   }
 
   .filter-chip.active {
-    background: hsl(300 100% 35%);
+    background: hsl(var(--primary-dark));
     color: white !important;
-    border-color: hsl(300 100% 35%);
+    border-color: hsl(var(--primary-dark));
   }
 
   .course-card-wrapper {
-    border: 2px solid var(--border);
-    border-radius: 0.5rem;
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
     overflow: hidden;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.2s ease;
     cursor: pointer;
-    background: var(--surface);
+    background: white;
     color: var(--text-primary);
-    position: relative;
-  }
-
-  .course-card-wrapper::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, rgba(255, 0, 255, 0.05), transparent);
-    opacity: 0;
-    transition: opacity 0.3s;
-    pointer-events: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   }
 
   .course-card-wrapper:hover {
-    border-color: #FF00FF;
-    box-shadow: 0 8px 24px rgba(255, 0, 255, 0.15), 0 4px 12px rgba(0, 0, 0, 0.1);
-    transform: translateY(-4px);
-  }
-
-  .course-card-wrapper:hover::after {
-    opacity: 1;
-  }
-
-  .course-card-wrapper:active {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
     transform: translateY(-2px);
   }
 
-  /* Fix text selection within cards */
-  .course-card-wrapper ::selection {
-    background: rgba(59, 130, 246, 0.2);
-    color: var(--text-primary);
+  .course-card-wrapper:active {
+    transform: translateY(0);
   }
 
   .course-thumbnail {
@@ -179,18 +160,18 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
   }
 
   .course-content {
-    padding: 1.5rem;
+    padding: 20px;
   }
 
   .course-title {
     font-size: 1.25rem;
     font-weight: 600;
     margin-bottom: 0.5rem;
-    color: #1f2937 !important; /* Force dark text */
+    color: var(--text-primary);
   }
 
   .course-description {
-    color: #6b7280 !important; /* Force muted dark text */
+    color: var(--text-secondary);
     font-size: 0.875rem;
     margin-bottom: 1rem;
     display: -webkit-box;
@@ -208,9 +189,11 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
 
   .meta-tag {
     padding: 0.25rem 0.75rem;
-    border-radius: 0.25rem;
-    background: rgba(59, 130, 246, 0.1);
-    color: #3b82f6 !important; /* Force blue text */
+    border-radius: 9999px;
+    background: #F3F4F6;
+    color: #374151;
+    font-weight: 500;
+    font-size: 0.8125rem;
   }
 
   .enrolled-badge {
@@ -218,10 +201,11 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
     align-items: center;
     gap: 0.25rem;
     padding: 0.25rem 0.75rem;
-    border-radius: 0.25rem;
-    background: rgba(34, 197, 94, 0.1);
-    color: rgb(34, 197, 94) !important; /* Force green text */
+    border-radius: 9999px;
+    background: hsl(var(--success) / 0.1);
+    color: hsl(var(--success));
     font-size: 0.875rem;
+    font-weight: 500;
     margin-top: 0.5rem;
   }
 
@@ -232,7 +216,7 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
     margin-top: 0.75rem;
     font-size: 0.875rem;
     font-weight: 500;
-    color: #FF00FF;
+    color: hsl(var(--primary));
     text-decoration: none;
     transition: gap 0.2s;
   }
@@ -245,19 +229,19 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
     transition: transform 0.2s;
   }
 
+  .course-card-wrapper:hover .view-details-link {
+    color: hsl(var(--primary-dark));
+  }
+
   .course-card-wrapper:hover .view-details-arrow {
     transform: translateX(4px);
   }
 </style>
 
 <script>
-  import { createClient } from '@supabase/supabase-js';
+  import { supabase } from '@/lib/supabase';
   import { showToast, setButtonLoading, dismissToast } from '@/lib/notifications';
   import { escapeHTML } from '@/lib/security';
-
-  const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
-  const supabase = createClient(supabaseUrl!, supabaseAnonKey!);
 
   let allCourses: any[] = [];
   let enrollments: Set<number> = new Set();

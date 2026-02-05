@@ -5,6 +5,7 @@
 
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
+import { verifyJWT, extractAccessToken } from '../../../lib/auth';
 
 export const prerender = false;
 
@@ -14,12 +15,9 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY!;
 /**
  * GET - List all certificates for the authenticated user
  */
-export const GET: APIRoute = async ({ cookies }) => {
+export const GET: APIRoute = async ({ request }) => {
   try {
-    // Get tokens from cookies (server-side auth)
-    const accessToken = cookies.get('sb-access-token')?.value;
-    const refreshToken = cookies.get('sb-refresh-token')?.value;
-
+    const accessToken = extractAccessToken(request);
     if (!accessToken) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized: Authentication required' }),
@@ -27,22 +25,45 @@ export const GET: APIRoute = async ({ cookies }) => {
       );
     }
 
-    // Create Supabase client and set session
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    // Verify JWT signature (defense-in-depth; PostgREST also validates via anon key)
+    let userId: string;
+    const jwtPayload = await verifyJWT(accessToken);
 
-    const { data: { session }, error: sessionError } = await supabase.auth.setSession({
-      access_token: accessToken,
-      refresh_token: refreshToken || '',
-    });
-
-    if (sessionError || !session) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized: Invalid session' }),
-        { status: 401, headers: { 'Content-Type': 'application/json' } }
-      );
+    if (jwtPayload) {
+      userId = jwtPayload.sub;
+    } else {
+      // verifyJWT returned null — fall back to local decode since this route
+      // uses an anon-key client (PostgREST validates the JWT on every DB query)
+      try {
+        const parts = accessToken.split('.');
+        if (parts.length !== 3) {
+          return new Response(
+            JSON.stringify({ error: 'Unauthorized: Invalid session' }),
+            { status: 401, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        const payload = JSON.parse(Buffer.from(parts[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString());
+        if (!payload.sub) {
+          return new Response(
+            JSON.stringify({ error: 'Unauthorized: Invalid session' }),
+            { status: 401, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        userId = payload.sub;
+      } catch {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized: Invalid session' }),
+          { status: 401, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
-    const userId = session.user.id;
+    // Create Supabase client with the access token for RLS
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      }
+    });
 
     // Fetch certificates for the user
     // Schema: certificates table has fields as defined in schema.sql
