@@ -37,7 +37,7 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
       <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <div class="card">
           <div class="flex items-center gap-3">
-            <div class="p-3 bg-primary/10 rounded-lg">
+            <div class="p-3 bg-gray-100 rounded-lg">
               <span class="text-2xl">📚</span>
             </div>
             <div>
@@ -48,7 +48,7 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
         </div>
         <div class="card">
           <div class="flex items-center gap-3">
-            <div class="p-3 bg-green-500/10 rounded-lg">
+            <div class="p-3 bg-gray-100 rounded-lg">
               <span class="text-2xl">✅</span>
             </div>
             <div>
@@ -59,7 +59,7 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
         </div>
         <div class="card">
           <div class="flex items-center gap-3">
-            <div class="p-3 bg-blue-500/10 rounded-lg">
+            <div class="p-3 bg-gray-100 rounded-lg">
               <span class="text-2xl">👥</span>
             </div>
             <div>
@@ -70,7 +70,7 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
         </div>
         <div class="card">
           <div class="flex items-center gap-3">
-            <div class="p-3 bg-orange-500/10 rounded-lg">
+            <div class="p-3 bg-gray-100 rounded-lg">
               <span class="text-2xl">📝</span>
             </div>
             <div>
@@ -623,16 +623,16 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
         throw new Error('Page structure error: courses grid not found');
       }
       grid.innerHTML = courses.map(course => `
-        <div class="card hover:shadow-lg transition-shadow">
+        <div class="card card-interactive">
           <div class="flex justify-between items-start mb-3">
             <h3 class="text-lg font-bold">${escapeHTML(course.title)}</h3>
-            ${!course.is_published ? '<span class="text-xs px-2 py-1 bg-orange-500/10 text-orange-500 rounded">Draft</span>' : '<span class="text-xs px-2 py-1 bg-green-500/10 text-green-500 rounded">Published</span>'}
+            ${!course.is_published ? '<span class="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-50 text-amber-600">Draft</span>' : '<span class="text-xs font-medium px-2.5 py-1 rounded-full bg-green-50 text-green-600">Published</span>'}
           </div>
           <p class="text-sm text-text-muted mb-3 line-clamp-2">${escapeHTML(course.description || 'No description')}</p>
-          <div class="flex items-center gap-2 text-xs text-text-muted mb-4">
-            <span class="px-2 py-1 bg-primary/10 rounded">${escapeHTML(formatTrack(course.track))}</span>
-            <span class="px-2 py-1 bg-primary/10 rounded">${escapeHTML(formatDifficulty(course.difficulty))}</span>
-            ${course.default_duration_weeks ? `<span>${course.default_duration_weeks} weeks</span>` : ''}
+          <div class="flex items-center gap-2 text-xs mb-4">
+            <span class="text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">${escapeHTML(formatTrack(course.track))}</span>
+            <span class="text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">${escapeHTML(formatDifficulty(course.difficulty))}</span>
+            ${course.default_duration_weeks ? `<span class="text-text-muted">${course.default_duration_weeks} weeks</span>` : ''}
           </div>
           <div class="flex gap-2">
             <button class="btn btn-sm btn-primary flex-1 edit-course-tab" data-id="${escapeHTML(String(course.id))}">Edit</button>
@@ -1397,12 +1397,12 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
 
     function getCohortStatusColor(status: string): string {
       const colors: Record<string, string> = {
-        'upcoming': 'bg-blue-500/10 text-blue-500',
-        'active': 'bg-green-500/10 text-green-500',
-        'completed': 'bg-gray-500/10 text-gray-500',
-        'archived': 'bg-orange-500/10 text-orange-500'
+        'upcoming': 'badge',
+        'active': 'badge-success',
+        'completed': 'badge',
+        'archived': 'badge'
       };
-      return colors[status] || 'bg-gray-500/10 text-gray-500';
+      return colors[status] || 'badge';
     }
 
     // Initialize

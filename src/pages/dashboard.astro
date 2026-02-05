@@ -5,7 +5,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 <BaseLayout title="Student Dashboard - C4C Campus" hideHeader={true} hideFooter={true}>
   <div class="min-h-screen bg-background">
     <!-- Dashboard Header -->
-    <div class="sticky top-0 z-50 bg-white border-b border-border">
+    <header class="sticky top-0 z-50 bg-white/95 backdrop-blur-sm shadow-sm">
       <div class="container mx-auto px-4 py-4">
         <div class="flex items-center justify-between gap-4">
           <div class="flex items-center gap-4 flex-1">
@@ -13,7 +13,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
               <img src="/logo.jpeg" alt="C4C Campus" class="h-10 w-10 rounded-lg" />
             </a>
             <div>
-              <h1 class="text-xl sm:text-2xl font-bold">Student Dashboard</h1>
+              <h1 class="text-xl sm:text-2xl font-bold text-text">Student Dashboard</h1>
               <p class="text-text-muted text-sm" id="welcome-text">Welcome back!</p>
             </div>
           </div>
@@ -31,7 +31,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
               <option value="bn">বাংলা</option>
               <option value="mr">मराठी</option>
               <option value="gu">ગુજરાતી</option>
-              <option value="ml">മലയാളം</option>
+              <option value="ml">മലయാളം</option>
               <option value="pa">ਪੰਜਾਬੀ</option>
               <option value="es">Español</option>
               <option value="fr">Français</option>
@@ -49,7 +49,8 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           </div>
         </div>
       </div>
-    </div>
+      <div class="h-0.5 bg-gradient-to-r from-primary/50 via-primary to-primary/50"></div>
+    </header>
 
     <!-- Loading State -->
     <div id="loading-state" class="container mx-auto px-4 py-12">
@@ -65,15 +66,15 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         <!-- Main Content -->
         <div>
           <!-- Welcome Message -->
-          <div class="card mb-6">
+          <div class="mb-6">
             <h2 class="text-2xl font-bold mb-2">Welcome to C4C Campus!</h2>
             <p class="text-text-muted">Your learning hub for courses, progress tracking, and workflow automation.</p>
           </div>
 
           <!-- My Courses Section -->
-          <div class="card mb-6">
+          <div class="mb-6">
             <div class="flex items-center justify-between mb-4">
-              <h2 class="text-xl font-bold">📚 My Courses</h2>
+              <h2 class="text-xl font-bold">My Courses</h2>
               <a href="/courses" class="btn btn-ghost btn-sm">View All →</a>
             </div>
             <div id="courses-loading" class="text-center py-8">
@@ -93,7 +94,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div class="card">
               <div class="flex items-center gap-3">
-                <div class="p-3 bg-primary/10 rounded-lg">
+                <div class="p-3 bg-gray-100 rounded-lg">
                   <span class="text-2xl">📚</span>
                 </div>
                 <div>
@@ -104,7 +105,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             </div>
             <div class="card">
               <div class="flex items-center gap-3">
-                <div class="p-3 bg-green-500/10 rounded-lg">
+                <div class="p-3 bg-gray-100 rounded-lg">
                   <span class="text-2xl">✅</span>
                 </div>
                 <div>
@@ -115,7 +116,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             </div>
             <div class="card">
               <div class="flex items-center gap-3">
-                <div class="p-3 bg-blue-500/10 rounded-lg">
+                <div class="p-3 bg-gray-100 rounded-lg">
                   <span class="text-2xl">⏱️</span>
                 </div>
                 <div>
@@ -334,9 +335,9 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           const formattedTrack = course.track ? formatTrackName(course.track) : '';
 
           return `
-            <a href="/courses/${escapeHTML(course.slug)}" class="block border border-border rounded-lg p-4 hover:bg-surface-hover transition-colors">
+            <a href="/courses/${escapeHTML(course.slug)}" class="card card-interactive block p-4">
               <div class="flex items-start gap-4">
-                ${course.thumbnail_url ? `<img src="${escapeHTML(course.thumbnail_url)}" alt="${escapeHTML(course.title)}" class="w-20 h-20 rounded-lg object-cover" />` : ''}
+                ${course.thumbnail_url ? `<img src="${escapeHTML(course.thumbnail_url)}" alt="${escapeHTML(course.title)}" class="w-20 h-20 rounded-lg object-cover flex-shrink-0" />` : ''}
                 <div class="flex-1">
                   <h4 class="font-semibold text-lg">${escapeHTML(course.title)}</h4>
                   <p class="text-sm text-text-muted mt-1">${escapeHTML(course.description || '')}</p>
@@ -348,14 +349,14 @@ import BaseLayout from '../layouts/BaseLayout.astro';
                       <span>${progress.percentage}% complete</span>
                     </div>
                     <div class="w-full bg-gray-200 rounded-full h-2">
-                      <div class="bg-fuchsia-500 h-2 rounded-full transition-all" style="width: ${progress.percentage}%"></div>
+                      <div class="h-2 rounded-full transition-all" style="width: ${progress.percentage}%; background: hsl(var(--primary))"></div>
                     </div>
                   </div>
 
-                  <div class="flex items-center gap-4 mt-3 text-sm text-text-muted">
-                    ${formattedTrack ? `<span class="px-2 py-1 bg-fuchsia-100 text-fuchsia-800 rounded">${escapeHTML(formattedTrack)}</span>` : ''}
-                    <span>⏱️ ${timeSpentHours}h spent</span>
-                    ${isCompleted ? '<span class="text-green-500">✓ Completed</span>' : '<span class="text-blue-500">In Progress</span>'}
+                  <div class="flex items-center gap-3 mt-3 text-sm">
+                    ${formattedTrack ? `<span class="text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">${escapeHTML(formattedTrack)}</span>` : ''}
+                    <span class="text-text-muted text-xs">⏱️ ${timeSpentHours}h spent</span>
+                    ${isCompleted ? '<span class="text-xs font-medium px-2.5 py-1 rounded-full bg-green-50 text-green-600">✓ Completed</span>' : '<span class="text-xs font-medium px-2.5 py-1 rounded-full bg-blue-50 text-blue-600">In Progress</span>'}
                   </div>
                 </div>
               </div>

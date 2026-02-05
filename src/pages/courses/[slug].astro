@@ -8,7 +8,7 @@ export const prerender = false;
 <BaseLayout title="Course Details - C4C Campus" hideHeader={true} hideFooter={true}>
   <div class="min-h-screen bg-background">
     <!-- Internal Header -->
-    <div class="sticky top-0 z-50 bg-white border-b border-border">
+    <header class="sticky top-0 z-50 bg-white/95 backdrop-blur-sm shadow-sm">
       <div class="container mx-auto px-4 py-4">
         <div class="flex items-center justify-between gap-4">
           <div class="flex items-center gap-4 flex-1">
@@ -16,7 +16,7 @@ export const prerender = false;
               <img src="/logo.jpeg" alt="C4C Campus" class="h-10 w-10 rounded-lg" />
             </a>
             <div>
-              <h1 class="text-xl sm:text-2xl font-bold" id="course-title">Course</h1>
+              <h1 class="text-xl sm:text-2xl font-bold text-text" id="course-title">Course</h1>
               <p class="text-text-muted text-sm" id="breadcrumb">Loading...</p>
             </div>
           </div>
@@ -26,7 +26,8 @@ export const prerender = false;
           </div>
         </div>
       </div>
-    </div>
+      <div class="h-0.5 bg-gradient-to-r from-primary/50 via-primary to-primary/50"></div>
+    </header>
 
     <!-- Loading State -->
     <div id="loading-state" class="container mx-auto px-4 py-12">
@@ -58,15 +59,16 @@ export const prerender = false;
             </div>
           </div>
           <div class="flex gap-2" id="teacher-actions" style="display: none;">
+            <button id="toggle-cohorts-btn" class="btn btn-ghost btn-sm">Show Cohorts</button>
             <button id="edit-course-btn" class="btn btn-primary btn-sm">Edit Course</button>
             <button id="add-module-btn" class="btn btn-primary btn-sm">Add Module</button>
           </div>
         </div>
       </div>
 
-      <!-- Available Cohorts Section (for students) -->
+      <!-- Cohorts Section (for students) -->
       <div id="cohorts-section" class="hidden mb-6">
-        <h2 class="text-2xl font-bold mb-4">Available Cohorts</h2>
+        <h2 id="cohorts-heading" class="text-xl font-bold mb-4">Available Cohorts</h2>
         <div id="cohorts-loading" class="text-center py-6">
           <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
           <p class="mt-2 text-text-muted">Loading cohorts...</p>
@@ -78,6 +80,9 @@ export const prerender = false;
           <p class="text-text-muted">No active cohorts available at this time.</p>
         </div>
       </div>
+
+      <!-- Continue Learning Banner (shown for enrolled students with incomplete lessons) -->
+      <div id="continue-learning-banner" class="hidden mb-6"></div>
 
       <!-- Modules & Lessons -->
       <div id="modules-container">
@@ -272,6 +277,11 @@ export const prerender = false;
     // Now load modules after lesson progress is loaded
     await loadModules();
 
+    // Show "Continue Learning" banner for enrolled students
+    if (!isTeacher && userCohortId && modules.length > 0) {
+      showContinueLearningBanner();
+    }
+
     // Show content
     document.getElementById('loading-state')?.classList.add('hidden');
     document.getElementById('course-content')?.classList.remove('hidden');
@@ -359,10 +369,10 @@ export const prerender = false;
     document.getElementById('breadcrumb-course-name')!.textContent = course.title;
 
     const metaHtml = `
-      <span class="px-2 py-1 bg-primary/10 rounded">${formatTrack(course.track)}</span>
-      <span class="px-2 py-1 bg-primary/10 rounded">${formatDifficulty(course.difficulty)}</span>
-      ${course.default_duration_weeks ? `<span class="px-2 py-1 bg-primary/10 rounded">${course.default_duration_weeks} weeks</span>` : ''}
-      ${course.is_published ? '<span class="px-2 py-1 bg-green-500/10 text-green-500 rounded">Published</span>' : '<span class="px-2 py-1 bg-orange-500/10 text-orange-500 rounded">Draft</span>'}
+      <span class="badge" style="background: #F3F4F6; color: #374151; border: 1px solid #E5E7EB;">${formatTrack(course.track)}</span>
+      <span class="badge" style="background: #F3F4F6; color: #374151; border: 1px solid #E5E7EB;">${formatDifficulty(course.difficulty)}</span>
+      ${course.default_duration_weeks ? `<span class="badge" style="background: #F3F4F6; color: #374151; border: 1px solid #E5E7EB;">${course.default_duration_weeks} weeks</span>` : ''}
+      ${course.is_published ? '<span class="badge" style="background: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0;">Published</span>' : '<span class="badge" style="background: #FFFBEB; color: #92400E; border: 1px solid #FDE68A;">Draft</span>'}
     `;
     document.getElementById('course-meta')!.innerHTML = metaHtml;
 
@@ -423,55 +433,68 @@ export const prerender = false;
       const daysUntil = unlockDate ? getDaysUntilUnlock(unlockDate) : null;
 
       return `
-        <div class="card ${isLocked ? 'opacity-75 bg-gray-50' : ''}">
-          <div class="flex justify-between items-start mb-4">
-            <div class="flex-1">
-              <div class="flex items-center gap-2">
-                <h3 class="text-xl font-bold">${module.order_index}. ${module.title}</h3>
-                ${isLocked ? `
-                  <span class="inline-flex items-center gap-1 px-2 py-1 bg-orange-500/10 text-orange-600 text-xs rounded">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-                    </svg>
-                    Locked
-                  </span>
+        <div class="card${isLocked ? ' opacity-75' : ''}" style="padding: 0; overflow: hidden;">
+          <!-- Module header band -->
+          <div style="background: #F3F4F6; padding: 1rem 1.5rem; border-bottom: 1px solid #E5E7EB;">
+            <div class="flex justify-between items-start">
+              <div class="flex-1">
+                <div class="flex items-center gap-2">
+                  <h3 class="text-lg font-bold" style="font-size: 1.15rem;">${module.order_index}. ${module.title}</h3>
+                  ${isLocked ? `
+                    <span class="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-50 text-amber-600">
+                      <svg class="w-3 h-3 inline mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                      </svg>
+                      Locked
+                    </span>
+                  ` : ''}
+                </div>
+                ${module.description ? `<p class="text-sm text-text-muted mt-1">${module.description}</p>` : ''}
+                ${isLocked && unlockDate ? `
+                  <div class="mt-2 text-sm" style="color: hsl(var(--warning));">
+                    <span class="font-medium">Unlocks ${formatUnlockDate(unlockDate)}</span>
+                    ${daysUntil !== null && daysUntil > 0 ? ` (in ${daysUntil} day${daysUntil === 1 ? '' : 's'})` : ''}
+                  </div>
                 ` : ''}
               </div>
-              ${module.description ? `<p class="text-sm text-text-muted mt-1">${module.description}</p>` : ''}
-              ${isLocked && unlockDate ? `
-                <div class="mt-2 text-sm text-orange-600">
-                  <span class="font-medium">Unlocks ${formatUnlockDate(unlockDate)}</span>
-                  ${daysUntil !== null && daysUntil > 0 ? ` (in ${daysUntil} day${daysUntil === 1 ? '' : 's'})` : ''}
+              ${canEdit ? `
+                <div class="flex gap-2">
+                  <button class="btn btn-sm btn-ghost add-lesson" data-module-id="${module.id}">+ Lesson</button>
+                  <button class="btn btn-sm btn-ghost edit-module" data-id="${module.id}">Edit</button>
+                  <button class="btn btn-sm btn-ghost delete-module" data-id="${module.id}">Delete</button>
                 </div>
               ` : ''}
             </div>
-            ${canEdit ? `
-              <div class="flex gap-2">
-                <button class="btn btn-sm btn-ghost add-lesson" data-module-id="${module.id}">+ Lesson</button>
-                <button class="btn btn-sm btn-ghost edit-module" data-id="${module.id}">Edit</button>
-                <button class="btn btn-sm btn-ghost delete-module" data-id="${module.id}">Delete</button>
-              </div>
-            ` : ''}
           </div>
 
+          <!-- Lesson rows -->
+          <div style="padding: 0.5rem 0;">
           ${lessons.length > 0 ? `
-            <div class="space-y-2">
               ${lessons.map((lesson: any) => `
-                <div class="p-3 border border-border rounded-lg ${isLocked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-surface-hover cursor-pointer'} flex justify-between items-center" ${!isLocked ? `onclick="window.location.href='/lessons/${lesson.slug}'"` : ''}>
-                  <div class="flex-1">
-                    <div class="flex items-center gap-2">
-                      <span class="font-medium">${lesson.order_index}. ${lesson.title}</span>
+                <div class="${isLocked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50 cursor-pointer'} flex justify-between items-center transition-colors" style="padding: 0.75rem 1.5rem 0.75rem 1.75rem; margin-left: 0.75rem; border-left: 3px solid ${lessonProgress.get(lesson.id) ? '#059669' : '#E5E7EB'};" ${!isLocked ? `onclick="window.location.href='/lessons/${lesson.slug}'"` : ''}>
+                  <div class="flex items-center gap-3 flex-1">
+                    ${!isTeacher && !isLocked ? `
+                      ${lessonProgress.get(lesson.id) ? `
+                        <svg class="w-5 h-5 flex-shrink-0" style="color: #059669;" fill="currentColor" viewBox="0 0 20 20">
+                          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                        </svg>
+                      ` : `
+                        <div class="w-5 h-5 flex-shrink-0 rounded-full border-2 border-gray-300"></div>
+                      `}
+                    ` : ''}
+                    <div>
+                      <span class="font-medium text-sm">${lesson.order_index}. ${lesson.title}</span>
                       ${isLocked ? `
-                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-4 h-4 text-gray-400 inline ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                         </svg>
                       ` : ''}
+                      ${lesson.duration_minutes ? `<div class="text-xs text-text-muted mt-0.5">${lesson.duration_minutes} min</div>` : ''}
                     </div>
-                    ${lesson.duration_minutes ? `<div class="text-xs text-text-muted">${lesson.duration_minutes} min</div>` : ''}
                   </div>
                   ${!isTeacher && !isLocked ? `
-                    <span class="px-2 py-1 text-xs font-medium rounded-full ${lessonProgress.get(lesson.id) ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}">
-                      ${lessonProgress.get(lesson.id) ? 'Completed' : 'Not Started'}
+                    <span class="text-xs font-medium px-2.5 py-1 rounded-full ${lessonProgress.get(lesson.id) ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}">
+                      ${lessonProgress.get(lesson.id) ? '✓ Completed' : 'Not Started'}
                     </span>
                   ` : ''}
                   ${canEdit ? `
@@ -482,10 +505,10 @@ export const prerender = false;
                   ` : ''}
                 </div>
               `).join('')}
-            </div>
           ` : `
-            <p class="text-sm text-text-muted">No lessons yet${canEdit ? '. Click "+ Lesson" to add one.' : '.'}</p>
+            <p class="text-sm text-text-muted" style="padding: 1rem 1.5rem;">No lessons yet${canEdit ? '. Click "+ Lesson" to add one.' : '.'}</p>
           `}
+          </div>
         </div>
       `;
     }).join('');
@@ -560,6 +583,73 @@ export const prerender = false;
     }
   }
 
+  function showContinueLearningBanner() {
+    // Find the first incomplete lesson across all modules (sorted by module order, then lesson order)
+    let nextLesson: { title: string; slug: string; moduleName: string } | null = null;
+    let completedCount = 0;
+    let totalCount = 0;
+
+    for (const module of modules) {
+      const lessons = (module.lessons || []).sort((a: any, b: any) => a.order_index - b.order_index);
+      for (const lesson of lessons) {
+        totalCount++;
+        if (lessonProgress.get(lesson.id)) {
+          completedCount++;
+        } else if (!nextLesson) {
+          // Check if module is locked
+          const moduleStatus = moduleStatuses.get(module.id);
+          const isLocked = moduleStatus && !moduleStatus.isUnlocked;
+          if (!isLocked) {
+            nextLesson = { title: lesson.title, slug: lesson.slug, moduleName: module.title };
+          }
+        }
+      }
+    }
+
+    const banner = document.getElementById('continue-learning-banner');
+    if (!banner) return;
+
+    if (totalCount > 0 && completedCount === totalCount) {
+      // All lessons complete
+      banner.innerHTML = `
+        <div style="background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 12px; padding: 1.25rem 1.5rem;">
+          <div class="flex items-center gap-3">
+            <svg class="w-6 h-6 flex-shrink-0" style="color: #059669;" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+            </svg>
+            <div>
+              <p class="font-bold" style="color: #065F46;">Course Complete!</p>
+              <p class="text-sm" style="color: #047857;">You've completed all ${totalCount} lessons. Great work!</p>
+            </div>
+          </div>
+        </div>
+      `;
+      banner.classList.remove('hidden');
+    } else if (nextLesson) {
+      const progressPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+      banner.innerHTML = `
+        <div style="background: white; border: 1px solid #E5E7EB; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+          <div class="flex items-center justify-between gap-4 flex-wrap">
+            <div class="flex-1 min-w-0">
+              <p class="text-sm text-text-muted mb-1">Continue where you left off</p>
+              <p class="font-bold text-lg">${nextLesson.title}</p>
+              <p class="text-sm text-text-muted">${nextLesson.moduleName} · ${completedCount}/${totalCount} lessons complete (${progressPct}%)</p>
+            </div>
+            <a href="/lessons/${nextLesson.slug}" class="btn btn-primary" style="white-space: nowrap;">
+              Continue Learning →
+            </a>
+          </div>
+          ${totalCount > 0 ? `
+            <div class="mt-3 w-full bg-gray-200 rounded-full h-2">
+              <div class="h-2 rounded-full transition-all" style="width: ${progressPct}%; background: hsl(var(--primary));"></div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+      banner.classList.remove('hidden');
+    }
+  }
+
   async function loadCohorts() {
     const loading = document.getElementById('cohorts-loading');
     const grid = document.getElementById('cohorts-grid');
@@ -602,49 +692,74 @@ export const prerender = false;
       return;
     }
 
-    // Render cohorts
-    grid!.innerHTML = cohorts.map(cohort => {
-      const isEnrolled = userEnrollments.has(cohort.id);
-      const startDate = new Date(cohort.start_date).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      });
-      const endDate = cohort.end_date
-        ? new Date(cohort.end_date).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-          })
-        : 'Ongoing';
+    // Separate enrolled and unenrolled cohorts
+    const enrolledCohorts = cohorts.filter(c => userEnrollments.has(c.id));
+    const unenrolledCohorts = cohorts.filter(c => !userEnrollments.has(c.id));
 
-      return `
-        <div class="card">
-          <div class="flex justify-between items-start mb-3">
-            <h3 class="text-lg font-bold">${cohort.name}</h3>
-            <span class="text-xs px-2 py-1 ${
-              cohort.status === 'active' ? 'bg-green-500/10 text-green-500' : 'bg-blue-500/10 text-blue-500'
-            } rounded">${cohort.status === 'active' ? 'Active' : 'Upcoming'}</span>
-          </div>
-          <div class="space-y-2 text-sm mb-4">
-            <div class="flex items-center gap-2 text-text-muted">
-              <span>📅</span>
-              <span>${startDate} - ${endDate}</span>
+    let html = '';
+
+    // Enrolled cohorts: compact info line
+    if (enrolledCohorts.length > 0) {
+      html += enrolledCohorts.map(cohort => {
+        const statusLabel = cohort.status === 'active' ? 'Active' : 'Upcoming';
+        return `
+          <div style="background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 8px; padding: 0.75rem 1rem;" class="flex items-center justify-between gap-3 mb-3">
+            <div class="flex items-center gap-2 text-sm">
+              <svg class="w-4 h-4 flex-shrink-0" style="color: #059669;" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+              </svg>
+              <span class="font-medium">Enrolled in: ${cohort.name}</span>
+              <span class="text-xs font-medium px-2 py-0.5 rounded-full ${cohort.status === 'active' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'}">${statusLabel}</span>
             </div>
-            ${cohort.max_students ? `
-              <div class="flex items-center gap-2 text-text-muted">
-                <span>👥</span>
-                <span>Max ${cohort.max_students} students</span>
-              </div>
-            ` : ''}
           </div>
-          ${isEnrolled ?
-            '<div class="badge bg-green-500/10 text-green-500 w-full text-center py-2">✓ Enrolled</div>' :
-            '<button class="btn btn-primary w-full enroll-cohort-btn" data-cohort-id="' + cohort.id + '" data-cohort-name="' + cohort.name + '">Enroll in Cohort</button>'
-          }
-        </div>
-      `;
-    }).join('');
+        `;
+      }).join('');
+    }
+
+    // Unenrolled cohorts: standard cards but slightly smaller
+    if (unenrolledCohorts.length > 0) {
+      html += '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
+      html += unenrolledCohorts.map(cohort => {
+        const startDate = new Date(cohort.start_date).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+        const endDate = cohort.end_date
+          ? new Date(cohort.end_date).toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric'
+            })
+          : 'Ongoing';
+
+        return `
+          <div class="card" style="padding: 1rem 1.25rem;">
+            <div class="flex justify-between items-start mb-2">
+              <h3 class="font-semibold text-sm">${cohort.name}</h3>
+              <span class="text-xs font-medium px-2 py-0.5 rounded-full ${cohort.status === 'active' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'}">${cohort.status === 'active' ? 'Active' : 'Upcoming'}</span>
+            </div>
+            <div class="text-xs text-text-muted mb-3">
+              📅 ${startDate} - ${endDate}${cohort.max_students ? ` · 👥 Max ${cohort.max_students}` : ''}
+            </div>
+            <button class="btn btn-primary btn-sm w-full enroll-cohort-btn" data-cohort-id="${cohort.id}" data-cohort-name="${cohort.name}">Enroll in Cohort</button>
+          </div>
+        `;
+      }).join('');
+      html += '</div>';
+    }
+
+    grid!.innerHTML = html;
+
+    // Update section heading based on enrollment state
+    const heading = document.getElementById('cohorts-heading');
+    if (heading) {
+      if (enrolledCohorts.length > 0 && unenrolledCohorts.length === 0) {
+        heading.textContent = 'Your Cohort';
+      } else if (enrolledCohorts.length > 0) {
+        heading.textContent = 'Cohorts';
+      }
+    }
 
     grid?.classList.remove('hidden');
 
@@ -735,6 +850,21 @@ export const prerender = false;
     // Edit course button - redirect to teacher dashboard with edit parameter
     document.getElementById('edit-course-btn')?.addEventListener('click', () => {
       window.location.href = `/teacher/courses?edit=${currentCourse.id}`;
+    });
+
+    // Toggle cohorts visibility (teacher only)
+    document.getElementById('toggle-cohorts-btn')?.addEventListener('click', async () => {
+      const section = document.getElementById('cohorts-section');
+      const btn = document.getElementById('toggle-cohorts-btn');
+      if (!section || !btn) return;
+
+      if (section.classList.contains('hidden')) {
+        await loadCohorts();
+        btn.textContent = 'Hide Cohorts';
+      } else {
+        section.classList.add('hidden');
+        btn.textContent = 'Show Cohorts';
+      }
     });
 
     // Module modal

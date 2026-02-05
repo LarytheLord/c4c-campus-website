@@ -20,14 +20,14 @@ const navItems = [
 <BaseLayout title={title} hideHeader={true} hideFooter={true}>
   <div class="min-h-screen bg-background">
     <!-- Admin Header -->
-    <header class="sticky top-0 z-50 bg-white border-b border-border">
+    <header class="sticky top-0 z-50 bg-white/95 backdrop-blur-sm shadow-sm">
       <div class="container mx-auto px-4 py-3">
         <div class="flex items-center justify-between gap-4">
           <!-- Left: Logo + Brand -->
           <a href="/admin/dashboard" class="flex items-center gap-3 flex-shrink-0">
             <img src="/logo.jpeg" alt="C4C Campus" class="h-10 w-10 rounded-lg" />
             <div class="hidden sm:block">
-              <span class="font-bold text-lg">C4C Admin</span>
+              <span class="font-bold text-xl text-text">C4C Admin</span>
             </div>
           </a>
 
@@ -37,7 +37,7 @@ const navItems = [
               <a
                 href={item.href}
                 class:list={[
-                  'admin-nav-link px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                  'admin-nav-link px-4 py-2 rounded-full text-sm font-medium transition-all',
                   currentPage === item.key ? 'admin-nav-active' : ''
                 ]}
               >
@@ -60,7 +60,7 @@ const navItems = [
             <a
               href={item.href}
               class:list={[
-                'admin-nav-link-mobile px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors',
+                'admin-nav-link-mobile px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all',
                 currentPage === item.key ? 'admin-nav-active' : ''
               ]}
             >
@@ -69,6 +69,8 @@ const navItems = [
           ))}
         </nav>
       </div>
+      <!-- Gradient accent line -->
+      <div class="h-0.5 bg-gradient-to-r from-primary/50 via-primary to-primary/50"></div>
     </header>
 
     <!-- Page Content -->
@@ -82,22 +84,22 @@ const navItems = [
       color: hsl(0 0% 45%);
     }
     .admin-nav-link:hover {
-      color: hsl(0 0% 10%);
-      background: hsl(300 20% 95%);
+      color: hsl(var(--primary));
+      background: hsl(var(--primary) / 0.08);
     }
     .admin-nav-link.admin-nav-active {
-      background: hsl(300 100% 35%);
+      background: hsl(var(--primary-dark));
       color: white !important;
     }
     .admin-nav-link-mobile {
       color: hsl(0 0% 45%);
-      background: hsl(300 20% 95%);
+      background: hsl(0 0% 95%);
     }
     .admin-nav-link-mobile:hover {
-      color: hsl(0 0% 10%);
+      color: hsl(var(--primary));
     }
     .admin-nav-link-mobile.admin-nav-active {
-      background: hsl(300 100% 35%);
+      background: hsl(var(--primary-dark));
       color: white !important;
     }
   </style>

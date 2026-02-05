@@ -22,7 +22,7 @@ export const prerender = false;
 <BaseLayout title="Lesson - C4C Campus" hideHeader={true} hideFooter={true}>
   <div class="min-h-screen bg-background">
     <!-- Header -->
-    <div class="sticky top-0 z-50 bg-white border-b border-border">
+    <header class="sticky top-0 z-50 bg-white/95 backdrop-blur-sm shadow-sm">
       <div class="container mx-auto px-4 py-4">
         <div class="flex items-center justify-between gap-4">
           <div class="flex items-center gap-4 flex-1">
@@ -30,7 +30,7 @@ export const prerender = false;
               <img src="/logo.jpeg" alt="C4C Campus" class="h-10 w-10 rounded-lg" />
             </a>
             <div>
-              <h1 class="text-xl sm:text-2xl font-bold" id="lesson-title">Lesson</h1>
+              <h1 class="text-xl sm:text-2xl font-bold text-text" id="lesson-title">Lesson</h1>
               <p class="text-text-muted text-sm" id="breadcrumb">Loading...</p>
             </div>
           </div>
@@ -40,7 +40,8 @@ export const prerender = false;
           </div>
         </div>
       </div>
-    </div>
+      <div class="h-0.5 bg-gradient-to-r from-primary/50 via-primary to-primary/50"></div>
+    </header>
 
     <!-- Loading State -->
     <div id="loading-state" class="container mx-auto px-4 py-12">
@@ -55,7 +56,7 @@ export const prerender = false;
       <div class="container mx-auto px-4 py-8 max-w-6xl">
         <!-- Video Player -->
         <div id="video-container" class="mb-8">
-          <div class="bg-black rounded-lg overflow-hidden shadow-lg aspect-video">
+          <div class="bg-black rounded-xl overflow-hidden shadow-lg aspect-video">
             <video
               id="lesson-video"
               class="w-full h-full"
@@ -65,16 +66,6 @@ export const prerender = false;
               <source id="video-source" src="" type="video/mp4" />
               Your browser does not support the video tag.
             </video>
-          </div>
-          <div class="mt-4 flex items-center justify-end">
-            <div class="flex gap-2">
-              <button id="prev-lesson-btn" class="btn btn-ghost btn-sm" style="display: none;">
-                ← Previous
-              </button>
-              <button id="next-lesson-btn" class="btn btn-ghost btn-sm" style="display: none;">
-                Next →
-              </button>
-            </div>
           </div>
         </div>
 
@@ -107,7 +98,7 @@ export const prerender = false;
         </div>
 
         <!-- Lesson Completion Section (students only) -->
-        <div id="completion-section" class="hidden mb-8 pt-6 border-t border-border">
+        <div id="completion-section" class="hidden mb-8 p-6 rounded-xl bg-white border border-gray-200 border-t-2" style="border-top-color: #E5E7EB;">
           <div class="flex items-center justify-between">
             <div>
               <h3 class="text-lg font-bold">Lesson Progress</h3>
@@ -117,6 +108,17 @@ export const prerender = false;
               Mark as Complete
             </button>
           </div>
+        </div>
+
+        <!-- Lesson Navigation -->
+        <div id="lesson-nav-bottom" class="hidden mt-8 pt-6 border-t border-border flex items-center justify-between">
+          <button id="prev-lesson-btn-bottom" class="btn btn-ghost btn-sm invisible">
+            ← Previous Lesson
+          </button>
+          <span id="lesson-position" class="text-sm text-text-muted"></span>
+          <button id="next-lesson-btn-bottom" class="btn btn-primary btn-sm invisible">
+            Next Lesson →
+          </button>
         </div>
 
         <!-- Discussion Section - DISABLED FOR LAUNCH
@@ -187,7 +189,10 @@ export const prerender = false;
     document.getElementById('loading-state')?.classList.add('hidden');
     document.getElementById('lesson-content')?.classList.remove('hidden');
 
-
+    // Setup lesson navigation (prev/next) after lesson is loaded
+    if (currentCourse && currentLesson) {
+      await setupLessonNavigation();
+    }
 
     setupEventListeners();
   }
@@ -395,7 +400,7 @@ export const prerender = false;
           <a
             href="${resource.path}"
             download
-            class="flex items-center gap-3 p-3 border border-border rounded-lg hover:bg-surface-hover transition-colors"
+            class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
           >
             <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -432,21 +437,27 @@ export const prerender = false;
   }
 
   function updateCompletionButton() {
-    const btn = document.getElementById('mark-complete-btn');
+    const btn = document.getElementById('mark-complete-btn') as HTMLButtonElement;
     const hint = document.getElementById('completion-hint');
     if (!btn) return;
 
     const isCompleted = existingProgressData?.completed === true;
-    
+
     if (isCompleted) {
-      btn.textContent = 'Lesson Completed';
+      btn.textContent = '✓ Lesson Completed';
       btn.classList.remove('btn-primary');
-      btn.classList.add('btn-secondary');
+      btn.classList.remove('btn-secondary');
+      btn.style.background = 'transparent';
+      btn.style.color = '#059669';
+      btn.style.border = '2px solid #059669';
       if (hint) hint.textContent = 'Click to mark as not started.';
     } else {
       btn.textContent = 'Mark as Complete';
       btn.classList.remove('btn-secondary');
       btn.classList.add('btn-primary');
+      btn.style.background = '';
+      btn.style.color = '';
+      btn.style.border = '';
       if (hint) hint.textContent = 'Mark this lesson as complete when you\'re done.';
     }
   }
@@ -723,6 +734,65 @@ export const prerender = false;
     }
   }
 
+
+  async function setupLessonNavigation() {
+    // Fetch all modules with their lessons for this course
+    const { data: modulesData } = await supabase
+      .from('modules')
+      .select('id, order_index, lessons(id, slug, title, order_index)')
+      .eq('course_id', currentCourse.id)
+      .order('order_index', { ascending: true });
+
+    if (!modulesData || modulesData.length === 0) return;
+
+    // Flatten into a sorted list: modules by order_index, lessons by order_index within each module
+    const allLessons: { id: number; slug: string; title: string }[] = [];
+    for (const mod of modulesData) {
+      const sorted = (mod.lessons || []).sort((a: any, b: any) => a.order_index - b.order_index);
+      for (const lesson of sorted) {
+        allLessons.push({ id: lesson.id, slug: lesson.slug, title: lesson.title });
+      }
+    }
+
+    const currentIndex = allLessons.findIndex(l => l.id === currentLesson.id);
+    if (currentIndex === -1) return;
+
+    const prevLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null;
+    const nextLesson = currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null;
+
+    // Show the bottom nav container
+    document.getElementById('lesson-nav-bottom')?.classList.remove('hidden');
+
+    // Position indicator
+    const positionEl = document.getElementById('lesson-position');
+    if (positionEl) {
+      positionEl.textContent = `Lesson ${currentIndex + 1} of ${allLessons.length}`;
+    }
+
+    // Wire up prev button
+    if (prevLesson) {
+      const btn = document.getElementById('prev-lesson-btn-bottom');
+      if (btn) {
+        btn.classList.remove('invisible');
+        btn.title = prevLesson.title;
+        btn.addEventListener('click', () => {
+          window.location.href = `/lessons/${prevLesson.slug}`;
+        });
+      }
+    }
+
+    // Wire up next button
+    if (nextLesson) {
+      const btn = document.getElementById('next-lesson-btn-bottom');
+      if (btn) {
+        btn.classList.remove('invisible');
+        btn.title = nextLesson.title;
+        btn.addEventListener('click', () => {
+          window.location.href = `/lessons/${nextLesson.slug}`;
+        });
+      }
+    }
+  }
 
   function setupEventListeners() {
     // Mark complete button - toggles between completed and not started
