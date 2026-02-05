@@ -5,7 +5,11 @@
  *
  * Enrolls a student in both the cohort (cohort_enrollments) and the course
  * (enrollments) in a single server-side operation. Uses service role key to
- * bypass RLS so both tables are written atomically.
+ * bypass RLS so both tables are written in one request.
+ *
+ * Note: These are separate DB calls, not a single transaction. The
+ * check-then-act logic is idempotent and handles duplicate/race conditions
+ * gracefully (unique constraint violations treated as success).
  */
 
 import type { APIRoute } from 'astro';
@@ -101,11 +105,15 @@ export const POST: APIRoute = async ({ request }) => {
         }]);
 
       if (cohortEnrollError) {
-        console.error('[enroll-student] Error creating cohort enrollment:', cohortEnrollError);
-        return new Response(JSON.stringify({ error: 'Failed to enroll student in cohort' }), {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' }
-        });
+        // Unique constraint violation (23505) means a concurrent request already
+        // inserted this row — treat as success rather than failing with 500
+        if (cohortEnrollError.code !== '23505') {
+          console.error('[enroll-student] Error creating cohort enrollment:', cohortEnrollError);
+          return new Response(JSON.stringify({ error: 'Failed to enroll student in cohort' }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
       }
     }
 
@@ -143,11 +151,15 @@ export const POST: APIRoute = async ({ request }) => {
         }]);
 
       if (enrollError) {
-        console.error('[enroll-student] Error creating course enrollment:', enrollError);
-        return new Response(JSON.stringify({ error: 'Failed to create course enrollment' }), {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' }
-        });
+        // Unique constraint violation (23505) means a concurrent request already
+        // inserted this row — treat as success rather than failing with 500
+        if (enrollError.code !== '23505') {
+          console.error('[enroll-student] Error creating course enrollment:', enrollError);
+          return new Response(JSON.stringify({ error: 'Failed to create course enrollment' }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
       }
     }
 
