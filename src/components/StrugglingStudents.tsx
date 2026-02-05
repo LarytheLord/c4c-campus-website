@@ -8,7 +8,7 @@
  * Provides quick actions to reach out to students
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { StudentWithProgress } from '../types';
 
 interface StrugglingStudentsProps {

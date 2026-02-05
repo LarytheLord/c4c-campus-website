@@ -93,49 +93,30 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
         <p class="text-text-muted mb-4">This cohort doesn't have any student data yet.</p>
       </div>
     </div>
-  </div>
+
+  <!-- Vite React refresh preamble stub: Astro doesn't inject it for pages
+       that only use React via <script> tags (no client:* directives) -->
+  <script is:inline>
+    window.$RefreshReg$ = window.$RefreshReg$ || (() => {});
+    window.$RefreshSig$ = window.$RefreshSig$ || ((type) => type);
+    window.__vite_plugin_react_preamble_installed__ = true;
+  </script>
 
   <script>
     import { supabase } from '@/lib/supabase';
     import { exportToCSV } from '../../lib/utils';
-
-    // Dynamic imports for React components to prevent script failure if React preamble detection fails
-    let CohortStats: any = null;
-    let ProgressChart: any = null;
-    let StrugglingStudents: any = null;
-    let Leaderboard: any = null;
-    let createElement: any = null;
-    let createRoot: any = null;
-
-    async function loadReactDeps() {
-      try {
-        const [cohortMod, progressMod, strugglingMod, leaderboardMod, reactMod, reactDomMod] = await Promise.all([
-          import('../../components/CohortStats'),
-          import('../../components/ProgressChart'),
-          import('../../components/StrugglingStudents'),
-          import('../../components/Leaderboard'),
-          import('react'),
-          import('react-dom/client'),
-        ]);
-        CohortStats = cohortMod.default;
-        ProgressChart = progressMod.default;
-        StrugglingStudents = strugglingMod.default;
-        Leaderboard = leaderboardMod.default;
-        createElement = reactMod.createElement;
-        createRoot = reactDomMod.createRoot;
-        return true;
-      } catch (err) {
-        console.error('Failed to load React components:', err);
-        return false;
-      }
-    }
+    import CohortStats from '../../components/CohortStats';
+    import ProgressChart from '../../components/ProgressChart';
+    import StrugglingStudents from '../../components/StrugglingStudents';
+    import Leaderboard from '../../components/Leaderboard';
+    import { createElement } from 'react';
+    import { createRoot } from 'react-dom/client';
 
     let currentUser: any = null;
     let cohorts: any[] = [];
     let currentCohortId: string | null = null; // UUID string, not number
     let dashboardData: any = null;
     let autoRefreshInterval: number | null = null;
-    let reactReady = false;
 
     // React roots for components
     let statsRoot: any = null;
@@ -145,9 +126,6 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
 
     async function init() {
       try {
-      // Load React dependencies
-      reactReady = await loadReactDeps();
-
       // Check authentication
       const { data: { user } } = await supabase.auth.getUser();
 
@@ -235,7 +213,7 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
         renderComponents(null, true);
 
         // Fetch analytics data from API
-        const response = await fetch(`/api/teacher/cohort-analytics?cohortId=${cohortId}`);
+        const response = await fetch(`/api/teacher/cohort-analytics?cohortId=${cohortId}`, { cache: 'no-store' });
 
         if (!response.ok) {
           throw new Error('Failed to fetch analytics data');
@@ -264,15 +242,6 @@ import TeacherLayout from '../../layouts/TeacherLayout.astro';
     }
 
     function renderComponents(data: any, loading: boolean) {
-      if (!reactReady || !createElement || !createRoot) {
-        // React failed to load - show a fallback message in the container
-        const statsContainer = document.getElementById('cohort-stats-container');
-        if (statsContainer) {
-          statsContainer.innerHTML = '<div class="card mb-8"><p class="text-center text-text-muted">Unable to load dashboard components. Please refresh the page.</p></div>';
-        }
-        return;
-      }
-
       // Render CohortStats - only create root once
       const statsContainer = document.getElementById('cohort-stats-container');
       if (statsContainer && !statsRoot) {

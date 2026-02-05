@@ -9,7 +9,6 @@
  * - Struggling students count
  */
 
-import React from 'react';
 import type { CohortAnalytics } from '../types';
 
 interface CohortStatsProps {

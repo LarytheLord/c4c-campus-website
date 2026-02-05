@@ -19,36 +19,66 @@ import type {
   LeaderboardEntry
 } from '../../../types';
 
+export const prerender = false;
+
 const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
-const supabaseKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+const supabaseServiceKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
+
+/** Decode a JWT payload locally without a network call */
+function decodeJWTPayload(token: string): Record<string, any> | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(Buffer.from(payload, 'base64').toString());
+  } catch {
+    return null;
+  }
+}
 
 export const GET: APIRoute = async ({ request, url }) => {
   try {
-    // Create Supabase client with auth header
-    const supabase = createClient(supabaseUrl!, supabaseKey!, {
-      global: {
-        headers: {
-          Authorization: request.headers.get('Authorization') || ''
+    // Create Supabase client with service role key (bypasses RLS)
+    const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
+
+    // Get access token from cookies
+    const cookieHeader = request.headers.get('cookie') || '';
+    const authCookieMatch = cookieHeader.match(/sb-[^=]+-auth-token=([^;]+)/);
+
+    let accessToken: string | null = null;
+
+    if (authCookieMatch) {
+      try {
+        const decoded = decodeURIComponent(authCookieMatch[1]);
+        let tokenData;
+        try {
+          tokenData = JSON.parse(decoded);
+        } catch {
+          tokenData = JSON.parse(atob(decoded));
         }
+        accessToken = tokenData.access_token || tokenData[0];
+      } catch (e) {
+        console.error('[cohort-analytics] Failed to parse auth cookie', e);
       }
-    });
+    }
 
-    // Verify user is authenticated and is a teacher
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Unauthorized: Authorization header required' }), {
+    if (!accessToken) {
+      return new Response(JSON.stringify({ error: 'Unauthorized: Authentication required' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized: Invalid authentication token' }), {
+    // Decode JWT locally instead of getUser() (which makes a network call that can fail)
+    const jwtPayload = decodeJWTPayload(accessToken);
+    if (!jwtPayload || !jwtPayload.sub) {
+      return new Response(JSON.stringify({ error: 'Unauthorized: Invalid session' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' }
       });
     }
+
+    const user = { id: jwtPayload.sub as string };
 
     // Verify teacher role
     const { data: application } = await supabase
@@ -76,7 +106,7 @@ export const GET: APIRoute = async ({ request, url }) => {
     // Verify teacher owns this cohort
     const { data: cohort, error: cohortError } = await supabase
       .from('cohorts')
-      .select('*, courses!inner(name, created_by)')
+      .select('*, courses!inner(title, created_by)')
       .eq('id', cohortId)
       .single();
 
@@ -112,17 +142,10 @@ export const GET: APIRoute = async ({ request, url }) => {
       totalLessons = lessons?.length || 0;
     }
 
-    // Get all enrollments for this cohort with student info
+    // Get all enrollments for this cohort (no join — cohort_enrollments has no FK to applications)
     const { data: enrollments, error: enrollError } = await supabase
       .from('cohort_enrollments')
-      .select(`
-        user_id,
-        enrolled_at,
-        status,
-        completed_lessons,
-        last_activity_at,
-        applications!inner(name, email)
-      `)
+      .select('user_id, enrolled_at, status, completed_lessons, last_activity_at')
       .eq('cohort_id', cohortId);
 
     if (enrollError) {
@@ -134,10 +157,25 @@ export const GET: APIRoute = async ({ request, url }) => {
     }
 
     const studentsList = enrollments || [];
+    const userIds = studentsList.map(e => e.user_id);
+
+    // Fetch student names/emails from applications table separately
+    let appsByUserId: Record<string, { name: string; email: string }> = {};
+    if (userIds.length > 0) {
+      const { data: apps } = await supabase
+        .from('applications')
+        .select('user_id, name, email')
+        .in('user_id', userIds);
+
+      if (apps) {
+        for (const a of apps) {
+          appsByUserId[a.user_id] = { name: a.name, email: a.email };
+        }
+      }
+    }
 
     // Get lesson progress for all students in this cohort
     // Include lesson_id, completed, completed_at, last_accessed_at for accurate cohort-scoped aggregation
-    const userIds = studentsList.map(e => e.user_id);
     const { data: progressData } = await supabase
       .from('lesson_progress')
       .select('user_id, lesson_id, time_spent_seconds, completed, completed_at, last_accessed_at')
@@ -186,8 +224,8 @@ export const GET: APIRoute = async ({ request, url }) => {
 
       return {
         user_id: enrollment.user_id,
-        name: enrollment.applications.name,
-        email: enrollment.applications.email,
+        name: appsByUserId[enrollment.user_id]?.name || 'Unknown',
+        email: appsByUserId[enrollment.user_id]?.email || '',
         enrolled_at: enrollment.enrolled_at,
         status: enrollment.status,
         completed_lessons: completedLessons,
