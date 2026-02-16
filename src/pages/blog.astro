@@ -1,0 +1,188 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Blog - C4C Campus" description="Insights, updates, and stories from the Code for Compassion Campus community.">
+  <div class="section">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <!-- Hero Section -->
+      <div class="text-center mb-16">
+        <h1 class="text-4xl md:text-5xl font-black mb-6">
+          C4C <span class="text-gradient">Blog</span>
+        </h1>
+        <p class="text-xl text-text-muted max-w-3xl mx-auto">
+          Insights, updates, and stories from the Code for Compassion Campus community
+        </p>
+      </div>
+
+      <!-- Blog Filters -->
+      <div class="flex flex-wrap justify-center gap-3 mb-12">
+        <button class="btn btn-outline btn-sm active">All Posts</button>
+        <button class="btn btn-outline btn-sm">Announcements</button>
+        <button class="btn btn-outline btn-sm">Student Stories</button>
+        <button class="btn btn-outline btn-sm">Technical Tutorials</button>
+        <button class="btn btn-outline btn-sm">Impact Stories</button>
+      </div>
+
+      <!-- Blog Posts Grid -->
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <!-- Sample Blog Post 1 -->
+        <a href="/blog/sample-post-1" class="group block">
+          <div class="card overflow-hidden hover:shadow-xl transition-all duration-300">
+            <div class="aspect-video bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+              <img 
+                src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=600&h=400" 
+                alt="Blog post image" 
+                class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              />
+            </div>
+            <div class="p-6">
+              <div class="flex items-center gap-3 mb-3">
+                <span class="badge badge-primary text-xs">Announcements</span>
+                <span class="text-sm text-text-muted">March 15, 2026</span>
+              </div>
+              <h3 class="text-xl font-bold mb-3 group-hover:text-primary transition-colors">New Batch of Bootcamp Students Begins Their Journey</h3>
+              <p class="text-text-muted mb-4">This month, 50 new students joined our weekend bootcamp program to learn AI development for social impact.</p>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-text-muted">By Sarah Johnson</span>
+                <span class="text-primary group-hover:translate-x-1 transition-transform">→</span>
+              </div>
+            </div>
+          </div>
+        </a>
+
+        <!-- Sample Blog Post 2 -->
+        <a href="/blog/sample-post-2" class="group block">
+          <div class="card overflow-hidden hover:shadow-xl transition-all duration-300">
+            <div class="aspect-video bg-gradient-to-br from-info/20 to-primary/20 flex items-center justify-center">
+              <img 
+                src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=600&h=400" 
+                alt="Blog post image" 
+                class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              />
+            </div>
+            <div class="p-6">
+              <div class="flex items-center gap-3 mb-3">
+                <span class="badge badge-accent text-xs">Technical Tutorials</span>
+                <span class="text-sm text-text-muted">March 10, 2026</span>
+              </div>
+              <h3 class="text-xl font-bold mb-3 group-hover:text-primary transition-colors">Building Your First AI Tool for Animal Advocacy</h3>
+              <p class="text-text-muted mb-4">Step-by-step guide to creating an AI-powered tool that helps animal shelters optimize their operations.</p>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-text-muted">By Michael Chen</span>
+                <span class="text-primary group-hover:translate-x-1 transition-transform">→</span>
+              </div>
+            </div>
+          </div>
+        </a>
+
+        <!-- Sample Blog Post 3 -->
+        <a href="/blog/sample-post-3" class="group block">
+          <div class="card overflow-hidden hover:shadow-xl transition-all duration-300">
+            <div class="aspect-video bg-gradient-to-br from-success/20 to-primary/20 flex items-center justify-center">
+              <img 
+                src="https://images.unsplash.com/photo-1553877522-43269d4ea984?auto=format&fit=crop&w=600&h=400" 
+                alt="Blog post image" 
+                class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              />
+            </div>
+            <div class="p-6">
+              <div class="flex items-center gap-3 mb-3">
+                <span class="badge badge-success text-xs">Student Stories</span>
+                <span class="text-sm text-text-muted">March 5, 2026</span>
+              </div>
+              <h3 class="text-xl font-bold mb-3 group-hover:text-primary transition-colors">From Bootcamp Graduate to Accelerator Participant</h3>
+              <p class="text-text-muted mb-4">How Priya's journey through our programs led her to develop an AI tool for climate monitoring.</p>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-text-muted">By Priya Sharma</span>
+                <span class="text-primary group-hover:translate-x-1 transition-transform">→</span>
+              </div>
+            </div>
+          </div>
+        </a>
+
+        <!-- Sample Blog Post 4 -->
+        <a href="/blog/sample-post-4" class="group block">
+          <div class="card overflow-hidden hover:shadow-xl transition-all duration-300">
+            <div class="aspect-video bg-gradient-to-br from-warning/20 to-primary/20 flex items-center justify-center">
+              <img 
+                src="https://images.unsplash.com/photo-1555421689-491a97ff2040?auto=format&fit=crop&w=600&h=400" 
+                alt="Blog post image" 
+                class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              />
+            </div>
+            <div class="p-6">
+              <div class="flex items-center gap-3 mb-3">
+                <span class="badge badge-warning text-xs">Impact Stories</span>
+                <span class="text-sm text-text-muted">February 28, 2026</span>
+              </div>
+              <h3 class="text-xl font-bold mb-3 group-hover:text-primary transition-colors">AI-Powered Platform Helps Reduce Food Waste by 30%</h3>
+              <p class="text-text-muted mb-4">How our alumni team built a machine learning solution that's making a real difference in sustainability.</p>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-text-muted">By Team GreenAI</span>
+                <span class="text-primary group-hover:translate-x-1 transition-transform">→</span>
+              </div>
+            </div>
+          </div>
+        </a>
+
+        <!-- Sample Blog Post 5 -->
+        <a href="/blog/sample-post-5" class="group block">
+          <div class="card overflow-hidden hover:shadow-xl transition-all duration-300">
+            <div class="aspect-video bg-gradient-to-br from-secondary/20 to-primary/20 flex items-center justify-center">
+              <img 
+                src="https://images.unsplash.com/photo-1547658719-da2b511c6bc8?auto=format&fit=crop&w=600&h=400" 
+                alt="Blog post image" 
+                class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              />
+            </div>
+            <div class="p-6">
+              <div class="flex items-center gap-3 mb-3">
+                <span class="badge badge-secondary text-xs">Announcements</span>
+                <span class="text-sm text-text-muted">February 20, 2026</span>
+              </div>
+              <h3 class="text-xl font-bold mb-3 group-hover:text-primary transition-colors">Upcoming Global Hackathon Series Announced</h3>
+              <p class="text-text-muted mb-4">We're excited to announce our next series of global hackathons focusing on AI for social good.</p>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-text-muted">By C4C Team</span>
+                <span class="text-primary group-hover:translate-x-1 transition-transform">→</span>
+              </div>
+            </div>
+          </div>
+        </a>
+
+        <!-- Sample Blog Post 6 -->
+        <a href="/blog/sample-post-6" class="group block">
+          <div class="card overflow-hidden hover:shadow-xl transition-all duration-300">
+            <div class="aspect-video bg-gradient-to-br from-purple/20 to-primary/20 flex items-center justify-center">
+              <img 
+                src="https://images.unsplash.com/photo-1551650975-87deedd944c3?auto=format&fit=crop&w=600&h=400" 
+                alt="Blog post image" 
+                class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              />
+            </div>
+            <div class="p-6">
+              <div class="flex items-center gap-3 mb-3">
+                <span class="badge badge-purple text-xs">Technical Tutorials</span>
+                <span class="text-sm text-text-muted">February 15, 2026</span>
+              </div>
+              <h3 class="text-xl font-bold mb-3 group-hover:text-primary transition-colors">Ethical AI Development: A Practical Guide</h3>
+              <p class="text-text-muted mb-4">Key principles and practices for developing AI systems that prioritize ethical considerations.</p>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-text-muted">By Dr. Raj Patel</span>
+                <span class="text-primary group-hover:translate-x-1 transition-transform">→</span>
+              </div>
+            </div>
+          </div>
+        </a>
+      </div>
+
+      <!-- Load More Button -->
+      <div class="text-center mt-12">
+        <button class="btn btn-primary btn-lg">
+          Load More Articles
+        </button>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
