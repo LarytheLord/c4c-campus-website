@@ -62,7 +62,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
           <form id="bootcamp-form" class="space-y-6">
             <div id="bootcamp-start-notice" class="bg-primary/10 border-l-4 border-primary p-4 rounded-r-lg mb-6">
-              <p class="font-bold text-primary">Next bootcamp starts February 8, 2026</p>
+              <p class="font-bold text-primary">Next bootcamp starts soon</p>
             </div>
 
             <!-- Personal Info -->
@@ -227,7 +227,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
               <strong>12-week program:</strong> In-person at C4C Campus in Bengaluru. Intensive development, mentorship, pitch preparation, and investor introductions.
             </p>
             <p class="text-sm text-text-muted mb-3">
-              <strong>Animal Advocacy Pre-Accelerator (AARC):</strong> Optional 4-week programme (Feb 9 - Mar 8, 2026) for animal protection projects. Teams arrive with prototypes, pitch to investors in week 1, and successful teams graduate to the main accelerator.
+              <strong>Animal Advocacy Pre-Accelerator (AARC):</strong> Optional 4-week programme for animal protection projects. Teams arrive with prototypes, pitch to investors in week 1, and successful teams graduate to the main accelerator.
             </p>
             <p class="text-sm text-text-muted">
               <strong>What we're looking for:</strong> Developers with an existing prototype or MVP.
@@ -481,7 +481,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
               <div class="flex items-start justify-between gap-4 mb-3">
                 <div>
                   <span class="inline-block bg-gray-200 text-gray-600 text-xs font-bold px-2 py-1 rounded mb-2">COMPLETED</span>
-                  <h4 class="text-xl font-bold">Bengaluru Hackathon - January 2026</h4>
+                  <h4 class="text-xl font-bold">Code 4 Compassion Bengaluru</h4>
                   <p class="text-base text-text-muted">January 16, 2026 • Bengaluru, India</p>
                 </div>
                 <div class="text-3xl">🇮🇳</div>
@@ -927,13 +927,11 @@ scholarshipCheckbox?.addEventListener('change', (e) => {
   }
 });
 
-// Hide bootcamp start notice on or after February 8, 2026
+// Hide bootcamp start notice after a certain date
 const bootcampStartNotice = document.getElementById('bootcamp-start-notice');
 if (bootcampStartNotice) {
   const today = new Date();
-  const startDate = new Date('2026-02-08');
-  if (today >= startDate) {
-    bootcampStartNotice.style.display = 'none';
-  }
+  // Add logic to hide notice after appropriate date if needed
+  // For now, we'll keep it visible but with generic messaging
 }
 </script>
