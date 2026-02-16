@@ -459,46 +459,37 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           <div class="mb-8">
             <h3 class="text-2xl font-bold mb-4">Upcoming Hackathons</h3>
 
-            <div class="card border-l-4 border-info bg-info/5">
-              <div class="py-6 px-6">
-                <div class="text-4xl mb-4 text-center">🎉</div>
-                <h4 class="text-2xl font-bold mb-4 text-center">Bengaluru Hackathon - January 2026</h4>
-                
-                <div class="space-y-3 mb-6">
-                  <div>
-                    <p class="text-sm font-semibold text-text-muted">Location:</p>
-                    <p class="text-base">Code for Compassion Campus, The Yard, Carlton Towers, Indiranagar, Bengaluru, India</p>
-                  </div>
-                  
-                  <div class="grid md:grid-cols-2 gap-3">
-                    <div>
-                      <p class="text-sm font-semibold text-text-muted">Date:</p>
-                      <p class="text-base">January 16, 2026</p>
-                    </div>
-                    <div>
-                      <p class="text-sm font-semibold text-text-muted">Time:</p>
-                      <p class="text-base">9:00 AM – Late Evening</p>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <p class="text-sm font-semibold text-text-muted">Application Deadline:</p>
-                    <p class="text-base font-bold text-accent">January 10, 2026</p>
-                  </div>
-                </div>
-                
-                <div class="text-center">
-                  <a href="https://docs.google.com/forms/d/e/1FAIpQLSciSZdXBq8cxcknHYKqPg7SfbU21aJUutozWvvGmjYcwiHu7A/viewform" target="_blank" rel="noopener noreferrer" class="btn btn-info btn-lg">
-                    Apply Now →
-                  </a>
-                </div>
-              </div>
+            <div class="card bg-surface text-center py-12">
+              <div class="text-5xl mb-4">📅</div>
+              <h4 class="text-xl font-bold mb-2">No Upcoming Hackathons Announced Yet</h4>
+              <p class="text-base text-text-muted mb-6">
+                We're currently planning our next global hackathons. Stay tuned for updates!
+              </p>
+              <a href="https://discord.gg/qewprMy7G6" target="_blank" rel="noopener noreferrer" class="btn btn-primary inline-flex items-center">
+                Join Discord for Updates
+                <span class="ml-2">→</span>
+              </a>
             </div>
           </div>
 
           <!-- Past Events -->
           <div class="mb-6">
             <h3 class="text-2xl font-bold mb-4">Past Events</h3>
+
+            <!-- Bengaluru Hackathon (Past) -->
+            <div class="card border-l-4 border-gray-400 mb-4 opacity-75">
+              <div class="flex items-start justify-between gap-4 mb-3">
+                <div>
+                  <span class="inline-block bg-gray-200 text-gray-600 text-xs font-bold px-2 py-1 rounded mb-2">COMPLETED</span>
+                  <h4 class="text-xl font-bold">Bengaluru Hackathon - January 2026</h4>
+                  <p class="text-base text-text-muted">January 16, 2026 • Bengaluru, India</p>
+                </div>
+                <div class="text-3xl">🇮🇳</div>
+              </div>
+              <p class="text-sm text-text-muted">
+                Code for Compassion Campus event held at The Yard, Carlton Towers. Focused on building AI tools for animal advocacy and climate action.
+              </p>
+            </div>
 
             <!-- DC Hackathon (Past) -->
             <div class="card border-l-4 border-gray-400 mb-4 opacity-75">
