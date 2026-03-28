@@ -1,0 +1,713 @@
+---
+/**
+ * Teacher Analytics Dashboard
+ * Agent 2: Teacher Analytics Specialist
+ *
+ * Comprehensive analytics dashboard for teachers with engagement heat maps,
+ * dropout predictions, lesson effectiveness, and custom reporting
+ */
+
+import TeacherLayout from '../../layouts/TeacherLayout.astro';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  import.meta.env.PUBLIC_SUPABASE_URL,
+  import.meta.env.PUBLIC_SUPABASE_ANON_KEY
+);
+
+// Check authentication
+const { data: { session } } = await supabase.auth.getSession();
+
+if (!session) {
+  return Astro.redirect('/login?redirect=/teacher/analytics');
+}
+
+// Get teacher's cohorts with enrollment counts
+const { data: cohorts } = await supabase
+  .from('cohorts')
+  .select(`
+    id,
+    name,
+    course_id,
+    cohort_enrollments(count)
+  `)
+  .eq('created_by', session.user.id)
+  .order('created_at', { ascending: false });
+
+// Transform to add student count
+const cohortsWithCounts = cohorts?.map(c => ({
+  ...c,
+  student_count: c.cohort_enrollments?.[0]?.count || 0
+})) || [];
+
+const defaultCohort = cohortsWithCounts?.[0];
+---
+
+<TeacherLayout title="Teacher Analytics Dashboard - C4C Campus" currentPage="analytics">
+  <div class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+      <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+        Analytics Dashboard
+      </h1>
+      <p class="text-lg text-gray-600 dark:text-gray-400">
+        Track student engagement, identify at-risk learners, and optimize your teaching
+      </p>
+    </div>
+
+    <!-- Cohort Selector -->
+    <div class="mb-6">
+      <label for="cohort-select" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        Select Cohort
+      </label>
+      <select
+        id="cohort-select"
+        class="w-full md:w-96 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+      >
+        {cohortsWithCounts?.map(cohort => (
+          <option value={cohort.id} selected={cohort.id === defaultCohort?.id}>
+            {cohort.name} ({cohort.student_count} students)
+          </option>
+        ))}
+      </select>
+    </div>
+
+    <!-- Date Range Selector -->
+    <div id="date-range-container" class="mb-8"></div>
+
+    <!-- Key Metrics Cards -->
+    <div id="metrics-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"></div>
+
+    <!-- Tabs for Different Analytics Views -->
+    <div class="mb-6">
+      <div class="border-b border-gray-200 dark:border-gray-700">
+        <nav class="-mb-px flex space-x-8">
+          <button
+            class="tab-button active py-4 px-1 border-b-2 font-medium text-sm"
+            data-tab="engagement"
+          >
+            Engagement Heat Map
+          </button>
+          <button
+            class="tab-button py-4 px-1 border-b-2 font-medium text-sm"
+            data-tab="at-risk"
+          >
+            At-Risk Students
+          </button>
+          <button
+            class="tab-button py-4 px-1 border-b-2 font-medium text-sm"
+            data-tab="lessons"
+          >
+            Lesson Effectiveness
+          </button>
+          <button
+            class="tab-button py-4 px-1 border-b-2 font-medium text-sm"
+            data-tab="reports"
+          >
+            Custom Reports
+          </button>
+        </nav>
+      </div>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="tab-content">
+      <!-- Engagement Heat Map Tab -->
+      <div id="engagement-tab" class="tab-panel active">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-6">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
+              Student Engagement Heat Map
+            </h2>
+            <div id="heatmap-export"></div>
+          </div>
+          <p class="text-gray-600 dark:text-gray-400 mb-6">
+            Visualize when your students are most active throughout the week
+          </p>
+          <div id="heatmap-container" class="min-h-[400px]"></div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">
+              Peak Activity Times
+            </h3>
+            <div id="peak-times" class="space-y-3"></div>
+          </div>
+
+          <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">
+              Activity Trends
+            </h3>
+            <canvas id="activity-trend-chart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- At-Risk Students Tab -->
+      <div id="at-risk-tab" class="tab-panel hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-6">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
+              Dropout Risk Analysis
+            </h2>
+            <button
+              id="recalculate-risk"
+              class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Recalculate
+            </button>
+          </div>
+          <p class="text-gray-600 dark:text-gray-400 mb-6">
+            Identify students who need support and take proactive action
+          </p>
+
+          <!-- Risk Level Filters -->
+          <div class="flex space-x-2 mb-6">
+            <button class="risk-filter active px-4 py-2 rounded-lg" data-level="all">
+              All Students
+            </button>
+            <button class="risk-filter px-4 py-2 rounded-lg bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400" data-level="critical">
+              Critical
+            </button>
+            <button class="risk-filter px-4 py-2 rounded-lg bg-orange-100 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400" data-level="high">
+              High
+            </button>
+            <button class="risk-filter px-4 py-2 rounded-lg bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400" data-level="medium">
+              Medium
+            </button>
+            <button class="risk-filter px-4 py-2 rounded-lg bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400" data-level="low">
+              Low
+            </button>
+          </div>
+
+          <div id="at-risk-container"></div>
+        </div>
+      </div>
+
+      <!-- Lesson Effectiveness Tab -->
+      <div id="lessons-tab" class="tab-panel hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+          <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+            Lesson Performance
+          </h2>
+          <p class="text-gray-600 dark:text-gray-400 mb-6">
+            Analyze completion rates and engagement for each lesson
+          </p>
+          <div id="lessons-container"></div>
+        </div>
+      </div>
+
+      <!-- Custom Reports Tab -->
+      <div id="reports-tab" class="tab-panel hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+          <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+            Custom Report Builder
+          </h2>
+          <p class="text-gray-600 dark:text-gray-400 mb-6">
+            Create and export custom analytics reports
+          </p>
+          <div class="text-center py-12">
+            <p class="text-gray-500 dark:text-gray-400 mb-4">
+              Report builder coming soon!
+            </p>
+            <p class="text-sm text-gray-400">
+              Export current view data using the export buttons above each section
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    import D3HeatMap from '../../components/analytics/D3HeatMap';
+    import DateRangeSelector from '../../components/analytics/DateRangeSelector';
+    import MetricCard from '../../components/analytics/MetricCard';
+    import ExportPanel from '../../components/analytics/ExportPanel';
+    import { createRoot } from 'react-dom/client';
+    import { createElement } from 'react';
+    import { Chart, registerables } from 'chart.js';
+    import { supabase } from '@/lib/supabase';
+
+    Chart.register(...registerables);
+
+    // Global state
+    let currentCohortId: string | null = null; // UUID string, not number
+    let _currentDateRange = { start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), end: new Date() };
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      initializeCohortSelector();
+      initializeDateRangeSelector();
+      initializeTabs();
+      loadDashboardData();
+    });
+
+    function initializeCohortSelector() {
+      const select = document.getElementById('cohort-select') as HTMLSelectElement;
+      if (select && select.value) {
+        currentCohortId = select.value; // UUID string, not parsed as number
+      }
+
+      select?.addEventListener('change', (e) => {
+        const value = (e.target as HTMLSelectElement).value;
+        currentCohortId = value || null; // Treat empty string as null
+        loadDashboardData();
+      });
+    }
+
+    function initializeDateRangeSelector() {
+      const container = document.getElementById('date-range-container');
+      if (container) {
+        const root = createRoot(container);
+        root.render(
+          createElement(DateRangeSelector, {
+            onChange: (range) => {
+              _currentDateRange = range;
+              loadDashboardData();
+            }
+          })
+        );
+      }
+    }
+
+    function initializeTabs() {
+      const tabButtons = document.querySelectorAll('.tab-button');
+      tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          const tabName = button.getAttribute('data-tab');
+          if (tabName) {
+            switchTab(tabName);
+          }
+        });
+      });
+    }
+
+    function switchTab(tabName: string) {
+      // Update button states
+      document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.remove('active', 'border-blue-600', 'text-blue-600');
+        btn.classList.add('border-transparent', 'text-gray-500');
+      });
+
+      const activeButton = document.querySelector(`[data-tab="${tabName}"]`);
+      activeButton?.classList.add('active', 'border-blue-600', 'text-blue-600');
+      activeButton?.classList.remove('border-transparent', 'text-gray-500');
+
+      // Update panel visibility
+      document.querySelectorAll('.tab-panel').forEach(panel => {
+        panel.classList.add('hidden');
+      });
+
+      const activePanel = document.getElementById(`${tabName}-tab`);
+      activePanel?.classList.remove('hidden');
+
+      // Load tab-specific data
+      loadTabData(tabName);
+    }
+
+    async function loadDashboardData() {
+      if (!currentCohortId) return;
+
+      await Promise.all([
+        loadMetrics(),
+        loadTabData('engagement')
+      ]);
+    }
+
+    async function loadMetrics() {
+      const container = document.getElementById('metrics-container');
+      if (!container) return;
+
+      type MetricData = {
+        title: string;
+        value: string;
+        trend: 'up' | 'down' | 'stable';
+        trendValue: string;
+        color: 'blue' | 'green' | 'red' | 'yellow' | 'purple';
+        icon: string;
+      };
+
+      // Fetch real metrics from cohort-analytics API
+      let metrics: MetricData[] = [
+        { title: 'Total Students', value: '-', trend: 'stable', trendValue: '', color: 'blue', icon: '👥' },
+        { title: 'Avg Completion', value: '-', trend: 'stable', trendValue: '', color: 'green', icon: '✓' },
+        { title: 'At Risk', value: '-', trend: 'stable', trendValue: '', color: 'red', icon: '⚠️' },
+        { title: 'Engagement Rate', value: '-', trend: 'stable', trendValue: '', color: 'purple', icon: '📊' }
+      ];
+
+      if (currentCohortId) {
+        try {
+          const response = await fetch(`/api/teacher/cohort-analytics?cohort_id=${currentCohortId}`, {
+            headers: {
+              'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`
+            }
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const analytics = data.analytics;
+
+            if (analytics) {
+              metrics = [
+                {
+                  title: 'Total Students',
+                  value: String(analytics.total_students || 0),
+                  trend: 'stable',
+                  trendValue: '',
+                  color: 'blue',
+                  icon: '👥'
+                },
+                {
+                  title: 'Avg Completion',
+                  value: `${analytics.average_completion_percentage || 0}%`,
+                  trend: analytics.average_completion_percentage >= 70 ? 'up' : 'stable',
+                  trendValue: '',
+                  color: 'green',
+                  icon: '✓'
+                },
+                {
+                  title: 'At Risk',
+                  value: String(analytics.struggling_students_count || 0),
+                  trend: analytics.struggling_students_count > 3 ? 'up' : 'down',
+                  trendValue: '',
+                  color: 'red',
+                  icon: '⚠️'
+                },
+                {
+                  title: 'Engagement Rate',
+                  value: `${analytics.engagement_rate || 0}%`,
+                  trend: analytics.engagement_rate >= 70 ? 'up' : 'stable',
+                  trendValue: '',
+                  color: 'purple',
+                  icon: '📊'
+                }
+              ];
+            }
+          }
+        } catch (error) {
+          console.error('Failed to load metrics from API:', error);
+        }
+      }
+
+      container.innerHTML = '';
+      metrics.forEach(metric => {
+        const div = document.createElement('div');
+        container.appendChild(div);
+        const root = createRoot(div);
+        root.render(createElement(MetricCard, metric));
+      });
+    }
+
+    async function loadTabData(tabName: string) {
+      switch (tabName) {
+        case 'engagement':
+          await loadEngagementHeatMap();
+          break;
+        case 'at-risk':
+          await loadAtRiskStudents();
+          break;
+        case 'lessons':
+          await loadLessonEffectiveness();
+          break;
+      }
+    }
+
+    async function loadEngagementHeatMap() {
+      if (!currentCohortId) return;
+
+      try {
+        const response = await fetch(`/api/analytics/engagement-heatmap?cohortId=${currentCohortId}`);
+        const data = await response.json();
+
+        // Transform data for D3HeatMap
+        const heatmapData = data.map((d: any) => ({
+          day: d.day_of_week,
+          hour: d.hour_of_day,
+          value: d.unique_users || 0,
+          label: `${d.total_events} events`
+        }));
+
+        // Render heatmap
+        const container = document.getElementById('heatmap-container');
+        if (container) {
+          container.innerHTML = '';
+          const div = document.createElement('div');
+          container.appendChild(div);
+          const root = createRoot(div);
+          root.render(createElement(D3HeatMap, {
+            data: heatmapData,
+            onCellClick: (_cell) => {
+              // Cell click handler - can be used for drill-down functionality
+            }
+          }));
+        }
+
+        // Render export panel
+        const exportContainer = document.getElementById('heatmap-export');
+        if (exportContainer) {
+          const root = createRoot(exportContainer);
+          root.render(createElement(ExportPanel, {
+            chartId: 'heatmap-container',
+            data: heatmapData,
+            filename: 'engagement-heatmap',
+            title: 'Engagement Heat Map'
+          }));
+        }
+      } catch (error) {
+        console.error('Failed to load heatmap:', error);
+      }
+    }
+
+    async function loadAtRiskStudents() {
+      if (!currentCohortId) return;
+
+      const container = document.getElementById('at-risk-container');
+      if (!container) return;
+
+      container.innerHTML = '<div class="text-center py-8"><div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div></div>';
+
+      try {
+        // First, get the cohort data to retrieve the course_id
+        const { data: cohortData, error: cohortError } = await supabase
+          .from('cohorts')
+          .select('course_id')
+          .eq('id', currentCohortId)
+          .single();
+
+        if (cohortError || !cohortData) {
+          throw new Error('Failed to fetch cohort data');
+        }
+
+        const courseId = cohortData.course_id;
+        const response = await fetch(`/api/analytics/dropout-predictions?cohortId=${currentCohortId}&courseId=${courseId}`);
+        const data = await response.json();
+
+        // Render at-risk students by level
+        container.innerHTML = `
+          <div class="space-y-4">
+            ${renderRiskLevel('critical', data.byRiskLevel?.critical || [])}
+            ${renderRiskLevel('high', data.byRiskLevel?.high || [])}
+            ${renderRiskLevel('medium', data.byRiskLevel?.medium || [])}
+            ${renderRiskLevel('low', data.byRiskLevel?.low || [])}
+          </div>
+        `;
+      } catch (error) {
+        console.error('Failed to load at-risk students:', error);
+        container.innerHTML = '<p class="text-red-600">Failed to load predictions. Please try again.</p>';
+      }
+    }
+
+    function renderRiskLevel(level: 'critical' | 'high' | 'medium' | 'low', students: any[]) {
+      const colors: Record<'critical' | 'high' | 'medium' | 'low', string> = {
+        critical: 'bg-red-100 dark:bg-red-900/20 border-red-300 dark:border-red-800',
+        high: 'bg-orange-100 dark:bg-orange-900/20 border-orange-300 dark:border-orange-800',
+        medium: 'bg-yellow-100 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-800',
+        low: 'bg-green-100 dark:bg-green-900/20 border-green-300 dark:border-green-800'
+      };
+
+      if (!students || students.length === 0) return '';
+
+      return `
+        <div class="border-2 ${colors[level]} rounded-lg p-4">
+          <h4 class="font-bold text-lg mb-3 capitalize">${level} Risk (${students.length})</h4>
+          <div class="space-y-2">
+            ${students.slice(0, 5).map(student => `
+              <div class="bg-white dark:bg-gray-800 rounded p-3 flex justify-between items-center">
+                <div>
+                  <p class="font-medium">${student.user?.email || 'Unknown'}</p>
+                  <p class="text-sm text-gray-600">${student.last_activity_days} days inactive</p>
+                </div>
+                <button class="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">
+                  Contact
+                </button>
+              </div>
+            `).join('')}
+          </div>
+          ${students.length > 5 ? `<p class="text-sm text-gray-600 mt-2">+ ${students.length - 5} more</p>` : ''}
+        </div>
+      `;
+    }
+
+    async function loadLessonEffectiveness() {
+      const container = document.getElementById('lessons-container');
+      if (!container) return;
+
+      container.innerHTML = '<p class="text-center text-gray-500">Loading lesson data...</p>';
+
+      if (!currentCohortId) {
+        container.innerHTML = '<p class="text-center text-gray-500">Select a cohort to view lesson effectiveness.</p>';
+        return;
+      }
+
+      try {
+        // Get cohort data to find course_id
+        const { data: cohortData, error: cohortError } = await supabase
+          .from('cohorts')
+          .select('course_id')
+          .eq('id', currentCohortId)
+          .single();
+
+        if (cohortError || !cohortData) {
+          throw new Error('Failed to fetch cohort data');
+        }
+
+        // Get modules for this course
+        const { data: modules } = await supabase
+          .from('modules')
+          .select('id, title')
+          .eq('course_id', cohortData.course_id)
+          .order('order_index');
+
+        if (!modules || modules.length === 0) {
+          container.innerHTML = '<p class="text-center text-gray-500">No lessons found for this course.</p>';
+          return;
+        }
+
+        const moduleIds = modules.map(m => m.id);
+
+        // Get lessons for these modules
+        const { data: lessons } = await supabase
+          .from('lessons')
+          .select('id, module_id, title, duration_minutes')
+          .in('module_id', moduleIds)
+          .order('order_index');
+
+        if (!lessons || lessons.length === 0) {
+          container.innerHTML = '<p class="text-center text-gray-500">No lessons found for this course.</p>';
+          return;
+        }
+
+        // Get enrollment count for completion rate calculation
+        const { count: enrollmentCount } = await supabase
+          .from('cohort_enrollments')
+          .select('*', { count: 'exact', head: true })
+          .eq('cohort_id', currentCohortId)
+          .in('status', ['active', 'completed']);
+
+        const totalStudents = enrollmentCount || 1;
+
+        // Get lesson progress data for this cohort
+        const lessonIds = lessons.map(l => l.id);
+        const { data: progressData } = await supabase
+          .from('lesson_progress')
+          .select('lesson_id, completed, time_spent_seconds')
+          .eq('cohort_id', currentCohortId)
+          .in('lesson_id', lessonIds);
+
+        // Aggregate progress by lesson
+        const lessonStats: Record<number, { completions: number; totalTimeSpent: number }> = {};
+        lessonIds.forEach(id => {
+          lessonStats[id] = { completions: 0, totalTimeSpent: 0 };
+        });
+
+        progressData?.forEach((p: any) => {
+          if (p.completed) lessonStats[p.lesson_id].completions++;
+          lessonStats[p.lesson_id].totalTimeSpent += (p.time_spent_seconds || 0);
+        });
+
+        // Build module-grouped lesson display
+        const moduleMap: Record<number, string> = {};
+        modules.forEach(m => { moduleMap[m.id] = m.title; });
+
+        const lessonsByModule: Record<number, any[]> = {};
+        lessons.forEach(l => {
+          if (!lessonsByModule[l.module_id]) lessonsByModule[l.module_id] = [];
+          lessonsByModule[l.module_id].push(l);
+        });
+
+        let html = '<div class="space-y-6">';
+
+        modules.forEach(module => {
+          const moduleLessons = lessonsByModule[module.id] || [];
+          if (moduleLessons.length === 0) return;
+
+          html += `
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+              <h3 class="font-semibold text-lg mb-4">${module.title}</h3>
+              <div class="space-y-3">
+          `;
+
+          moduleLessons.forEach(lesson => {
+            const stats = lessonStats[lesson.id];
+            const completionRate = Math.round((stats.completions / totalStudents) * 100);
+            const avgTimeMinutes = stats.completions > 0
+              ? Math.round((stats.totalTimeSpent / stats.completions) / 60)
+              : 0;
+            const expectedDuration = lesson.duration_minutes || 0;
+
+            // Color code based on completion rate
+            const barColor = completionRate >= 70 ? 'bg-green-500' : completionRate >= 40 ? 'bg-yellow-500' : 'bg-red-500';
+
+            html += `
+              <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
+                <div class="flex justify-between items-center mb-2">
+                  <span class="font-medium">${lesson.title}</span>
+                  <span class="text-sm text-gray-600 dark:text-gray-400">${stats.completions}/${totalStudents} completed</span>
+                </div>
+                <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-2">
+                  <div class="${barColor} h-2 rounded-full" style="width: ${completionRate}%"></div>
+                </div>
+                <div class="flex justify-between text-xs text-gray-500">
+                  <span>${completionRate}% completion rate</span>
+                  <span>Avg: ${avgTimeMinutes}min ${expectedDuration > 0 ? `/ ${expectedDuration}min expected` : ''}</span>
+                </div>
+              </div>
+            `;
+          });
+
+          html += '</div></div>';
+        });
+
+        html += '</div>';
+        container.innerHTML = html;
+
+      } catch (error) {
+        console.error('Failed to load lesson effectiveness:', error);
+        container.innerHTML = '<p class="text-red-600">Failed to load lesson data. Please try again.</p>';
+      }
+    }
+
+    // Risk filter buttons
+    document.querySelectorAll('.risk-filter').forEach(button => {
+      button.addEventListener('click', (e) => {
+        document.querySelectorAll('.risk-filter').forEach(b => b.classList.remove('active', 'ring-2', 'ring-blue-600'));
+        (e.target as HTMLElement).classList.add('active', 'ring-2', 'ring-blue-600');
+        // TODO: Filter at-risk students by level
+      });
+    });
+
+    // Recalculate risk button
+    document.getElementById('recalculate-risk')?.addEventListener('click', async () => {
+      if (currentCohortId) {
+        const button = document.getElementById('recalculate-risk') as HTMLButtonElement;
+        button.disabled = true;
+        button.textContent = 'Calculating...';
+        await loadAtRiskStudents();
+        button.disabled = false;
+        button.textContent = 'Recalculate';
+      }
+    });
+  </script>
+
+  <style>
+    .tab-button.active {
+      border-color: rgb(37, 99, 235);
+      color: rgb(37, 99, 235);
+    }
+
+    .tab-button:not(.active) {
+      border-color: transparent;
+      color: rgb(107, 114, 128);
+    }
+
+    .tab-button:not(.active):hover {
+      color: rgb(55, 65, 81);
+      border-color: rgb(209, 213, 219);
+    }
+
+    .risk-filter.active {
+      box-shadow: 0 0 0 2px rgb(37, 99, 235);
+    }
+  </style>
+</TeacherLayout>

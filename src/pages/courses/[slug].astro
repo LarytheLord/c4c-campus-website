@@ -1,0 +1,1224 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+
+// Enable server-side rendering for this dynamic route
+export const prerender = false;
+---
+
+<BaseLayout title="Course Details - C4C Campus" hideHeader={true} hideFooter={true}>
+  <div class="min-h-screen bg-background">
+    <!-- Internal Header -->
+    <header class="sticky top-0 z-50 bg-white/95 backdrop-blur-sm shadow-sm">
+      <div class="container mx-auto px-4 py-4">
+        <div class="flex items-center justify-between gap-4">
+          <div class="flex items-center gap-4 flex-1">
+            <a href="/dashboard" class="flex-shrink-0">
+              <img src="/logo.jpeg" alt="C4C Campus" class="h-10 w-10 rounded-lg" />
+            </a>
+            <div class="min-w-0">
+              <h1 class="text-xl sm:text-2xl font-bold text-text truncate" id="course-title">Course</h1>
+              <p class="text-text-muted text-sm truncate" id="breadcrumb">Loading...</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <a href="/courses" class="hidden sm:block btn btn-ghost btn-sm">Back to Courses</a>
+            <button id="logout-btn" class="btn btn-ghost text-sm">Sign Out</button>
+          </div>
+        </div>
+      </div>
+      <div class="h-0.5 bg-gradient-to-r from-primary/50 via-primary to-primary/50"></div>
+    </header>
+
+    <!-- Loading State -->
+    <div id="loading-state" class="container mx-auto px-4 py-12">
+      <div class="text-center">
+        <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+        <p class="mt-4 text-text-muted">Loading course...</p>
+      </div>
+    </div>
+
+    <!-- Course Content -->
+    <div id="course-content" class="hidden container mx-auto px-4 py-8">
+      <!-- Breadcrumb Navigation -->
+      <nav class="mb-6 flex items-center gap-2 text-sm">
+        <a href="/dashboard" class="text-text-muted hover:text-primary transition-colors">Dashboard</a>
+        <span class="text-text-muted">/</span>
+        <a href="/courses" class="text-text-muted hover:text-primary transition-colors">Courses</a>
+        <span class="text-text-muted">/</span>
+        <span id="breadcrumb-course-name" class="text-text font-medium">Course</span>
+      </nav>
+
+      <!-- Course Info Card -->
+      <div class="card mb-6">
+        <div class="flex justify-between items-start mb-4">
+          <div class="flex-1">
+            <h2 class="text-2xl font-bold mb-2" id="course-name">Course Name</h2>
+            <p class="text-text-muted mb-4" id="course-description">Description</p>
+            <div class="flex gap-2 text-sm" id="course-meta">
+              <!-- Meta info -->
+            </div>
+          </div>
+          <div class="flex gap-2" id="teacher-actions" style="display: none;">
+            <button id="toggle-cohorts-btn" class="btn btn-ghost btn-sm">Show Cohorts</button>
+            <button id="edit-course-btn" class="btn btn-primary btn-sm">Edit Course</button>
+            <button id="add-module-btn" class="btn btn-primary btn-sm">Add Module</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cohorts Section (for students) -->
+      <div id="cohorts-section" class="hidden mb-6">
+        <h2 id="cohorts-heading" class="text-xl font-bold mb-4">Available Cohorts</h2>
+        <div id="cohorts-loading" class="text-center py-6">
+          <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
+          <p class="mt-2 text-text-muted">Loading cohorts...</p>
+        </div>
+        <div id="cohorts-grid" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Cohorts will be inserted here -->
+        </div>
+        <div id="cohorts-empty" class="hidden card text-center py-8">
+          <p class="text-text-muted">No active cohorts available at this time.</p>
+        </div>
+      </div>
+
+      <!-- Continue Learning Banner (shown for enrolled students with incomplete lessons) -->
+      <div id="continue-learning-banner" class="hidden mb-6"></div>
+
+      <!-- Modules & Lessons -->
+      <div id="modules-container">
+        <div id="modules-loading" class="text-center py-12">
+          <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
+          <p class="mt-2 text-text-muted">Loading modules...</p>
+        </div>
+
+        <div id="modules-list" class="hidden space-y-4">
+          <!-- Modules will be inserted here -->
+        </div>
+
+        <div id="modules-empty" class="hidden text-center py-12 card">
+          <p class="text-text-muted">No modules yet. Add your first module to get started!</p>
+          <button class="btn btn-primary mt-4" onclick="document.getElementById('add-module-btn').click()">
+            Add First Module
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add/Edit Module Modal -->
+    <div id="module-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-lg max-w-lg w-full shadow-xl">
+        <div class="p-6">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-bold" id="module-modal-title">Add Module</h2>
+            <button id="close-module-modal" class="text-text-muted hover:text-text-primary">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+
+          <form id="module-form" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium mb-2">Module Name*</label>
+              <input type="text" id="module-name" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" required />
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2">Description</label>
+              <textarea id="module-description" rows="3" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white"></textarea>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2">Order</label>
+              <input type="number" id="module-order" min="1" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" required />
+            </div>
+
+            <div class="flex gap-3 pt-4">
+              <button type="submit" class="btn btn-primary flex-1">Save Module</button>
+              <button type="button" id="cancel-module-modal" class="btn btn-ghost flex-1">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add/Edit Lesson Modal -->
+    <div id="lesson-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-xl">
+        <div class="p-6">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-bold" id="lesson-modal-title">Add Lesson</h2>
+            <button id="close-lesson-modal" class="text-text-muted hover:text-text-primary">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+
+          <form id="lesson-form" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium mb-2">Lesson Title*</label>
+              <input type="text" id="lesson-title" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" required />
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2">URL Slug*</label>
+              <input type="text" id="lesson-slug" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" required />
+              <p class="text-xs text-gray-500 mt-1">Auto-generated from lesson name</p>
+              <p id="slug-error" class="text-xs text-error mt-1 hidden">This URL slug is already used by another lesson in this module.</p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2">Video Type</label>
+              <select id="lesson-video-type" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white">
+                <option value="">No Video</option>
+                <option value="youtube">YouTube Link</option>
+                <option value="upload">Uploaded Video</option>
+              </select>
+            </div>
+
+            <div id="youtube-field" class="hidden">
+              <label class="block text-sm font-medium mb-2">YouTube URL</label>
+              <input type="url" id="lesson-youtube" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" placeholder="https://youtube.com/watch?v=..." />
+              <p class="text-xs text-gray-500 mt-1">Full YouTube video URL</p>
+            </div>
+
+            <div id="upload-field" class="hidden">
+              <label class="block text-sm font-medium mb-2">Video Path</label>
+              <input type="text" id="lesson-video-path" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" placeholder="/videos/lesson-1.mp4" />
+              <p class="text-xs text-gray-500 mt-1">Path to uploaded video file</p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2">Video Duration (minutes)</label>
+              <input type="number" id="lesson-duration" min="0" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" />
+              <p class="text-xs text-gray-500 mt-1">Optional - for progress tracking</p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2">Content (Markdown)</label>
+              <textarea id="lesson-content" rows="4" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" placeholder="Additional lesson content, notes, or instructions..."></textarea>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2">Order</label>
+              <input type="number" id="lesson-order" min="1" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" required />
+            </div>
+
+            <div class="flex gap-3 pt-4">
+              <button type="submit" class="btn btn-primary flex-1">Save Lesson</button>
+              <button type="button" id="cancel-lesson-modal" class="btn btn-ghost flex-1">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  import { supabase } from '@/lib/supabase';
+  import {
+    getCohortModuleStatuses,
+    formatUnlockDate,
+    getDaysUntilUnlock,
+    type ModuleUnlockStatus
+  } from '@/lib/time-gating';
+  import { showToast, showConfirm, setButtonLoading, dismissToast } from '@/lib/notifications';
+
+  let currentUser: any = null;
+  let currentCourse: any = null;
+  let modules: any[] = [];
+  let cohorts: any[] = [];
+  let userEnrollments: Set<string> = new Set();
+  let userCohortId: string | null = null;
+  let moduleStatuses: Map<number, ModuleUnlockStatus> = new Map();
+  let lessonProgress: Map<number, boolean> = new Map(); // lesson_id -> completed
+  let editingModule: any = null;
+  let editingLesson: any = null;
+  let currentModuleId: number | null = null;
+  let isTeacher = false;
+  let slugValidationTimer: ReturnType<typeof setTimeout> | null = null;
+  let slugValidationRequestId = 0;
+
+  /**
+   * Validate that the lesson slug is unique within the current module.
+   * Returns true if valid (no duplicate), false if duplicate found.
+   */
+  async function validateLessonSlug(): Promise<boolean> {
+    const slugInput = document.getElementById('lesson-slug') as HTMLInputElement;
+    const slugError = document.getElementById('slug-error');
+    if (!slugInput || !slugError) return true;
+
+    const slug = slugInput.value.trim();
+    const moduleId = currentModuleId ?? editingLesson?.module_id;
+    if (!slug || !moduleId) {
+      slugError.classList.add('hidden');
+      return true;
+    }
+
+    const requestId = ++slugValidationRequestId;
+    let query = supabase
+      .from('lessons')
+      .select('id')
+      .eq('module_id', moduleId)
+      .eq('slug', slug);
+
+    // When editing, exclude the current lesson from the check
+    if (editingLesson) {
+      query = query.neq('id', editingLesson.id);
+    }
+
+    const { data } = await query.limit(1);
+
+    // Ignore stale async responses that return after the input has changed.
+    const latestSlugInput = document.getElementById('lesson-slug') as HTMLInputElement | null;
+    const latestSlug = latestSlugInput?.value.trim() || '';
+    if (requestId !== slugValidationRequestId || latestSlug !== slug) {
+      return true;
+    }
+
+    if (data && data.length > 0) {
+      slugError.classList.remove('hidden');
+      return false;
+    } else {
+      slugError.classList.add('hidden');
+      return true;
+    }
+  }
+
+  async function init() {
+    // Get slug from URL
+    const pathParts = window.location.pathname.split('/');
+    const slug = pathParts[pathParts.length - 1];
+
+    // Check authentication - all users must be logged in
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      // Redirect to login - no public access
+      window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
+      return;
+    }
+
+    currentUser = user;
+
+    // Check if user is teacher or admin
+    const { data: application } = await supabase
+      .from('applications')
+      .select('role, status')
+      .eq('user_id', user.id)
+      .single();
+
+    // User is consider a teacher if they have teacher or admin role AND are approved
+    isTeacher = application?.status === 'approved' && (application.role === 'teacher' || application.role === 'admin');
+
+    // Load course (but don't load modules yet)
+    await loadCourse(slug);
+
+    // Load cohorts and module statuses if not teacher
+    if (!isTeacher && currentCourse) {
+      await loadCohorts();
+      await loadModuleStatuses();
+      await loadLessonProgress();
+    }
+
+    // Now load modules after lesson progress is loaded
+    await loadModules();
+
+    // Show "Continue Learning" banner for enrolled students
+    if (!isTeacher && userCohortId && modules.length > 0) {
+      showContinueLearningBanner();
+    }
+
+    // Show content
+    document.getElementById('loading-state')?.classList.add('hidden');
+    document.getElementById('course-content')?.classList.remove('hidden');
+
+    setupEventListeners();
+  }
+
+  async function loadModuleStatuses() {
+    // Get user's active cohort enrollment for this course
+    const { data: enrollments } = await supabase
+      .from('cohort_enrollments')
+      .select(`
+        cohort_id,
+        cohorts!inner (
+          course_id
+        )
+      `)
+      .eq('user_id', currentUser.id)
+      .eq('status', 'active')
+      .eq('cohorts.course_id', currentCourse.id)
+      .order('enrolled_at', { ascending: false })
+      .limit(1);
+
+    if (enrollments && enrollments.length > 0) {
+      const enrollment = enrollments[0];
+      userCohortId = enrollment.cohort_id;
+      // Load all module statuses for this cohort
+      if (userCohortId) {
+        moduleStatuses = await getCohortModuleStatuses(userCohortId, supabase, isTeacher);
+      }
+    }
+  }
+
+  async function loadLessonProgress() {
+    if (!currentUser || !currentCourse) return;
+    
+    // Get all lesson IDs for this course
+    const { data: courseLessons } = await supabase
+      .from('lessons')
+      .select('id, module_id, modules!inner(course_id)')
+      .eq('modules.course_id', currentCourse.id);
+    
+    if (!courseLessons || courseLessons.length === 0) return;
+    
+    const lessonIds = courseLessons.map(l => l.id);
+    
+    // Fetch user's progress for these lessons
+    const { data: progressData } = await supabase
+      .from('lesson_progress')
+      .select('lesson_id, completed')
+      .eq('user_id', currentUser.id)
+      .in('lesson_id', lessonIds);
+    
+    // Build the progress map
+    lessonProgress.clear();
+    if (progressData) {
+      progressData.forEach(p => {
+        lessonProgress.set(p.lesson_id, p.completed === true);
+      });
+    }
+  }
+
+  async function loadCourse(slug: string) {
+    const { data: course, error } = await supabase
+      .from('courses')
+      .select('*')
+      .eq('slug', slug)
+      .single();
+
+    if (error || !course) {
+      showToast('Course not found', 'error');
+      setTimeout(() => {
+        window.location.href = '/courses';
+      }, 1500);
+      return;
+    }
+
+    currentCourse = course;
+
+    // Update UI
+    document.getElementById('course-title')!.textContent = course.title;
+    document.getElementById('course-name')!.textContent = course.title;
+    document.getElementById('course-description')!.textContent = course.description || 'No description';
+    document.getElementById('breadcrumb')!.textContent = `Course / ${course.title}`;
+    document.getElementById('breadcrumb-course-name')!.textContent = course.title;
+
+    const metaHtml = `
+      <span class="badge" style="background: #F3F4F6; color: #374151; border: 1px solid #E5E7EB;">${formatTrack(course.track)}</span>
+      <span class="badge" style="background: #F3F4F6; color: #374151; border: 1px solid #E5E7EB;">${formatDifficulty(course.difficulty)}</span>
+      ${course.default_duration_weeks ? `<span class="badge" style="background: #F3F4F6; color: #374151; border: 1px solid #E5E7EB;">${course.default_duration_weeks} weeks</span>` : ''}
+      ${course.is_published ? '<span class="badge" style="background: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0;">Published</span>' : '<span class="badge" style="background: #FFFBEB; color: #92400E; border: 1px solid #FDE68A;">Draft</span>'}
+    `;
+    document.getElementById('course-meta')!.innerHTML = metaHtml;
+
+    // Show teacher actions only if user is the course creator AND is a verified teacher
+    // At this point currentUser is guaranteed to be non-null (see init() check)
+    const isCreator = course.created_by === currentUser.id;
+
+    // Show Edit/Add Module buttons if user is both a teacher AND the creator
+    if (isCreator && isTeacher) {
+      document.getElementById('teacher-actions')!.style.display = 'flex';
+    }
+  }
+
+  async function loadModules() {
+    const loading = document.getElementById('modules-loading');
+    const list = document.getElementById('modules-list');
+    const empty = document.getElementById('modules-empty');
+
+    loading?.classList.remove('hidden');
+    list?.classList.add('hidden');
+    empty?.classList.add('hidden');
+
+    // Fetch modules with lessons
+    const { data: modulesData, error } = await supabase
+      .from('modules')
+      .select(`
+        *,
+        lessons(*)
+      `)
+      .eq('course_id', currentCourse.id)
+      .order('order_index', { ascending: true });
+
+    loading?.classList.add('hidden');
+
+    if (error) {
+      console.error('Error loading modules:', error);
+      empty?.classList.remove('hidden');
+      return;
+    }
+
+    modules = modulesData || [];
+
+    if (modules.length === 0) {
+      empty?.classList.remove('hidden');
+      return;
+    }
+
+    // Render modules
+    list!.innerHTML = modules.map(module => {
+      const lessons = (module.lessons || []).sort((a: any, b: any) => a.order_index - b.order_index);
+      // currentUser is guaranteed to be non-null at this point (see init() check)
+      const canEdit = currentCourse.created_by === currentUser.id;
+
+      // Check module lock status
+      const moduleStatus = moduleStatuses.get(module.id);
+      const isLocked = moduleStatus && !moduleStatus.isUnlocked;
+      const unlockDate = moduleStatus?.unlockDate;
+      const daysUntil = unlockDate ? getDaysUntilUnlock(unlockDate) : null;
+
+      return `
+        <div class="card${isLocked ? ' opacity-75' : ''}" style="padding: 0; overflow: hidden;">
+          <!-- Module header band -->
+          <div style="background: #F3F4F6; padding: 1rem 1.5rem; border-bottom: 1px solid #E5E7EB;">
+            <div class="flex justify-between items-start">
+              <div class="flex-1">
+                <div class="flex items-center gap-2">
+                  <h3 class="text-lg font-bold" style="font-size: 1.15rem;">${module.order_index}. ${module.title}</h3>
+                  ${isLocked ? `
+                    <span class="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-50 text-amber-600">
+                      <svg class="w-3 h-3 inline mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                      </svg>
+                      Locked
+                    </span>
+                  ` : ''}
+                </div>
+                ${module.description ? `<p class="text-sm text-text-muted mt-1">${module.description}</p>` : ''}
+                ${isLocked && unlockDate ? `
+                  <div class="mt-2 text-sm" style="color: hsl(var(--warning));">
+                    <span class="font-medium">Unlocks ${formatUnlockDate(unlockDate)}</span>
+                    ${daysUntil !== null && daysUntil > 0 ? ` (in ${daysUntil} day${daysUntil === 1 ? '' : 's'})` : ''}
+                  </div>
+                ` : ''}
+              </div>
+              ${canEdit ? `
+                <div class="flex gap-2">
+                  <button class="btn btn-sm btn-ghost add-lesson" data-module-id="${module.id}">+ Lesson</button>
+                  <button class="btn btn-sm btn-ghost edit-module" data-id="${module.id}">Edit</button>
+                  <button class="btn btn-sm btn-ghost delete-module" data-id="${module.id}">Delete</button>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+
+          <!-- Lesson rows -->
+          <div style="padding: 0.5rem 0;">
+          ${lessons.length > 0 ? `
+              ${lessons.map((lesson: any) => `
+                <div class="${isLocked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50 cursor-pointer'} flex justify-between items-center transition-colors" style="padding: 0.75rem 1.5rem 0.75rem 1.75rem; margin-left: 0.75rem; border-left: 3px solid ${lessonProgress.get(lesson.id) ? '#059669' : '#E5E7EB'};" ${!isLocked ? `onclick="window.location.href='/lessons/${lesson.slug}'"` : ''}>
+                  <div class="flex items-center gap-3 flex-1">
+                    ${!isTeacher && !isLocked ? `
+                      ${lessonProgress.get(lesson.id) ? `
+                        <svg class="w-5 h-5 flex-shrink-0" style="color: #059669;" fill="currentColor" viewBox="0 0 20 20">
+                          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                        </svg>
+                      ` : `
+                        <div class="w-5 h-5 flex-shrink-0 rounded-full border-2 border-gray-300"></div>
+                      `}
+                    ` : ''}
+                    <div>
+                      <span class="font-medium text-sm">${lesson.order_index}. ${lesson.title}</span>
+                      ${isLocked ? `
+                        <svg class="w-4 h-4 text-gray-400 inline ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                        </svg>
+                      ` : ''}
+                      ${lesson.duration_minutes ? `<div class="text-xs text-text-muted mt-0.5">${lesson.duration_minutes} min</div>` : ''}
+                    </div>
+                  </div>
+                  ${!isTeacher && !isLocked ? `
+                    <span class="text-xs font-medium px-2.5 py-1 rounded-full ${lessonProgress.get(lesson.id) ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}">
+                      ${lessonProgress.get(lesson.id) ? '✓ Completed' : 'Not Started'}
+                    </span>
+                  ` : ''}
+                  ${canEdit ? `
+                    <div class="flex gap-2" onclick="event.stopPropagation()">
+                      <button class="btn btn-sm btn-ghost edit-lesson" data-id="${lesson.id}" data-module-id="${module.id}">Edit</button>
+                      <button class="btn btn-sm btn-ghost delete-lesson" data-id="${lesson.id}">Delete</button>
+                    </div>
+                  ` : ''}
+                </div>
+              `).join('')}
+          ` : `
+            <p class="text-sm text-text-muted" style="padding: 1rem 1.5rem;">No lessons yet${canEdit ? '. Click "+ Lesson" to add one.' : '.'}</p>
+          `}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    list?.classList.remove('hidden');
+
+    // Add event listeners for course creator only
+    // currentUser is guaranteed to be non-null at this point (see init() check)
+    if (currentCourse.created_by === currentUser.id) {
+      list?.querySelectorAll('.add-lesson').forEach(btn => {
+        btn.addEventListener('click', () => {
+          // Module IDs are BIGSERIAL (numbers) - parse from data attribute
+          const moduleIdStr = btn.getAttribute('data-module-id')!;
+          const moduleId = parseInt(moduleIdStr, 10);
+          if (!isNaN(moduleId)) {
+            addLesson(moduleId);
+          }
+        });
+      });
+
+      list?.querySelectorAll('.edit-module').forEach(btn => {
+        btn.addEventListener('click', () => {
+          // Module IDs are BIGSERIAL (numbers) - parse from data attribute
+          const idStr = btn.getAttribute('data-id')!;
+          const id = parseInt(idStr, 10);
+          if (!isNaN(id)) {
+            editModule(id);
+          }
+        });
+      });
+
+      list?.querySelectorAll('.delete-module').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          // Module IDs are BIGSERIAL (numbers) - parse from data attribute
+          const idStr = btn.getAttribute('data-id')!;
+          const id = parseInt(idStr, 10);
+          if (!isNaN(id)) {
+            const confirmed = await showConfirm('Delete this module and all its lessons?');
+            if (confirmed) {
+              await deleteModule(id);
+            }
+          }
+        });
+      });
+
+      list?.querySelectorAll('.edit-lesson').forEach(btn => {
+        btn.addEventListener('click', () => {
+          // Lesson and Module IDs are BIGSERIAL (numbers) - parse from data attributes
+          const idStr = btn.getAttribute('data-id')!;
+          const moduleIdStr = btn.getAttribute('data-module-id')!;
+          const id = parseInt(idStr, 10);
+          const moduleId = parseInt(moduleIdStr, 10);
+          if (!isNaN(id) && !isNaN(moduleId)) {
+            editLesson(id, moduleId);
+          }
+        });
+      });
+
+      list?.querySelectorAll('.delete-lesson').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          // Lesson IDs are BIGSERIAL (numbers) - parse from data attribute
+          const idStr = btn.getAttribute('data-id')!;
+          const id = parseInt(idStr, 10);
+          if (!isNaN(id)) {
+            const confirmed = await showConfirm('Delete this lesson?');
+            if (confirmed) {
+              await deleteLesson(id);
+            }
+          }
+        });
+      });
+    }
+  }
+
+  function showContinueLearningBanner() {
+    // Find the first incomplete lesson across all modules (sorted by module order, then lesson order)
+    let nextLesson: { title: string; slug: string; moduleName: string } | null = null;
+    let completedCount = 0;
+    let totalCount = 0;
+
+    for (const module of modules) {
+      const lessons = (module.lessons || []).sort((a: any, b: any) => a.order_index - b.order_index);
+      for (const lesson of lessons) {
+        totalCount++;
+        if (lessonProgress.get(lesson.id)) {
+          completedCount++;
+        } else if (!nextLesson) {
+          // Check if module is locked
+          const moduleStatus = moduleStatuses.get(module.id);
+          const isLocked = moduleStatus && !moduleStatus.isUnlocked;
+          if (!isLocked) {
+            nextLesson = { title: lesson.title, slug: lesson.slug, moduleName: module.title };
+          }
+        }
+      }
+    }
+
+    const banner = document.getElementById('continue-learning-banner');
+    if (!banner) return;
+
+    if (totalCount > 0 && completedCount === totalCount) {
+      // All lessons complete
+      banner.innerHTML = `
+        <div style="background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 12px; padding: 1.25rem 1.5rem;">
+          <div class="flex items-center gap-3">
+            <svg class="w-6 h-6 flex-shrink-0" style="color: #059669;" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+            </svg>
+            <div>
+              <p class="font-bold" style="color: #065F46;">Course Complete!</p>
+              <p class="text-sm" style="color: #047857;">You've completed all ${totalCount} lessons. Great work!</p>
+            </div>
+          </div>
+        </div>
+      `;
+      banner.classList.remove('hidden');
+    } else if (nextLesson) {
+      const progressPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+      banner.innerHTML = `
+        <div style="background: white; border: 1px solid #E5E7EB; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+          <div class="flex items-center justify-between gap-4 flex-wrap">
+            <div class="flex-1 min-w-0">
+              <p class="text-sm text-text-muted mb-1">Continue where you left off</p>
+              <p class="font-bold text-lg">${nextLesson.title}</p>
+              <p class="text-sm text-text-muted">${nextLesson.moduleName} · ${completedCount}/${totalCount} lessons complete (${progressPct}%)</p>
+            </div>
+            <a href="/lessons/${nextLesson.slug}" class="btn btn-primary" style="white-space: nowrap;">
+              Continue Learning →
+            </a>
+          </div>
+          ${totalCount > 0 ? `
+            <div class="mt-3 w-full bg-gray-200 rounded-full h-2">
+              <div class="h-2 rounded-full transition-all" style="width: ${progressPct}%; background: hsl(var(--primary));"></div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+      banner.classList.remove('hidden');
+    }
+  }
+
+  async function loadCohorts() {
+    const loading = document.getElementById('cohorts-loading');
+    const grid = document.getElementById('cohorts-grid');
+    const empty = document.getElementById('cohorts-empty');
+    const section = document.getElementById('cohorts-section');
+
+    section?.classList.remove('hidden');
+    loading?.classList.remove('hidden');
+    grid?.classList.add('hidden');
+    empty?.classList.add('hidden');
+
+    // Fetch active/upcoming cohorts for this course
+    const { data: cohortsData, error } = await supabase
+      .from('cohorts')
+      .select('*')
+      .eq('course_id', currentCourse.id)
+      .in('status', ['upcoming', 'active'])
+      .order('start_date', { ascending: true });
+
+    loading?.classList.add('hidden');
+
+    if (error) {
+      console.error('Error loading cohorts:', error);
+      empty?.classList.remove('hidden');
+      return;
+    }
+
+    cohorts = cohortsData || [];
+
+    // Load user's enrollments
+    const { data: enrollmentsData } = await supabase
+      .from('cohort_enrollments')
+      .select('cohort_id')
+      .eq('user_id', currentUser.id);
+
+    userEnrollments = new Set(enrollmentsData?.map(e => e.cohort_id) || []);
+
+    if (cohorts.length === 0) {
+      empty?.classList.remove('hidden');
+      return;
+    }
+
+    // Separate enrolled and unenrolled cohorts
+    const enrolledCohorts = cohorts.filter(c => userEnrollments.has(c.id));
+    const unenrolledCohorts = cohorts.filter(c => !userEnrollments.has(c.id));
+
+    let html = '';
+
+    // Enrolled cohorts: compact info line
+    if (enrolledCohorts.length > 0) {
+      html += enrolledCohorts.map(cohort => {
+        const statusLabel = cohort.status === 'active' ? 'Active' : 'Upcoming';
+        return `
+          <div style="background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 8px; padding: 0.75rem 1rem;" class="flex items-center justify-between gap-3 mb-3">
+            <div class="flex items-center gap-2 text-sm">
+              <svg class="w-4 h-4 flex-shrink-0" style="color: #059669;" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+              </svg>
+              <span class="font-medium">Enrolled in: ${cohort.name}</span>
+              <span class="text-xs font-medium px-2 py-0.5 rounded-full ${cohort.status === 'active' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'}">${statusLabel}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Unenrolled cohorts: standard cards but slightly smaller
+    if (unenrolledCohorts.length > 0) {
+      html += '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
+      html += unenrolledCohorts.map(cohort => {
+        const startDate = new Date(cohort.start_date).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+        const endDate = cohort.end_date
+          ? new Date(cohort.end_date).toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric'
+            })
+          : 'Ongoing';
+
+        return `
+          <div class="card" style="padding: 1rem 1.25rem;">
+            <div class="flex justify-between items-start mb-2">
+              <h3 class="font-semibold text-sm">${cohort.name}</h3>
+              <span class="text-xs font-medium px-2 py-0.5 rounded-full ${cohort.status === 'active' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'}">${cohort.status === 'active' ? 'Active' : 'Upcoming'}</span>
+            </div>
+            <div class="text-xs text-text-muted mb-3">
+              📅 ${startDate} - ${endDate}${cohort.max_students ? ` · 👥 Max ${cohort.max_students}` : ''}
+            </div>
+            <button class="btn btn-primary btn-sm w-full enroll-cohort-btn" data-cohort-id="${cohort.id}" data-cohort-name="${cohort.name}">Enroll in Cohort</button>
+          </div>
+        `;
+      }).join('');
+      html += '</div>';
+    }
+
+    grid!.innerHTML = html;
+
+    // Update section heading based on enrollment state
+    const heading = document.getElementById('cohorts-heading');
+    if (heading) {
+      if (enrolledCohorts.length > 0 && unenrolledCohorts.length === 0) {
+        heading.textContent = 'Your Cohort';
+      } else if (enrolledCohorts.length > 0) {
+        heading.textContent = 'Cohorts';
+      }
+    }
+
+    grid?.classList.remove('hidden');
+
+    // Add event listeners for enroll buttons
+    grid?.querySelectorAll('.enroll-cohort-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const cohortId = btn.getAttribute('data-cohort-id');
+        const cohortName = btn.getAttribute('data-cohort-name');
+        const button = btn as HTMLButtonElement;
+
+        // Add loading state
+        setButtonLoading(button, true, 'Enrolling...');
+
+        await enrollInCohort(cohortId!, cohortName!);
+
+        // Reset button state
+        setButtonLoading(button, false, 'Enroll in Cohort');
+      });
+    });
+  }
+
+  async function enrollInCohort(cohortId: string, cohortName: string) {
+    if (!currentUser) {
+      showToast('Please login to enroll in cohorts', 'error');
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 1500);
+      return;
+    }
+
+    const confirmed = await showConfirm(`Enroll in ${cohortName}?`);
+    if (!confirmed) return;
+
+    const loadingId = showToast('Enrolling...', 'info', 0);
+
+    try {
+      // Get the user's session token
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        dismissToast(loadingId);
+        showToast('Session expired. Please login again.', 'error');
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 1500);
+        return;
+      }
+
+      // Call the cohort enrollment API endpoint
+      const response = await fetch('/api/enroll-cohort', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ cohortId })
+      });
+
+      const result = await response.json();
+
+      dismissToast(loadingId);
+
+      if (!response.ok) {
+        if (response.status === 409) {
+          if (result.error.includes('full')) {
+            showToast('This cohort is full. Please try another cohort.', 'error');
+          } else {
+            showToast('You are already enrolled in this cohort!', 'warning');
+          }
+        } else {
+          showToast('Error enrolling: ' + (result.error || 'Unknown error'), 'error');
+        }
+        return;
+      }
+
+      showToast('Successfully enrolled in ' + cohortName + '!', 'success');
+      await loadCohorts(); // Reload to update UI
+      await loadModuleStatuses(); // Reload module statuses
+      await loadModules(); // Reload modules to show lock status
+    } catch (error) {
+      console.error('Enrollment error:', error);
+      dismissToast(loadingId);
+      showToast('Error enrolling in cohort. Please try again.', 'error');
+    }
+  }
+
+  function setupEventListeners() {
+    // Edit course button - redirect to teacher dashboard with edit parameter
+    document.getElementById('edit-course-btn')?.addEventListener('click', () => {
+      window.location.href = `/teacher/courses?edit=${currentCourse.id}`;
+    });
+
+    // Toggle cohorts visibility (teacher only)
+    document.getElementById('toggle-cohorts-btn')?.addEventListener('click', async () => {
+      const section = document.getElementById('cohorts-section');
+      const btn = document.getElementById('toggle-cohorts-btn');
+      if (!section || !btn) return;
+
+      if (section.classList.contains('hidden')) {
+        await loadCohorts();
+        btn.textContent = 'Hide Cohorts';
+      } else {
+        section.classList.add('hidden');
+        btn.textContent = 'Show Cohorts';
+      }
+    });
+
+    // Module modal
+    document.getElementById('add-module-btn')?.addEventListener('click', () => {
+      editingModule = null;
+      showModuleModal();
+    });
+
+    document.getElementById('close-module-modal')?.addEventListener('click', closeModuleModal);
+    document.getElementById('cancel-module-modal')?.addEventListener('click', closeModuleModal);
+    document.getElementById('module-form')?.addEventListener('submit', handleModuleSubmit);
+
+    // Lesson modal
+    document.getElementById('close-lesson-modal')?.addEventListener('click', closeLessonModal);
+    document.getElementById('cancel-lesson-modal')?.addEventListener('click', closeLessonModal);
+    document.getElementById('lesson-form')?.addEventListener('submit', handleLessonSubmit);
+
+    // Auto-generate lesson slug from title
+    document.getElementById('lesson-title')?.addEventListener('input', (e) => {
+      const title = (e.target as HTMLInputElement).value;
+      const slugInput = document.getElementById('lesson-slug') as HTMLInputElement;
+      if (!editingLesson && slugInput) {
+        slugInput.value = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        // Trigger debounced slug validation after auto-generation
+        if (slugValidationTimer) clearTimeout(slugValidationTimer);
+        slugValidationTimer = setTimeout(() => validateLessonSlug(), 300);
+      }
+    });
+
+    // Validate slug uniqueness on manual slug input
+    document.getElementById('lesson-slug')?.addEventListener('input', () => {
+      if (slugValidationTimer) clearTimeout(slugValidationTimer);
+      slugValidationTimer = setTimeout(() => validateLessonSlug(), 300);
+    });
+
+    // Video type selector
+    document.getElementById('lesson-video-type')?.addEventListener('change', (e) => {
+      const type = (e.target as HTMLSelectElement).value;
+      const youtubeField = document.getElementById('youtube-field');
+      const uploadField = document.getElementById('upload-field');
+
+      youtubeField?.classList.toggle('hidden', type !== 'youtube');
+      uploadField?.classList.toggle('hidden', type !== 'upload');
+    });
+
+    // Logout
+    document.getElementById('logout-btn')?.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = '/login';
+    });
+  }
+
+  function showModuleModal() {
+    const modal = document.getElementById('module-modal');
+    const form = document.getElementById('module-form') as HTMLFormElement;
+    const title = document.getElementById('module-modal-title');
+
+    if (editingModule) {
+      title!.textContent = 'Edit Module';
+      (document.getElementById('module-name') as HTMLInputElement).value = editingModule.title;
+      (document.getElementById('module-description') as HTMLTextAreaElement).value = editingModule.description || '';
+      (document.getElementById('module-order') as HTMLInputElement).value = editingModule.order_index;
+    } else {
+      title!.textContent = 'Add Module';
+      form.reset();
+      (document.getElementById('module-order') as HTMLInputElement).value = (modules.length + 1).toString();
+    }
+
+    modal?.classList.remove('hidden');
+  }
+
+  function closeModuleModal() {
+    document.getElementById('module-modal')?.classList.add('hidden');
+    editingModule = null;
+  }
+
+  async function handleModuleSubmit(e: Event) {
+    e.preventDefault();
+
+    const moduleData = {
+      course_id: currentCourse.id,
+      title: (document.getElementById('module-name') as HTMLInputElement).value,
+      description: (document.getElementById('module-description') as HTMLTextAreaElement).value,
+      order_index: parseInt((document.getElementById('module-order') as HTMLInputElement).value)
+    };
+
+    if (editingModule) {
+      const { error } = await supabase
+        .from('modules')
+        .update(moduleData)
+        .eq('id', editingModule.id);
+
+      if (error) {
+        showToast('Error updating module: ' + error.message, 'error');
+        return;
+      }
+    } else {
+      const { error } = await supabase
+        .from('modules')
+        .insert([moduleData]);
+
+      if (error) {
+        showToast('Error creating module: ' + error.message, 'error');
+        return;
+      }
+    }
+
+    closeModuleModal();
+    await loadModules();
+  }
+
+  function editModule(id: number) {
+    // Module IDs are BIGSERIAL (numbers)
+    editingModule = modules.find(m => m.id === id);
+    if (editingModule) {
+      showModuleModal();
+    }
+  }
+
+  async function deleteModule(id: number) {
+    // Module IDs are BIGSERIAL (numbers)
+    const { error } = await supabase
+      .from('modules')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      showToast('Error deleting module: ' + error.message, 'error');
+      return;
+    }
+
+    showToast('Module deleted successfully', 'success');
+    await loadModules();
+  }
+
+  function addLesson(moduleId: number) {
+    // Module IDs are BIGSERIAL (numbers)
+    currentModuleId = moduleId;
+    editingLesson = null;
+    showLessonModal();
+  }
+
+  function showLessonModal() {
+    const modal = document.getElementById('lesson-modal');
+    const form = document.getElementById('lesson-form') as HTMLFormElement;
+    const title = document.getElementById('lesson-modal-title');
+
+    const module = modules.find(m => m.id === currentModuleId);
+    const lessonCount = module?.lessons?.length || 0;
+
+    if (editingLesson) {
+      title!.textContent = 'Edit Lesson';
+      (document.getElementById('lesson-title') as HTMLInputElement).value = editingLesson.title;
+      (document.getElementById('lesson-slug') as HTMLInputElement).value = editingLesson.slug;
+      (document.getElementById('lesson-duration') as HTMLInputElement).value = editingLesson.duration_minutes || '';
+      (document.getElementById('lesson-content') as HTMLTextAreaElement).value = editingLesson.content || '';
+      (document.getElementById('lesson-order') as HTMLInputElement).value = editingLesson.order_index;
+
+      // Set video type and fields
+      const videoTypeSelect = document.getElementById('lesson-video-type') as HTMLSelectElement;
+      const youtubeInput = document.getElementById('lesson-youtube') as HTMLInputElement;
+      const videoPathInput = document.getElementById('lesson-video-path') as HTMLInputElement;
+
+      if (editingLesson.youtube_url) {
+        videoTypeSelect.value = 'youtube';
+        youtubeInput.value = editingLesson.youtube_url;
+        document.getElementById('youtube-field')?.classList.remove('hidden');
+      } else if (editingLesson.video_url) {
+        videoTypeSelect.value = 'upload';
+        videoPathInput.value = editingLesson.video_url;
+        document.getElementById('upload-field')?.classList.remove('hidden');
+      } else {
+        videoTypeSelect.value = '';
+      }
+    } else {
+      title!.textContent = 'Add Lesson';
+      form.reset();
+      (document.getElementById('lesson-order') as HTMLInputElement).value = (lessonCount + 1).toString();
+      document.getElementById('youtube-field')?.classList.add('hidden');
+      document.getElementById('upload-field')?.classList.add('hidden');
+    }
+
+    modal?.classList.remove('hidden');
+  }
+
+  function closeLessonModal() {
+    if (slugValidationTimer) {
+      clearTimeout(slugValidationTimer);
+      slugValidationTimer = null;
+    }
+    slugValidationRequestId++;
+    document.getElementById('lesson-modal')?.classList.add('hidden');
+    document.getElementById('slug-error')?.classList.add('hidden');
+    editingLesson = null;
+    currentModuleId = null;
+  }
+
+  async function handleLessonSubmit(e: Event) {
+    e.preventDefault();
+
+    const videoType = (document.getElementById('lesson-video-type') as HTMLSelectElement).value;
+    const youtubeUrl = (document.getElementById('lesson-youtube') as HTMLInputElement).value;
+    const videoPath = (document.getElementById('lesson-video-path') as HTMLInputElement).value;
+
+    // Defensive: Ensure we have a valid module_id
+    const moduleId = currentModuleId ?? editingLesson?.module_id;
+    if (!moduleId) {
+      showToast('Error: No module selected', 'error');
+      return;
+    }
+
+    // Validate slug uniqueness before saving
+    const isSlugValid = await validateLessonSlug();
+    if (!isSlugValid) {
+      showToast('A lesson with this URL slug already exists in this module. Please use a different slug.', 'error');
+      return;
+    }
+
+    const lessonData: any = {
+      module_id: moduleId,
+      title: (document.getElementById('lesson-title') as HTMLInputElement).value,
+      slug: (document.getElementById('lesson-slug') as HTMLInputElement).value,
+      duration_minutes: parseInt((document.getElementById('lesson-duration') as HTMLInputElement).value) || null,
+      content: (document.getElementById('lesson-content') as HTMLTextAreaElement).value,
+      order_index: parseInt((document.getElementById('lesson-order') as HTMLInputElement).value),
+      youtube_url: videoType === 'youtube' ? youtubeUrl : null,
+      video_url: videoType === 'upload' ? videoPath : null
+    };
+
+    if (editingLesson) {
+      const { error } = await supabase
+        .from('lessons')
+        .update(lessonData)
+        .eq('id', editingLesson.id);
+
+      if (error) {
+        if (error.code === '23505') {
+          showToast('A lesson with this URL slug already exists in this module. Please use a different slug.', 'error');
+        } else {
+          showToast('Error updating lesson: ' + error.message, 'error');
+        }
+        return;
+      }
+    } else {
+      const { error } = await supabase
+        .from('lessons')
+        .insert([lessonData]);
+
+      if (error) {
+        if (error.code === '23505') {
+          showToast('A lesson with this URL slug already exists in this module. Please use a different slug.', 'error');
+        } else {
+          showToast('Error creating lesson: ' + error.message, 'error');
+        }
+        return;
+      }
+    }
+
+    closeLessonModal();
+    await loadModules();
+  }
+
+  function editLesson(id: number, moduleId: number) {
+    // Lesson and Module IDs are BIGSERIAL (numbers)
+    const module = modules.find(m => m.id === moduleId);
+    editingLesson = module?.lessons?.find((l: any) => l.id === id);
+    currentModuleId = moduleId;
+    if (editingLesson) {
+      showLessonModal();
+    }
+  }
+
+  async function deleteLesson(id: number) {
+    // Lesson IDs are BIGSERIAL (numbers)
+    const { error } = await supabase
+      .from('lessons')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      showToast('Error deleting lesson: ' + error.message, 'error');
+      return;
+    }
+
+    showToast('Lesson deleted successfully', 'success');
+    await loadModules();
+  }
+
+  function formatTrack(track: string): string {
+    // Map of known track values (using underscores to match database schema)
+    const map: Record<string, string> = {
+      'animal_advocacy': 'Animal Advocacy',
+      'climate': 'Climate',
+      'ai_safety': 'AI Safety',
+      'general': 'General'
+    };
+    // Return mapped value, or convert snake_case to Title Case as fallback
+    return map[track] || track.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+  }
+
+  function formatDifficulty(difficulty: string): string {
+    return difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
+  }
+
+  // Initialize
+  init();
+</script>
+</BaseLayout>

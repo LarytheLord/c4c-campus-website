@@ -1,0 +1,938 @@
+---
+/**
+ * Lesson Page - Individual lesson with video, content, and discussions
+ *
+ * Features:
+ * - Video player
+ * - Lesson content (markdown)
+ * - Downloadable resources
+ * - Discussion thread
+ * - Progress tracking
+ * - Navigation (prev/next lesson)
+ *
+ * URL: /lessons/{slug}
+ */
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+
+export const prerender = false;
+---
+
+<BaseLayout title="Lesson - C4C Campus" hideHeader={true} hideFooter={true}>
+  <div class="min-h-screen bg-background">
+    <!-- Header -->
+    <header class="sticky top-0 z-50 bg-white/95 backdrop-blur-sm shadow-sm">
+      <div class="container mx-auto px-4 py-4">
+        <div class="flex items-center justify-between gap-4">
+          <div class="flex items-center gap-4 flex-1">
+            <a href="/dashboard" class="flex-shrink-0">
+              <img src="/logo.jpeg" alt="C4C Campus" class="h-10 w-10 rounded-lg" />
+            </a>
+            <div class="min-w-0">
+              <h1 class="text-xl sm:text-2xl font-bold text-text truncate" id="lesson-title">Lesson</h1>
+              <p class="text-text-muted text-sm truncate" id="breadcrumb">Loading...</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <select id="language-selector" class="notranslate hidden sm:block border border-gray-300 rounded-lg px-2 py-1.5 bg-white text-xs flex-shrink-0" translate="no" aria-label="Select page language">
+              <option value="en">English</option>
+              <option value="hi">हिन्दी</option>
+              <option value="ta">தமிழ்</option>
+              <option value="te">తెలుగు</option>
+              <option value="kn">ಕನ್ನಡ</option>
+              <option value="bn">বাংলা</option>
+              <option value="mr">मराठी</option>
+              <option value="gu">ગુજરાતી</option>
+              <option value="ml">മലയാളം</option>
+              <option value="pa">ਪੰਜਾਬੀ</option>
+              <option value="es">Español</option>
+              <option value="fr">Français</option>
+              <option value="de">Deutsch</option>
+              <option value="pt">Português</option>
+              <option value="zh-CN">中文</option>
+              <option value="ja">日本語</option>
+              <option value="ko">한국어</option>
+              <option value="ar">العربية</option>
+            </select>
+            <button id="back-btn" class="hidden sm:block btn btn-ghost btn-sm">Back to Course</button>
+            <button id="logout-btn" class="btn btn-ghost text-sm">Sign Out</button>
+          </div>
+        </div>
+      </div>
+      <div class="h-0.5 bg-gradient-to-r from-primary/50 via-primary to-primary/50"></div>
+    </header>
+
+    <!-- Loading State -->
+    <div id="loading-state" class="container mx-auto px-4 py-12">
+      <div class="text-center">
+        <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+        <p class="mt-4 text-text-muted">Loading lesson...</p>
+      </div>
+    </div>
+
+    <!-- Lesson Content -->
+    <div id="lesson-content" class="hidden">
+      <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- Video Player -->
+        <div id="video-container" class="mb-8">
+          <div class="bg-black rounded-xl overflow-hidden shadow-lg aspect-video">
+            <video
+              id="lesson-video"
+              class="w-full h-full"
+              controls
+              controlslist="nodownload"
+            >
+              <source id="video-source" src="" type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+          </div>
+        </div>
+
+        <!-- Lesson Text Content -->
+        <div id="text-content-container" class="hidden mb-8 card">
+          <div class="prose prose-sm sm:prose max-w-none" id="text-content">
+            <!-- Markdown content will be rendered here -->
+          </div>
+        </div>
+
+        <!-- Resources -->
+        <div id="resources-container" class="hidden mb-8 card">
+          <h3 class="text-lg font-bold mb-4">Resources</h3>
+          <div id="resources-list" class="space-y-2">
+            <!-- Resources will be listed here -->
+          </div>
+        </div>
+
+        <!-- Assignments -->
+        <div id="assignments-container" class="hidden mb-8 card">
+          <h3 class="text-lg font-bold mb-4">Assignments</h3>
+          <div id="assignments-list" class="space-y-3">
+            <!-- Assignments will be listed here -->
+          </div>
+        </div>
+
+        <!-- Quiz Section -->
+        <div id="quiz-container" class="hidden mb-8">
+          <div id="quiz-root"></div>
+        </div>
+
+        <!-- Lesson Completion Section (students only) -->
+        <div id="completion-section" class="hidden mb-8 p-6 rounded-xl bg-white border border-gray-200 border-t-2" style="border-top-color: #E5E7EB;">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-lg font-bold">Lesson Progress</h3>
+              <p id="completion-hint" class="text-sm text-text-muted">Mark this lesson as complete when you're done.</p>
+            </div>
+            <button id="mark-complete-btn" class="btn btn-primary">
+              Mark as Complete
+            </button>
+          </div>
+        </div>
+
+        <!-- Lesson Navigation -->
+        <div id="lesson-nav-bottom" class="hidden mt-8 pt-6 border-t border-border flex items-center justify-between">
+          <button id="prev-lesson-btn-bottom" class="btn btn-ghost btn-sm invisible">
+            ← Previous Lesson
+          </button>
+          <span id="lesson-position" class="text-sm text-text-muted"></span>
+          <button id="next-lesson-btn-bottom" class="btn btn-primary btn-sm invisible">
+            Next Lesson →
+          </button>
+        </div>
+
+        <!-- Discussion Section - DISABLED FOR LAUNCH
+        {slug && (
+          <div class="card">
+            <LessonDiscussionContainer
+              client:only="react"
+              slug={slug}
+            />
+          </div>
+        )}
+        -->
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  import { supabase } from '@/lib/supabase';
+  import { marked } from 'marked';
+  import { showToast } from '@/lib/notifications';
+  import { canAccessLesson } from '@/lib/time-gating';
+
+  // State
+  let currentLesson: any = null;
+  let currentUser: any = null;
+  let currentModule: any = null;
+  let currentCourse: any = null;
+  let userCohortId: string | null = null;
+  let isTeacher = false;
+  let hasAccess = false;
+  let accessReason: string = '';
+
+  // Progress tracking state
+  let existingProgressId: number | null = null; // Cache existing progress record ID for updates
+  let existingProgressData: any = null; // Cached progress data
+  let localTimeSpentSeconds = 0; // Accumulator for time tracking
+  let lastSaveTime = Date.now(); // Track when we last saved (for 10s interval)
+
+  async function init() {
+    // Get slug from URL
+    const pathParts = window.location.pathname.split('/');
+    const slug = pathParts[pathParts.length - 1];
+
+    // Check authentication
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
+      return;
+    }
+
+    currentUser = user;
+
+    // Check if user is teacher by role field (not email prefix)
+    const { data: application } = await supabase
+      .from('applications')
+      .select('email, role')
+      .eq('user_id', user.id)
+      .single();
+
+    isTeacher = application?.role === 'teacher';
+
+    // Load lesson
+    await loadLesson(slug);
+
+    // Show content
+    document.getElementById('loading-state')?.classList.add('hidden');
+    document.getElementById('lesson-content')?.classList.remove('hidden');
+
+    // Setup lesson navigation (prev/next) after lesson is loaded
+    if (currentCourse && currentLesson) {
+      await setupLessonNavigation();
+    }
+
+    setupEventListeners();
+  }
+
+  async function loadLesson(slug: string) {
+    // Fetch lesson with module and course info
+    const { data: lesson, error } = await supabase
+      .from('lessons')
+      .select(`
+        *,
+        modules:module_id (
+          *,
+          courses:course_id (*)
+        )
+      `)
+      .eq('slug', slug)
+      .single();
+
+    if (error || !lesson) {
+      showToast('Lesson not found', 'error');
+      setTimeout(() => {
+        window.location.href = '/courses';
+      }, 1500);
+      return;
+    }
+
+    currentLesson = lesson;
+    currentModule = lesson.modules;
+    currentCourse = lesson.modules.courses;
+
+    // Get user's cohort for this course
+    // 1. Try Cohort Enrollments (Preferred) - Fetch all active and filter in JS for safety
+    const { data: allCohortEnrollments } = await supabase
+      .from('cohort_enrollments')
+      .select(`
+        cohort_id,
+        cohorts (
+          course_id
+        )
+      `)
+      .eq('user_id', currentUser.id)
+      .eq('status', 'active');
+
+    const enrollment = allCohortEnrollments?.find((e: any) => e.cohorts?.course_id === currentCourse.id);
+
+    if (enrollment) {
+      userCohortId = enrollment.cohort_id;
+    } else {
+      // 2. Fallback to Legacy Enrollments
+      const { data: legacyEnrollment } = await supabase
+        .from('enrollments')
+        .select('cohort_id')
+        .eq('user_id', currentUser.id)
+        .eq('course_id', currentCourse.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (legacyEnrollment) {
+        userCohortId = legacyEnrollment.cohort_id;
+      }
+    }
+
+    // Query existing lesson_progress for video resume and to cache record ID
+    const { data: existingProgress } = await supabase
+      .from('lesson_progress')
+      .select('id, video_position_seconds, time_spent_seconds, completed, watch_count')
+      .eq('user_id', currentUser.id)
+      .eq('lesson_id', currentLesson.id)
+      .maybeSingle();
+
+    if (existingProgress) {
+      existingProgressId = existingProgress.id;
+      existingProgressData = existingProgress;
+      localTimeSpentSeconds = existingProgress.time_spent_seconds || 0;
+    }
+
+    // Check lesson access using time-gating utilities
+    const accessStatus = await canAccessLesson(
+      currentLesson.id,
+      currentUser.id,
+      supabase,
+      isTeacher
+    );
+
+    hasAccess = accessStatus.canAccess;
+    accessReason = accessStatus.reason;
+
+    // Set up back button immediately (before access check may return early)
+    const backBtn = document.getElementById('back-btn');
+    if (backBtn && currentCourse?.slug) {
+      backBtn.addEventListener('click', () => {
+        window.location.href = `/courses/${currentCourse.slug}`;
+      });
+    }
+
+    // If user doesn't have access, show appropriate message and hide content
+    if (!hasAccess) {
+      document.getElementById('loading-state')?.classList.add('hidden');
+      const contentDiv = document.getElementById('lesson-content');
+      if (contentDiv) {
+        contentDiv.classList.remove('hidden');
+        let message = '';
+        if (accessReason === 'not_enrolled') {
+          message = 'You are not enrolled in this course. Please enroll to access this lesson.';
+        } else if (accessReason === 'module_locked') {
+          message = 'This module is currently locked. It will be available when unlocked by your instructor.';
+        } else {
+          message = 'You do not have access to this lesson.';
+        }
+
+        contentDiv.innerHTML = `
+          <div class="container mx-auto px-4 py-12">
+            <div class="max-w-md mx-auto text-center">
+              <div class="mb-6">
+                <svg class="w-16 h-16 mx-auto text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                </svg>
+              </div>
+              <h2 class="text-2xl font-bold mb-4">Access Restricted</h2>
+              <p class="text-text-muted mb-6">${message}</p>
+              <a href="/courses/${currentCourse.slug}" class="btn btn-primary">
+                Back to Course
+              </a>
+            </div>
+          </div>
+        `;
+      }
+      return;
+    }
+
+    // Update UI
+    document.getElementById('lesson-title')!.textContent = lesson.title;
+    document.getElementById('breadcrumb')!.textContent =
+      `${currentCourse.title} / ${currentModule.title} / ${lesson.title}`;
+
+    // Video with resume support
+    // Check both youtube_url (YouTube links) and video_url (uploaded videos)
+    const videoDiv = document.querySelector('#video-container .bg-black') as HTMLElement;
+    const resumePosition = existingProgressData?.video_position_seconds || 0;
+    const youtubeUrl = lesson.youtube_url;
+    const videoUrl = lesson.video_url;
+
+    if (youtubeUrl) {
+      // YouTube video from youtube_url column
+      const youtubeId = extractYouTubeId(youtubeUrl);
+      if (youtubeId && videoDiv) {
+        const startParam = resumePosition > 0 ? `&start=${Math.floor(resumePosition)}` : '';
+        videoDiv.innerHTML = `
+          <iframe
+            class="w-full h-full"
+            src="https://www.youtube-nocookie.com/embed/${youtubeId}?enablejsapi=1${startParam}"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen
+          ></iframe>
+        `;
+      } else {
+        // Invalid YouTube URL - hide video container
+        document.getElementById('video-container')?.classList.add('hidden');
+      }
+    } else if (videoUrl) {
+      // Uploaded/hosted video from video_url column
+      // Also check if it's a YouTube URL stored in video_url (legacy data)
+      const youtubeId = extractYouTubeId(videoUrl);
+      if (youtubeId && videoDiv) {
+        const startParam = resumePosition > 0 ? `&start=${Math.floor(resumePosition)}` : '';
+        videoDiv.innerHTML = `
+          <iframe
+            class="w-full h-full"
+            src="https://www.youtube-nocookie.com/embed/${youtubeId}?enablejsapi=1${startParam}"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen
+          ></iframe>
+        `;
+      } else {
+        // Regular HTML5 video file
+        const videoSource = document.getElementById('video-source') as HTMLSourceElement;
+        videoSource.src = videoUrl;
+        const video = document.getElementById('lesson-video') as HTMLVideoElement;
+        video.load();
+
+        // Resume from saved position once metadata is loaded
+        if (resumePosition > 0) {
+          video.addEventListener('loadedmetadata', () => {
+            video.currentTime = resumePosition;
+          }, { once: true });
+        }
+
+        // Setup video progress tracking
+        setupVideoProgressTracking(video);
+      }
+    } else {
+      document.getElementById('video-container')?.classList.add('hidden');
+    }
+
+    // Text content
+    if (lesson.content) {
+      const container = document.getElementById('text-content-container');
+      const content = document.getElementById('text-content');
+      if (container && content) {
+        content.innerHTML = marked.parse(lesson.content) as string;
+        openLinksInNewTab('#text-content');
+        container.classList.remove('hidden');
+      }
+    }
+
+    // Resources
+    if (lesson.resources && lesson.resources.length > 0) {
+      const container = document.getElementById('resources-container');
+      const list = document.getElementById('resources-list');
+      if (container && list) {
+        list.innerHTML = lesson.resources.map((resource: any) => `
+          <a
+            href="${resource.path}"
+            download
+            class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <div class="flex-1">
+              <div class="font-medium">${resource.name}</div>
+              <div class="text-xs text-text-muted">${formatBytes(resource.size)}</div>
+            </div>
+          </a>
+        `).join('');
+        openLinksInNewTab('#resources-list');
+        container.classList.remove('hidden');
+      }
+    }
+
+    // Load assignments for this lesson
+    await loadAssignments();
+
+    // Load quizzes for this lesson
+    await loadQuizzes();
+
+    // Show completion section for students (not teachers)
+    if (!isTeacher) {
+      document.getElementById('completion-section')?.classList.remove('hidden');
+      updateCompletionButton();
+    }
+  }
+
+  function updateCompletionButton() {
+    const btn = document.getElementById('mark-complete-btn') as HTMLButtonElement;
+    const hint = document.getElementById('completion-hint');
+    if (!btn) return;
+
+    const isCompleted = existingProgressData?.completed === true;
+
+    if (isCompleted) {
+      btn.textContent = '✓ Lesson Completed';
+      btn.classList.remove('btn-primary');
+      btn.classList.remove('btn-secondary');
+      btn.style.background = 'transparent';
+      btn.style.color = '#059669';
+      btn.style.border = '2px solid #059669';
+      if (hint) hint.textContent = 'Click to mark as not started.';
+    } else {
+      btn.textContent = 'Mark as Complete';
+      btn.classList.remove('btn-secondary');
+      btn.classList.add('btn-primary');
+      btn.style.background = '';
+      btn.style.color = '';
+      btn.style.border = '';
+      if (hint) hint.textContent = 'Mark this lesson as complete when you\'re done.';
+    }
+  }
+
+  async function loadAssignments() {
+    if (!currentLesson) return;
+
+    try {
+      // Fetch assignments for this lesson
+      const { data: assignments, error } = await supabase
+        .from('assignments')
+        .select('*')
+        .eq('lesson_id', currentLesson.id)
+        .eq('is_published', true)
+        .order('due_date', { ascending: true });
+
+      if (error) {
+        console.error('Error loading assignments:', error);
+        return;
+      }
+
+      if (!assignments || assignments.length === 0) {
+        return;
+      }
+
+      // Get user's submissions for these assignments
+      const assignmentIds = assignments.map(a => a.id);
+      const { data: submissions } = await supabase
+        .from('assignment_submissions')
+        .select('*')
+        .in('assignment_id', assignmentIds)
+        .eq('user_id', currentUser.id);
+
+      const container = document.getElementById('assignments-container');
+      const list = document.getElementById('assignments-list');
+
+      if (!container || !list) return;
+
+      const now = new Date();
+
+      list.innerHTML = assignments.map((assignment: any) => {
+        const submission = submissions?.find((s: any) => s.assignment_id === assignment.id);
+        const dueDate = assignment.due_date ? new Date(assignment.due_date) : null;
+        const isPastDue = dueDate && now > dueDate;
+        const hasSubmission = submission !== undefined;
+
+        let statusBadge = '';
+        let statusColor = 'border-blue-200 bg-blue-50';
+
+        if (!hasSubmission) {
+          if (isPastDue && !assignment.allow_late_submissions) {
+            statusBadge = '<span class="px-3 py-1 bg-red-100 text-red-700 text-xs font-medium rounded-full">Closed</span>';
+            statusColor = 'border-gray-300 bg-gray-50';
+          } else if (isPastDue) {
+            statusBadge = '<span class="px-3 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">Late</span>';
+            statusColor = 'border-orange-200 bg-orange-50';
+          } else {
+            statusBadge = '<span class="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">Not Submitted</span>';
+            statusColor = 'border-blue-200 bg-blue-50';
+          }
+        } else if (submission.status === 'graded') {
+          const points = submission.score || 0;
+          statusBadge = `<span class="px-3 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">Graded: ${points}/${assignment.max_points}</span>`;
+          statusColor = 'border-green-200 bg-green-50';
+        } else {
+          statusBadge = '<span class="px-3 py-1 bg-yellow-100 text-yellow-700 text-xs font-medium rounded-full">Submitted</span>';
+          statusColor = 'border-yellow-200 bg-yellow-50';
+        }
+
+        return `
+          <a
+            href="/assignments/${assignment.id}"
+            class="flex items-start justify-between gap-4 p-4 border-2 ${statusColor} rounded-lg hover:shadow-md transition-all"
+          >
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-1">
+                <h4 class="font-semibold text-base truncate">${assignment.title}</h4>
+                ${statusBadge}
+              </div>
+              ${assignment.description ? `<p class="text-sm text-text-muted line-clamp-2 mb-2">${assignment.description}</p>` : ''}
+              <div class="flex items-center gap-4 text-xs text-text-muted">
+                ${dueDate ? `
+                  <span class="${isPastDue ? 'text-red-600 font-medium' : ''}">
+                    📅 Due: ${dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </span>
+                ` : '<span>No due date</span>'}
+                <span>🎯 ${assignment.max_points} points</span>
+              </div>
+            </div>
+            <div class="flex-shrink-0">
+              <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </div>
+          </a>
+        `;
+      }).join('');
+
+      container.classList.remove('hidden');
+    } catch (error) {
+      console.error('Error loading assignments:', error);
+    }
+  }
+
+  async function loadQuizzes() {
+    if (!currentLesson) return;
+
+    try {
+      // Fetch quizzes for this lesson
+      const { data: quizzes, error } = await supabase
+        .from('quizzes')
+        .select('id')
+        .eq('lesson_id', currentLesson.id)
+        .eq('is_published', true);
+
+      if (error) {
+        console.error('Error loading quizzes:', error);
+        return;
+      }
+
+      if (!quizzes || quizzes.length === 0) {
+        return;
+      }
+
+      const container = document.getElementById('quiz-container');
+      const root = document.getElementById('quiz-root');
+
+      if (!container || !root) return;
+
+      // Show the first quiz (typically one quiz per lesson)
+      const quizId = quizzes[0].id;
+
+      // Import and render QuizCard component
+      import('../../components/QuizCard').then(({ QuizCard }) => {
+        import('react-dom/client').then(({ createRoot }) => {
+          const reactRoot = createRoot(root);
+          reactRoot.render(
+            QuizCard({
+              quizId,
+              lessonId: currentLesson.id,
+            })
+          );
+        });
+      });
+
+      container.classList.remove('hidden');
+    } catch (error) {
+      console.error('Error loading quizzes:', error);
+    }
+  }
+
+
+
+  /* Discussion initialization removed - now handled by React component */
+  /* Was: function renderDiscussion() ... */
+
+  function extractYouTubeId(url: string): string | null {
+    const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+    const match = url.match(regExp);
+    const id = (match && match[7].length === 11) ? match[7] : null;
+    // Validate that the ID only contains safe characters (alphanumeric, -, _)
+    if (id && !/^[a-zA-Z0-9_-]+$/.test(id)) {
+      return null;
+    }
+    return id;
+  }
+
+  function openLinksInNewTab(containerSelector: string) {
+    const container = document.querySelector(containerSelector);
+    if (!container) return;
+    container.querySelectorAll('a[href]').forEach((link) => {
+      const anchor = link as HTMLAnchorElement;
+      const href = anchor.getAttribute('href') || '';
+      if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+      anchor.setAttribute('target', '_blank');
+      anchor.setAttribute('rel', 'noopener noreferrer');
+    });
+  }
+
+  function formatBytes(bytes: number): string {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  }
+
+  // Setup video progress tracking with periodic auto-save
+  function setupVideoProgressTracking(video: HTMLVideoElement) {
+    let isPlaying = false;
+    let playStartTime = 0;
+
+    // Track play/pause for time accumulation
+    video.addEventListener('play', () => {
+      isPlaying = true;
+      playStartTime = Date.now();
+    });
+
+    video.addEventListener('pause', () => {
+      if (isPlaying) {
+        const elapsed = Math.floor((Date.now() - playStartTime) / 1000);
+        localTimeSpentSeconds += elapsed;
+      }
+      isPlaying = false;
+      // Save on pause
+      saveVideoProgress(video.currentTime, false);
+    });
+
+    // Auto-save every 10 seconds during playback
+    video.addEventListener('timeupdate', () => {
+      const now = Date.now();
+      if (now - lastSaveTime >= 10000) { // 10 seconds
+        if (isPlaying) {
+          const elapsed = Math.floor((now - playStartTime) / 1000);
+          localTimeSpentSeconds += elapsed;
+          playStartTime = now; // Reset for next interval
+        }
+        saveVideoProgress(video.currentTime, false);
+        lastSaveTime = now;
+      }
+    });
+
+    // Save on page visibility change (more reliable than beforeunload for async operations)
+    let hasSavedOnHide = false;
+    document.addEventListener('visibilitychange', async () => {
+      if (document.visibilityState === 'hidden' && !hasSavedOnHide) {
+        hasSavedOnHide = true;
+        if (isPlaying) {
+          const elapsed = Math.floor((Date.now() - playStartTime) / 1000);
+          localTimeSpentSeconds += elapsed;
+        }
+        // Use authenticated Supabase client for reliable delivery
+        await saveVideoProgress(video.currentTime, false);
+      } else if (document.visibilityState === 'visible') {
+        hasSavedOnHide = false; // Reset flag when page becomes visible again
+      }
+    });
+
+    // Fallback for beforeunload - update local time spent
+    window.addEventListener('beforeunload', () => {
+      if (isPlaying) {
+        const elapsed = Math.floor((Date.now() - playStartTime) / 1000);
+        localTimeSpentSeconds += elapsed;
+      }
+    });
+  }
+
+  // Async save video progress (upsert)
+  async function saveVideoProgress(positionSeconds: number, completed: boolean) {
+    if (!currentUser || !currentLesson) return;
+
+    const progressData: any = {
+      user_id: currentUser.id,
+      lesson_id: currentLesson.id,
+      video_position_seconds: Math.floor(positionSeconds),
+      time_spent_seconds: localTimeSpentSeconds,
+      last_accessed_at: new Date().toISOString(),
+    };
+
+    // Include cohort_id when user is in a cohort
+    if (userCohortId) {
+      progressData.cohort_id = userCohortId;
+    }
+
+    if (completed) {
+      progressData.completed = true;
+      progressData.completed_at = new Date().toISOString();
+    }
+
+    // If we have an existing record, update by ID; otherwise upsert on unique constraint
+    if (existingProgressId) {
+      await supabase
+        .from('lesson_progress')
+        .update(progressData)
+        .eq('id', existingProgressId);
+    } else {
+      const { data } = await supabase
+        .from('lesson_progress')
+        .upsert(progressData, { onConflict: 'user_id,lesson_id' })
+        .select('id')
+        .single();
+
+      if (data) {
+        existingProgressId = data.id;
+      }
+    }
+  }
+
+
+  async function setupLessonNavigation() {
+    // Fetch all modules with their lessons for this course
+    const { data: modulesData } = await supabase
+      .from('modules')
+      .select('id, order_index, lessons(id, slug, title, order_index)')
+      .eq('course_id', currentCourse.id)
+      .order('order_index', { ascending: true });
+
+    if (!modulesData || modulesData.length === 0) return;
+
+    // Flatten into a sorted list: modules by order_index, lessons by order_index within each module
+    const allLessons: { id: number; slug: string; title: string }[] = [];
+    for (const mod of modulesData) {
+      const sorted = (mod.lessons || []).sort((a: any, b: any) => a.order_index - b.order_index);
+      for (const lesson of sorted) {
+        allLessons.push({ id: lesson.id, slug: lesson.slug, title: lesson.title });
+      }
+    }
+
+    const currentIndex = allLessons.findIndex(l => l.id === currentLesson.id);
+    if (currentIndex === -1) return;
+
+    const prevLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null;
+    const nextLesson = currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null;
+
+    // Show the bottom nav container
+    document.getElementById('lesson-nav-bottom')?.classList.remove('hidden');
+
+    // Position indicator
+    const positionEl = document.getElementById('lesson-position');
+    if (positionEl) {
+      positionEl.textContent = `Lesson ${currentIndex + 1} of ${allLessons.length}`;
+    }
+
+    // Wire up prev button
+    if (prevLesson) {
+      const btn = document.getElementById('prev-lesson-btn-bottom');
+      if (btn) {
+        btn.classList.remove('invisible');
+        btn.title = prevLesson.title;
+        btn.addEventListener('click', () => {
+          window.location.href = `/lessons/${prevLesson.slug}`;
+        });
+      }
+    }
+
+    // Wire up next button
+    if (nextLesson) {
+      const btn = document.getElementById('next-lesson-btn-bottom');
+      if (btn) {
+        btn.classList.remove('invisible');
+        btn.title = nextLesson.title;
+        btn.addEventListener('click', () => {
+          window.location.href = `/lessons/${nextLesson.slug}`;
+        });
+      }
+    }
+  }
+
+  function setupEventListeners() {
+    // Mark complete button - toggles between completed and not started
+    document.getElementById('mark-complete-btn')?.addEventListener('click', async () => {
+      if (!currentUser || !currentLesson) return;
+
+      // Determine new completion state (toggle)
+      const currentlyCompleted = existingProgressData?.completed === true;
+      const newCompletedState = !currentlyCompleted;
+
+      // Get video duration if available
+      const video = document.getElementById('lesson-video') as HTMLVideoElement;
+      const videoDuration = video?.duration ? Math.floor(video.duration) : 0;
+
+      const progressData: any = {
+        user_id: currentUser.id,
+        lesson_id: currentLesson.id,
+        completed: newCompletedState,
+        last_accessed_at: new Date().toISOString(),
+        time_spent_seconds: localTimeSpentSeconds,
+      };
+
+      // Set completed_at when marking as complete, clear it when un-completing
+      if (newCompletedState) {
+        progressData.completed_at = new Date().toISOString();
+        // Set video_position_seconds to lesson duration if available
+        if (videoDuration > 0) {
+          progressData.video_position_seconds = videoDuration;
+        }
+      } else {
+        // Clear completed_at when un-completing to avoid stale timestamps
+        progressData.completed_at = null;
+      }
+
+      // Include cohort_id when user is in a cohort
+      if (userCohortId) {
+        progressData.cohort_id = userCohortId;
+      }
+
+      // Handle watch_count - increment when marking as complete
+      if (newCompletedState) {
+        // Completing the lesson - increment watch count
+        progressData.watch_count = (existingProgressData?.watch_count || 0) + 1;
+      } else {
+        // Uncompleting - keep the current count
+        progressData.watch_count = existingProgressData?.watch_count || 0;
+      }
+
+      let error;
+      if (existingProgressId) {
+        // Update existing record
+        const result = await supabase
+          .from('lesson_progress')
+          .update(progressData)
+          .eq('id', existingProgressId);
+        error = result.error;
+      } else {
+        // Upsert new record
+        const result = await supabase
+          .from('lesson_progress')
+          .upsert(progressData, { onConflict: 'user_id,lesson_id' });
+        error = result.error;
+        
+        // Get the new record ID for future updates
+        if (!error) {
+          const { data: newProgress } = await supabase
+            .from('lesson_progress')
+            .select('id')
+            .eq('user_id', currentUser.id)
+            .eq('lesson_id', currentLesson.id)
+            .single();
+          if (newProgress) {
+            existingProgressId = newProgress.id;
+          }
+        }
+      }
+
+      if (error) {
+        showToast('Failed to update lesson progress', 'error');
+      } else {
+        // Update local state
+        if (!existingProgressData) {
+          existingProgressData = {};
+        }
+        existingProgressData.completed = newCompletedState;
+        
+        // Update button UI
+        updateCompletionButton();
+        
+        // Show appropriate toast message
+        if (newCompletedState) {
+          showToast('Lesson marked as complete!', 'success');
+        } else {
+          showToast('Lesson marked as not started', 'info');
+        }
+      }
+    });
+
+    // Logout
+    document.getElementById('logout-btn')?.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = '/login';
+    });
+  }
+
+  // Initialize
+  init();
+</script>
+</BaseLayout>

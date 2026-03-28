@@ -1,0 +1,1334 @@
+---
+/**
+ * Cohort Management Page
+ * Individual cohort detail and management interface
+ */
+import TeacherLayout from '../../../layouts/TeacherLayout.astro';
+---
+
+<TeacherLayout title="Manage Cohort - Teacher - C4C Campus" currentPage="cohorts">
+    <!-- Loading State -->
+    <div id="loading-state" class="container mx-auto px-4 py-12">
+      <div class="text-center">
+        <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+        <p class="mt-4 text-text-muted">Loading cohort details...</p>
+      </div>
+    </div>
+
+    <!-- Error State -->
+    <div id="error-state" class="hidden container mx-auto px-4 py-12">
+      <div class="max-w-md mx-auto text-center">
+        <div class="card">
+          <div class="text-6xl mb-4">❌</div>
+          <h2 class="text-2xl font-bold mb-4">Cohort Not Found</h2>
+          <p class="text-text-muted mb-6">The cohort you're looking for doesn't exist or you don't have access to it.</p>
+          <a href="/teacher/courses" class="btn btn-primary">
+            Back to Teacher Dashboard
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="main-content" class="hidden container mx-auto px-4 py-8">
+      <!-- Breadcrumbs -->
+      <nav class="mb-6 text-sm text-text-muted">
+        <a href="/teacher/courses" class="hover:text-primary transition-colors">Teacher Dashboard</a>
+        <span class="mx-2">/</span>
+        <a href="/teacher/courses" class="hover:text-primary transition-colors">Teacher</a>
+        <span class="mx-2">/</span>
+        <span id="breadcrumb-cohort">Cohort</span>
+      </nav>
+
+      <!-- Cohort Overview -->
+      <div class="card mb-6">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h2 class="text-2xl font-bold" id="cohort-name">Loading...</h2>
+            <p class="text-text-muted" id="course-name">Loading...</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <span id="cohort-status-badge" class="px-3 py-1 rounded-full text-sm font-medium">Active</span>
+            <button id="edit-cohort-btn" class="btn btn-secondary btn-sm">Edit Details</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div class="p-4 bg-blue-50 rounded-lg">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-2xl">👥</span>
+              <p class="text-sm text-text-muted">Total Students</p>
+            </div>
+            <p class="text-3xl font-bold text-blue-600" id="stat-total-students">0</p>
+          </div>
+          <div class="p-4 bg-green-50 rounded-lg">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-2xl">✅</span>
+              <p class="text-sm text-text-muted">Active</p>
+            </div>
+            <p class="text-3xl font-bold text-green-600" id="stat-active-students">0</p>
+          </div>
+          <div class="p-4 bg-purple-50 rounded-lg">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-2xl">📊</span>
+              <p class="text-sm text-text-muted">Avg. Progress</p>
+            </div>
+            <p class="text-3xl font-bold text-purple-600" id="stat-avg-progress">0%</p>
+          </div>
+          <div class="p-4 bg-orange-50 rounded-lg">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-2xl">📅</span>
+              <p class="text-sm text-text-muted">Days Remaining</p>
+            </div>
+            <p class="text-3xl font-bold text-orange-600" id="stat-days-remaining">-</p>
+          </div>
+        </div>
+
+        <div class="mt-6 pt-6 border-t border-gray-200">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div>
+              <span class="text-text-muted">Start Date:</span>
+              <span class="ml-2 font-medium" id="cohort-start-date">-</span>
+            </div>
+            <div>
+              <span class="text-text-muted">End Date:</span>
+              <span class="ml-2 font-medium" id="cohort-end-date">-</span>
+            </div>
+            <div>
+              <span class="text-text-muted">Max Students:</span>
+              <span class="ml-2 font-medium" id="cohort-max-students">-</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Navigation -->
+      <div class="mb-6">
+        <div class="border-b border-border">
+          <nav class="-mb-px flex gap-6 overflow-x-auto">
+            <button
+              id="tab-students"
+              class="tab-button active py-4 px-1 border-b-2 border-primary font-medium text-primary whitespace-nowrap"
+              data-tab="students"
+            >
+              Students
+            </button>
+            <button
+              id="tab-schedule"
+              class="tab-button py-4 px-1 border-b-2 border-transparent font-medium text-text-muted hover:text-text hover:border-gray-300 transition-colors whitespace-nowrap"
+              data-tab="schedule"
+            >
+              Schedule
+            </button>
+          </nav>
+        </div>
+      </div>
+
+      <!-- Tab Content: Students -->
+      <div id="content-students" class="tab-content">
+        <div class="card">
+          <div class="flex items-center justify-between mb-6">
+            <h3 class="text-xl font-bold">Enrolled Students</h3>
+            <div class="flex gap-2">
+              <button id="email-all-btn" class="btn btn-secondary hidden">
+                📧 Email All
+              </button>
+              <button id="add-student-btn" class="btn btn-primary">
+                Add Student
+              </button>
+            </div>
+          </div>
+
+          <!-- Students List -->
+          <div id="students-loading" class="text-center py-12">
+            <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+            <p class="mt-4 text-text-muted">Loading students...</p>
+          </div>
+
+          <div id="students-list" class="hidden space-y-3">
+            <!-- Students will be inserted here -->
+          </div>
+
+          <div id="students-empty" class="hidden text-center py-12">
+            <div class="text-6xl mb-4">👥</div>
+            <h3 class="text-xl font-semibold mb-2">No students enrolled yet</h3>
+            <p class="text-text-muted mb-4">Add students to start tracking their progress.</p>
+            <button class="btn btn-primary" onclick="document.getElementById('add-student-btn').click()">
+              Add First Student
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content: Schedule -->
+      <div id="content-schedule" class="tab-content hidden">
+        <div class="card">
+          <h3 class="text-xl font-bold mb-4">Cohort Schedule</h3>
+          <p class="text-text-muted mb-6">Time-gated content release schedule for this cohort.</p>
+
+          <div id="schedule-content">
+            <div class="space-y-4">
+              <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div class="flex items-start gap-3">
+                  <span class="text-2xl">ℹ️</span>
+                  <div>
+                    <p class="font-medium text-blue-800">Schedule Management</p>
+                    <p class="text-sm text-blue-700 mt-1">
+                      Configure module release dates and content pacing for students in this cohort.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div id="modules-schedule" class="space-y-3">
+                <p class="text-center text-text-muted py-8">Loading schedule...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Student Modal -->
+    <div id="add-student-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-lg max-w-lg w-full shadow-2xl max-h-[80vh] flex flex-col">
+        <div class="p-6 pb-0">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-bold">Add Student to Cohort</h3>
+            <button id="close-add-student-modal" class="text-text-muted hover:text-text-primary">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Search Input -->
+          <div class="mb-4">
+            <input type="text" id="student-search" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" placeholder="Search by name or email..." />
+          </div>
+        </div>
+
+        <!-- Student List -->
+        <div class="px-6 pb-6 overflow-y-auto flex-1 min-h-0">
+          <!-- Loading State -->
+          <div id="student-list-loading" class="text-center py-8">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
+            <p class="mt-2 text-sm text-text-muted">Loading students...</p>
+          </div>
+
+          <!-- Empty State -->
+          <div id="student-list-empty" class="hidden text-center py-8">
+            <p class="text-text-muted">No approved students available to add.</p>
+          </div>
+
+          <!-- No Search Results -->
+          <div id="student-list-no-results" class="hidden text-center py-8">
+            <p class="text-text-muted">No students match your search.</p>
+          </div>
+
+          <!-- Student List Container -->
+          <div id="student-list" class="space-y-2"></div>
+        </div>
+
+        <!-- Footer -->
+        <div class="p-4 border-t">
+          <button type="button" id="cancel-add-student" class="btn btn-ghost w-full">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notification Modal -->
+    <div id="notification-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-lg max-w-md w-full shadow-2xl animate-fade-in">
+        <div class="p-6">
+          <div class="flex items-start gap-4">
+            <div id="notification-icon" class="flex-shrink-0 text-4xl"></div>
+            <div class="flex-1">
+              <h3 id="notification-title" class="text-xl font-bold mb-2"></h3>
+              <p id="notification-message" class="text-text-muted"></p>
+            </div>
+    </div>
+      <div id="notification-actions" class="mt-6 flex gap-3"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Schedule Module Modal -->
+    <div id="schedule-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-lg max-w-md w-full shadow-2xl">
+        <div class="p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-bold" id="schedule-modal-title">Set Release Date</h3>
+            <button id="close-schedule-modal" class="text-text-muted hover:text-text-primary">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          <p class="text-sm text-text-muted mb-4" id="schedule-module-name"></p>
+          <div class="mb-4">
+            <label class="block text-sm font-medium mb-2">Release Date</label>
+            <input type="date" id="schedule-date" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" />
+            <p class="text-xs text-text-muted mt-1">Module will be visible to students from this date</p>
+          </div>
+          <div class="flex gap-3">
+            <button id="save-schedule-btn" class="btn btn-primary flex-1">Save</button>
+            <button id="remove-schedule-btn" class="btn btn-error flex-1 hidden">Remove Date</button>
+            <button id="cancel-schedule-btn" class="btn btn-ghost flex-1">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Cohort Modal -->
+    <div id="edit-cohort-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-lg max-w-md w-full shadow-2xl">
+        <div class="p-6">
+          <div class="flex items-center justify-between mb-6">
+            <h3 class="text-xl font-bold">Edit Cohort</h3>
+            <button id="close-edit-cohort-modal" class="text-text-muted hover:text-text-primary">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+
+          <form id="edit-cohort-form" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium mb-2">Cohort Name</label>
+              <input type="text" id="edit-cohort-name" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" required />
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2">Status</label>
+              <select id="edit-cohort-status" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white">
+                <option value="upcoming">Upcoming</option>
+                <option value="active">Active</option>
+                <option value="completed">Completed</option>
+                <option value="archived">Archived</option>
+              </select>
+              <p class="text-xs text-text-muted mt-1">Set to "Active" to allow students to track progress</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium mb-2">Start Date</label>
+                <input type="date" id="edit-cohort-start-date" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" required />
+              </div>
+              <div>
+                <label class="block text-sm font-medium mb-2">End Date</label>
+                <input type="date" id="edit-cohort-end-date" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" />
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2">Max Students</label>
+              <input type="number" id="edit-cohort-max-students" class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white" min="1" />
+            </div>
+
+            <div class="flex gap-3 pt-4">
+              <button type="submit" class="btn btn-primary flex-1">Save Changes</button>
+              <button type="button" id="cancel-edit-cohort" class="btn btn-ghost flex-1">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    <!-- Email Compose Modal -->
+    <div id="email-compose-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full my-8">
+        <!-- Header -->
+        <div class="flex items-center justify-between p-6 border-b border-gray-200">
+          <h2 class="text-lg font-bold">Compose Email</h2>
+          <button id="close-email-modal" class="text-gray-400 hover:text-gray-600 transition-colors">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-6 space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+          <!-- Status banners -->
+          <div id="email-success-banner" class="hidden bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm"></div>
+          <div id="email-error-banner" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm"></div>
+
+          <!-- Recipients -->
+          <div>
+            <label class="block text-sm font-medium mb-1">To</label>
+            <p id="email-recipients-summary" class="text-sm text-text-muted bg-gray-50 rounded-lg px-3 py-2"></p>
+          </div>
+
+          <!-- Subject -->
+          <div>
+            <label class="block text-sm font-medium mb-1">Subject</label>
+            <input type="text" id="email-subject" value="Checking in on your course progress" maxlength="200"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" />
+          </div>
+
+          <!-- Body -->
+          <div>
+            <label class="block text-sm font-medium mb-1">Message</label>
+            <textarea id="email-body" rows="8" maxlength="5000"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-y"></textarea>
+            <p class="text-xs text-text-muted mt-1"><span id="email-char-count">0</span>/5000</p>
+          </div>
+
+          <!-- Info -->
+          <p class="text-xs text-text-muted bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+            Emails are sent from C4C Campus with your name. Students can reply directly to your email address.
+          </p>
+        </div>
+
+        <!-- Footer -->
+        <div class="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
+          <button id="cancel-email-btn" class="btn btn-ghost">Cancel</button>
+          <button id="send-email-btn" class="btn btn-primary">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    import { supabase } from '@/lib/supabase';
+    import { escapeHTML } from '../../../lib/escape-html';
+
+    let _currentUser: any = null;
+    let cohort: any = null;
+    let students: any[] = [];
+    let _activeTab = 'students';
+    let teacherName = '';
+    let emailRecipients: { user_id: string; name: string; email: string }[] = [];
+
+    // Get cohort ID from URL (UUID string, not integer)
+    const pathParts = window.location.pathname.split('/');
+    const cohortId = pathParts[pathParts.length - 1];
+
+    // Modal helper functions
+    function showNotification(title: string, message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info', actions?: { label: string, onClick: () => void, primary?: boolean }[]) {
+      const modal = document.getElementById('notification-modal');
+      const icon = document.getElementById('notification-icon');
+      const titleEl = document.getElementById('notification-title');
+      const messageEl = document.getElementById('notification-message');
+      const actionsEl = document.getElementById('notification-actions');
+
+      const icons = {
+        success: '✅',
+        error: '❌',
+        info: 'ℹ️',
+        warning: '⚠️'
+      };
+
+      if (icon) icon.textContent = icons[type];
+      if (titleEl) titleEl.textContent = title;
+      if (messageEl) messageEl.textContent = message;
+
+      if (actionsEl) {
+        if (actions && actions.length > 0) {
+          actionsEl.innerHTML = actions.map(action =>
+            `<button class="${action.primary ? 'btn btn-primary' : 'btn btn-ghost'} flex-1 modal-action-btn">${action.label}</button>`
+          ).join('');
+
+          actionsEl.querySelectorAll('.modal-action-btn').forEach((btn, index) => {
+            btn.addEventListener('click', () => {
+              modal?.classList.add('hidden');
+              actions[index].onClick();
+            });
+          });
+        } else {
+          actionsEl.innerHTML = '<button class="btn btn-primary flex-1 modal-close-btn">OK</button>';
+          actionsEl.querySelector('.modal-close-btn')?.addEventListener('click', () => {
+            modal?.classList.add('hidden');
+          });
+        }
+      }
+
+      modal?.classList.remove('hidden');
+    }
+
+    function showConfirm(title: string, message: string, onConfirm: () => void, onCancel?: () => void) {
+      showNotification(title, message, 'warning', [
+        { label: 'Cancel', onClick: onCancel || (() => {}), primary: false },
+        { label: 'Confirm', onClick: onConfirm, primary: true }
+      ]);
+    }
+
+    async function init() {
+      // Check authentication
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        window.location.href = '/login';
+        return;
+      }
+
+      _currentUser = user;
+
+      // Get teacher name for emails
+      const { data: teacherApp } = await supabase
+        .from('applications')
+        .select('name')
+        .eq('user_id', user.id)
+        .single();
+      teacherName = teacherApp?.name || '';
+
+      // Load cohort data
+      await loadCohort();
+
+      if (!cohort) {
+        document.getElementById('loading-state')?.classList.add('hidden');
+        document.getElementById('error-state')?.classList.remove('hidden');
+        return;
+      }
+
+      // Show content
+      document.getElementById('loading-state')?.classList.add('hidden');
+      document.getElementById('main-content')?.classList.remove('hidden');
+
+      // Load students
+      await loadStudents();
+      
+      // Calculate average progress after loading students
+      await calculateAverageProgress();
+
+      setupEventListeners();
+    }
+
+    async function loadCohort() {
+      const { data, error } = await supabase
+        .from('cohorts')
+        .select('*, courses(title, slug, id)')
+        .eq('id', cohortId)
+        .single();
+
+      if (error || !data) {
+        console.error('Error loading cohort:', error);
+        return;
+      }
+
+      cohort = data;
+
+      // Update UI (use optional chaining to prevent crashes if elements don't exist)
+      const cohortNameEl = document.getElementById('cohort-name');
+      const courseNameEl = document.getElementById('course-name');
+      const breadcrumbEl = document.getElementById('breadcrumb-cohort');
+      
+      if (cohortNameEl) cohortNameEl.textContent = cohort.name;
+      if (courseNameEl) courseNameEl.textContent = cohort.courses?.title || 'Unknown Course';
+      if (breadcrumbEl) breadcrumbEl.textContent = cohort.name;
+
+      // Update status badge
+      const badge = document.getElementById('cohort-status-badge');
+      if (badge) {
+        badge.textContent = cohort.status.charAt(0).toUpperCase() + cohort.status.slice(1);
+        badge.className = `px-3 py-1 rounded-full text-sm font-medium ${getCohortStatusColor(cohort.status)}`;
+      }
+
+      // Update dates
+      document.getElementById('cohort-start-date')!.textContent = formatDate(cohort.start_date);
+      document.getElementById('cohort-end-date')!.textContent = cohort.end_date ? formatDate(cohort.end_date) : 'No end date';
+      document.getElementById('cohort-max-students')!.textContent = cohort.max_students.toString();
+
+      // Calculate days remaining
+      if (cohort.end_date) {
+        const endDate = new Date(cohort.end_date);
+        const now = new Date();
+        const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        document.getElementById('stat-days-remaining')!.textContent = daysRemaining > 0 ? daysRemaining.toString() : 'Ended';
+      } else {
+        document.getElementById('stat-days-remaining')!.textContent = 'Ongoing';
+      }
+    }
+
+    async function loadStudents() {
+      const loading = document.getElementById('students-loading');
+      const list = document.getElementById('students-list');
+      const empty = document.getElementById('students-empty');
+
+      loading?.classList.remove('hidden');
+      list?.classList.add('hidden');
+      empty?.classList.add('hidden');
+
+      // Fetch cohort enrollments for this cohort
+      const { data: enrollments, error } = await supabase
+        .from('cohort_enrollments')
+        .select('*')
+        .eq('cohort_id', cohortId)
+        .order('enrolled_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error loading students:', error);
+        empty?.classList.remove('hidden');
+        loading?.classList.add('hidden');
+        return;
+      }
+
+      if (!enrollments || enrollments.length === 0) {
+        loading?.classList.add('hidden');
+        empty?.classList.remove('hidden');
+        return;
+      }
+
+      // Fetch student details
+      const userIds = enrollments.map(e => e.user_id);
+      const { data: apps } = await supabase
+        .from('applications')
+        .select('user_id, name, email')
+        .in('user_id', userIds);
+
+      students = enrollments.map(enrollment => {
+        const studentApp = apps?.find(a => a.user_id === enrollment.user_id) || { name: 'Unknown', email: 'Unknown' };
+        return {
+          ...enrollment,
+          applications: studentApp
+        };
+      });
+
+      loading?.classList.add('hidden');
+
+      // Update stats
+      document.getElementById('stat-total-students')!.textContent = students.length.toString();
+      const activeCount = students.filter(s => s.status === 'active').length;
+      document.getElementById('stat-active-students')!.textContent = activeCount.toString();
+
+      // Average progress is calculated by calculateAverageProgress()
+
+      if (students.length === 0) {
+        empty?.classList.remove('hidden');
+        return;
+      }
+
+      // Render students
+      list!.innerHTML = students.map(enrollment => {
+        const student = enrollment.applications;
+        return `
+          <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+            <div class="flex items-center justify-between gap-4">
+              <div class="flex items-center gap-3 flex-1">
+                <div class="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                  <span class="text-xl">👤</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <h4 class="font-semibold truncate">${escapeHTML(student.name)}</h4>
+                  <p class="text-sm text-text-muted truncate">${escapeHTML(student.email)}</p>
+                  <div class="flex items-center gap-2 mt-1">
+                    <span class="text-xs px-2 py-1 rounded ${getStatusBadge(enrollment.status).color}">
+                      ${getStatusBadge(enrollment.status).text}
+                    </span>
+                    <span class="text-xs text-text-muted">
+                      Enrolled ${formatDate(enrollment.enrolled_at)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex gap-2">
+                <button class="btn btn-sm btn-secondary email-student" data-user-id="${escapeHTML(enrollment.user_id)}" data-email="${escapeHTML(student.email)}" data-name="${escapeHTML(student.name)}">📧 Email</button>
+                <button class="btn btn-sm btn-error remove-student" data-id="${escapeHTML(enrollment.id)}" data-name="${escapeHTML(student.name)}">Remove</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      list?.classList.remove('hidden');
+
+      // Show the "Email All" button when there are students
+      const emailAllBtn = document.getElementById('email-all-btn');
+      if (emailAllBtn && students.length > 0) {
+        emailAllBtn.classList.remove('hidden');
+      }
+
+      // Add event listeners
+      list?.querySelectorAll('.email-student').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const userId = (btn as HTMLElement).getAttribute('data-user-id')!;
+          const email = (btn as HTMLElement).getAttribute('data-email')!;
+          const name = (btn as HTMLElement).getAttribute('data-name')!;
+          openEmailModal([{ user_id: userId, name, email }]);
+        });
+      });
+
+      list?.querySelectorAll('.remove-student').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const enrollmentId = (btn as HTMLElement).getAttribute('data-id');
+          const studentName = (btn as HTMLElement).getAttribute('data-name');
+
+          showConfirm(
+            'Remove Student',
+            `Are you sure you want to remove ${studentName} from this cohort?`,
+            async () => {
+              await removeStudent(enrollmentId!);
+            }
+          );
+        });
+      });
+    }
+
+    async function removeStudent(enrollmentId: string) {
+      const { error } = await supabase
+        .from('cohort_enrollments')
+        .delete()
+        .eq('id', enrollmentId);
+
+      if (error) {
+        showNotification('Error', 'Failed to remove student: ' + error.message, 'error');
+        return;
+      }
+
+      showNotification('Success', 'Student removed successfully!', 'success');
+      await loadStudents();
+    }
+
+    async function calculateAverageProgress() {
+      if (!cohort || students.length === 0) {
+        document.getElementById('stat-avg-progress')!.textContent = '0%';
+        return;
+      }
+
+      // Get modules for this course
+      const { data: modules } = await supabase
+        .from('modules')
+        .select('id')
+        .eq('course_id', cohort.courses.id);
+
+      if (!modules || modules.length === 0) {
+        document.getElementById('stat-avg-progress')!.textContent = '0%';
+        return;
+      }
+
+      const moduleIds = modules.map(m => m.id);
+
+      // Get total lessons count for this course
+      const { data: lessons, count: totalLessons } = await supabase
+        .from('lessons')
+        .select('id', { count: 'exact' })
+        .in('module_id', moduleIds);
+
+      if (!totalLessons || totalLessons === 0) {
+        document.getElementById('stat-avg-progress')!.textContent = '0%';
+        return;
+      }
+
+      // Get completed lessons for enrolled students
+      const studentIds = students.map(s => s.user_id);
+      const lessonIds = lessons?.map(l => l.id) || [];
+
+      const { count: completedCount } = await supabase
+        .from('lesson_progress')
+        .select('id', { count: 'exact' })
+        .in('user_id', studentIds)
+        .in('lesson_id', lessonIds)
+        .eq('completed', true);
+
+      const totalCompletedLessons = completedCount || 0;
+      const enrolledStudents = students.length;
+
+      // Formula: (completed lessons) / (enrolled students) / (total lessons) * 100
+      // Example: 4 completed / 5 students / 4 lessons * 100 = 20%
+      // Guard against division by zero
+      const averageProgress = (enrolledStudents === 0 || totalLessons === 0)
+        ? 0
+        : (totalCompletedLessons / enrolledStudents / totalLessons) * 100;
+
+      document.getElementById('stat-avg-progress')!.textContent =
+        `${Math.round(averageProgress)}%`;
+    }
+
+    function setupEventListeners() {
+      // Tab switching
+      document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const tab = (btn as HTMLElement).getAttribute('data-tab');
+          if (tab) switchTab(tab);
+        });
+      });
+
+      // Edit cohort button - open edit modal
+      document.getElementById('edit-cohort-btn')?.addEventListener('click', openEditCohortModal);
+
+      // Email all students
+      document.getElementById('email-all-btn')?.addEventListener('click', () => {
+        const allRecipients = students
+          .filter(s => s.applications?.email)
+          .map(s => ({ user_id: s.user_id, name: s.applications.name, email: s.applications.email }));
+        if (allRecipients.length > 0) {
+          openEmailModal(allRecipients);
+        }
+      });
+
+      // Add student
+      document.getElementById('add-student-btn')?.addEventListener('click', showAddStudentModal);
+      document.getElementById('close-add-student-modal')?.addEventListener('click', closeAddStudentModal);
+      document.getElementById('cancel-add-student')?.addEventListener('click', closeAddStudentModal);
+      document.getElementById('student-search')?.addEventListener('input', filterStudentList);
+
+      // Schedule modal
+      document.getElementById('close-schedule-modal')?.addEventListener('click', closeScheduleModal);
+      document.getElementById('cancel-schedule-btn')?.addEventListener('click', closeScheduleModal);
+      document.getElementById('save-schedule-btn')?.addEventListener('click', saveSchedule);
+      document.getElementById('remove-schedule-btn')?.addEventListener('click', removeSchedule);
+
+      // Edit cohort modal
+      document.getElementById('close-edit-cohort-modal')?.addEventListener('click', closeEditCohortModal);
+      document.getElementById('cancel-edit-cohort')?.addEventListener('click', closeEditCohortModal);
+      document.getElementById('edit-cohort-form')?.addEventListener('submit', handleEditCohort);
+
+      // Logout
+      document.getElementById('logout-btn')?.addEventListener('click', async () => {
+        await supabase.auth.signOut();
+        window.location.href = '/login';
+      });
+    }
+
+    function switchTab(tab: string) {
+      _activeTab = tab;
+
+      // Update tab buttons
+      document.querySelectorAll('.tab-button').forEach(btn => {
+        const btnTab = (btn as HTMLElement).getAttribute('data-tab');
+        if (btnTab === tab) {
+          btn.classList.add('active', 'border-primary', 'text-primary');
+          btn.classList.remove('border-transparent', 'text-text-muted');
+        } else {
+          btn.classList.remove('active', 'border-primary', 'text-primary');
+          btn.classList.add('border-transparent', 'text-text-muted');
+        }
+      });
+
+      // Show/hide content
+      document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.add('hidden');
+      });
+      document.getElementById(`content-${tab}`)?.classList.remove('hidden');
+
+      if (tab === 'schedule') {
+        loadSchedule();
+      }
+    }
+
+    async function loadSchedule() {
+      const container = document.getElementById('modules-schedule');
+      if (!container) return;
+
+      container.innerHTML = '<p class="text-center text-text-muted py-8">Loading schedule...</p>';
+
+      // Fetch modules for the course
+      const { data: modules, error } = await supabase
+        .from('modules')
+        .select('*')
+        .eq('course_id', cohort.courses.id)
+        .order('order_index', { ascending: true });
+
+      if (error || !modules || modules.length === 0) {
+        container.innerHTML = '<p class="text-center text-text-muted py-8">No modules found for this course.</p>';
+        return;
+      }
+
+      // Fetch existing schedules for this cohort
+      const { data: schedules } = await supabase
+        .from('cohort_schedules')
+        .select('*')
+        .eq('cohort_id', cohortId);
+
+      // Create a map of module_id -> schedule
+      const scheduleMap = new Map<number, any>();
+      if (schedules) {
+        schedules.forEach(s => scheduleMap.set(s.module_id, s));
+      }
+
+      container.innerHTML = modules.map(module => {
+        const schedule = scheduleMap.get(module.id);
+        const hasSchedule = schedule && schedule.unlock_date;
+        const displayDate = hasSchedule ? formatReleaseDate(schedule.unlock_date) : 'Available immediately';
+        const statusClass = hasSchedule ? 'text-blue-600 font-medium' : 'text-green-600';
+        const statusIcon = hasSchedule ? '📅' : '✅';
+
+        return `
+          <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="text-2xl">📚</span>
+                <div>
+                  <h4 class="font-semibold">${escapeHTML(module.title)}</h4>
+                  <p class="text-sm text-text-muted">Module ${module.order_index}</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="${statusClass} text-sm flex items-center gap-1">
+                  <span>${statusIcon}</span>
+                  ${hasSchedule ? `Available from ${displayDate}` : displayDate}
+                </span>
+                <button class="btn btn-sm btn-secondary set-schedule-btn" data-module-id="${module.id}" data-module-title="${escapeHTML(module.title)}" data-current-date="${schedule?.unlock_date || ''}">
+                  ${hasSchedule ? 'Edit Date' : 'Set Date'}
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Add event listeners for Set Date buttons
+      container.querySelectorAll('.set-schedule-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const moduleId = parseInt((btn as HTMLElement).getAttribute('data-module-id')!);
+          const moduleTitle = (btn as HTMLElement).getAttribute('data-module-title')!;
+          const currentDate = (btn as HTMLElement).getAttribute('data-current-date') || '';
+          openScheduleModal(moduleId, moduleTitle, currentDate);
+        });
+      });
+    }
+
+    // Format date as "Month DD, YYYY" (e.g., "January 28, 2026")
+    function formatReleaseDate(dateStr: string): string {
+      return new Date(dateStr).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    }
+
+    let editingModuleId: number | null = null;
+
+    function openScheduleModal(moduleId: number, moduleTitle: string, currentDate: string) {
+      editingModuleId = moduleId;
+      
+      document.getElementById('schedule-module-name')!.textContent = `Module: ${moduleTitle}`;
+      (document.getElementById('schedule-date') as HTMLInputElement).value = currentDate;
+      
+      // Show/hide remove button based on whether there's an existing date
+      const removeBtn = document.getElementById('remove-schedule-btn');
+      if (currentDate) {
+        removeBtn?.classList.remove('hidden');
+      } else {
+        removeBtn?.classList.add('hidden');
+      }
+      
+      document.getElementById('schedule-modal')?.classList.remove('hidden');
+    }
+
+    function closeScheduleModal() {
+      document.getElementById('schedule-modal')?.classList.add('hidden');
+      editingModuleId = null;
+    }
+
+    async function saveSchedule() {
+      if (!editingModuleId) return;
+
+      const dateInput = document.getElementById('schedule-date') as HTMLInputElement;
+      const unlockDate = dateInput.value;
+
+      if (!unlockDate) {
+        showNotification('Error', 'Please select a release date.', 'error');
+        return;
+      }
+
+      // Upsert into cohort_schedules
+      const { error } = await supabase
+        .from('cohort_schedules')
+        .upsert({
+          cohort_id: cohortId,
+          module_id: editingModuleId,
+          unlock_date: unlockDate
+        }, {
+          onConflict: 'cohort_id,module_id'
+        });
+
+      if (error) {
+        showNotification('Error', 'Failed to save schedule: ' + error.message, 'error');
+        return;
+      }
+
+      closeScheduleModal();
+      showNotification('Success', 'Module schedule updated successfully!', 'success');
+      await loadSchedule();
+    }
+
+    async function removeSchedule() {
+      if (!editingModuleId) return;
+
+      const { error } = await supabase
+        .from('cohort_schedules')
+        .delete()
+        .eq('cohort_id', cohortId)
+        .eq('module_id', editingModuleId);
+
+      if (error) {
+        showNotification('Error', 'Failed to remove schedule: ' + error.message, 'error');
+        return;
+      }
+
+      closeScheduleModal();
+      showNotification('Success', 'Module schedule removed. Module is now available immediately.', 'success');
+      await loadSchedule();
+    }
+
+    function openEditCohortModal() {
+      if (!cohort) return;
+      
+      // Populate form with current cohort data
+      (document.getElementById('edit-cohort-name') as HTMLInputElement).value = cohort.name || '';
+      (document.getElementById('edit-cohort-status') as HTMLSelectElement).value = cohort.status || 'upcoming';
+      (document.getElementById('edit-cohort-start-date') as HTMLInputElement).value = cohort.start_date || '';
+      (document.getElementById('edit-cohort-end-date') as HTMLInputElement).value = cohort.end_date || '';
+      (document.getElementById('edit-cohort-max-students') as HTMLInputElement).value = cohort.max_students?.toString() || '50';
+      
+      document.getElementById('edit-cohort-modal')?.classList.remove('hidden');
+    }
+
+    function closeEditCohortModal() {
+      document.getElementById('edit-cohort-modal')?.classList.add('hidden');
+    }
+
+    async function handleEditCohort(e: Event) {
+      e.preventDefault();
+      
+      const name = (document.getElementById('edit-cohort-name') as HTMLInputElement).value.trim();
+      const status = (document.getElementById('edit-cohort-status') as HTMLSelectElement).value;
+      const startDate = (document.getElementById('edit-cohort-start-date') as HTMLInputElement).value;
+      const endDate = (document.getElementById('edit-cohort-end-date') as HTMLInputElement).value || null;
+      const maxStudents = parseInt((document.getElementById('edit-cohort-max-students') as HTMLInputElement).value) || 50;
+
+      if (!name || !startDate) {
+        showNotification('Error', 'Please fill in all required fields.', 'error');
+        return;
+      }
+
+      // Validate end date is after start date
+      if (endDate && new Date(endDate) < new Date(startDate)) {
+        showNotification('Error', 'End date must be after start date.', 'error');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('cohorts')
+        .update({
+          name,
+          status,
+          start_date: startDate,
+          end_date: endDate,
+          max_students: maxStudents,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', cohortId);
+
+      if (error) {
+        showNotification('Error', 'Failed to update cohort: ' + error.message, 'error');
+        return;
+      }
+
+      closeEditCohortModal();
+      showNotification('Success', 'Cohort updated successfully!', 'success');
+      
+      // Reload cohort data to reflect changes
+      await loadCohort();
+      
+      // Update the status badge
+      updateStatusBadge();
+    }
+
+    function updateStatusBadge() {
+      if (!cohort) return;
+      
+      const badge = document.getElementById('cohort-status-badge');
+      if (!badge) return;
+      
+      const statusColors: Record<string, string> = {
+        'upcoming': 'bg-yellow-100 text-yellow-800',
+        'active': 'bg-green-100 text-green-800',
+        'completed': 'bg-blue-100 text-blue-800',
+        'archived': 'bg-gray-100 text-gray-800'
+      };
+      
+      // Remove all color classes
+      badge.className = 'px-3 py-1 rounded-full text-sm font-medium ' + (statusColors[cohort.status] || statusColors.upcoming);
+      badge.textContent = cohort.status.charAt(0).toUpperCase() + cohort.status.slice(1);
+    }
+
+    let availableStudents: any[] = [];
+
+    async function showAddStudentModal() {
+      document.getElementById('add-student-modal')?.classList.remove('hidden');
+      const searchInput = document.getElementById('student-search') as HTMLInputElement;
+      if (searchInput) searchInput.value = '';
+
+      // Show loading, hide other states
+      document.getElementById('student-list-loading')?.classList.remove('hidden');
+      document.getElementById('student-list-empty')?.classList.add('hidden');
+      document.getElementById('student-list-no-results')?.classList.add('hidden');
+      const listEl = document.getElementById('student-list');
+      if (listEl) listEl.innerHTML = '';
+
+      try {
+        const response = await fetch(`/api/teacher/approved-students?cohortId=${cohortId}`, { cache: 'no-store' });
+        if (!response.ok) {
+          throw new Error('Failed to fetch students');
+        }
+        const data = await response.json();
+        availableStudents = data.students || [];
+      } catch (err) {
+        console.error('Error loading available students:', err);
+        availableStudents = [];
+      }
+
+      document.getElementById('student-list-loading')?.classList.add('hidden');
+
+      if (availableStudents.length === 0) {
+        document.getElementById('student-list-empty')?.classList.remove('hidden');
+      } else {
+        renderStudentList(availableStudents);
+      }
+    }
+
+    function renderStudentList(students: any[]) {
+      const listEl = document.getElementById('student-list');
+      if (!listEl) return;
+
+      document.getElementById('student-list-empty')?.classList.add('hidden');
+      document.getElementById('student-list-no-results')?.classList.add('hidden');
+
+      if (students.length === 0) {
+        document.getElementById('student-list-no-results')?.classList.remove('hidden');
+        listEl.innerHTML = '';
+        return;
+      }
+
+      listEl.innerHTML = students.map(s => `
+        <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0 text-sm">
+              ${escapeHTML((s.name || '?')[0].toUpperCase())}
+            </div>
+            <div class="min-w-0">
+              <p class="text-sm font-medium truncate">${escapeHTML(s.name || 'Unknown')}</p>
+              <p class="text-xs text-text-muted truncate">${escapeHTML(s.email || '')}</p>
+            </div>
+          </div>
+          <button class="btn btn-sm btn-primary flex-shrink-0 add-student-btn" data-user-id="${escapeHTML(String(s.user_id))}" data-name="${escapeHTML(s.name || 'Student')}">
+            Add
+          </button>
+        </div>
+      `).join('');
+
+      // Attach click handlers
+      listEl.querySelectorAll('.add-student-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const userId = (btn as HTMLElement).getAttribute('data-user-id');
+          const name = (btn as HTMLElement).getAttribute('data-name');
+          if (userId) {
+            await enrollStudent(userId, name || 'Student');
+          }
+        });
+      });
+    }
+
+    function filterStudentList() {
+      const searchInput = document.getElementById('student-search') as HTMLInputElement;
+      const query = (searchInput?.value || '').toLowerCase().trim();
+
+      if (!query) {
+        renderStudentList(availableStudents);
+        return;
+      }
+
+      const filtered = availableStudents.filter(s =>
+        (s.name || '').toLowerCase().includes(query) ||
+        (s.email || '').toLowerCase().includes(query)
+      );
+      renderStudentList(filtered);
+    }
+
+    async function enrollStudent(userId: string, name: string) {
+      try {
+        // Single server-side API call handles both cohort_enrollments and
+        // enrollments tables atomically using the service role key
+        const courseId = cohort?.course_id;
+        if (!courseId) {
+          showNotification('Error', 'Course not found for this cohort.', 'error');
+          return;
+        }
+
+        const res = await fetch('/api/teacher/enroll-student', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, courseId, cohortId }),
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          showNotification('Error', 'Failed to add student: ' + (errData.error || res.statusText), 'error');
+          return;
+        }
+
+        showNotification('Success', `${name} has been added to the cohort!`, 'success');
+
+        // Remove student from available list and re-render
+        availableStudents = availableStudents.filter(s => s.user_id !== userId);
+        filterStudentList();
+
+        // Refresh the main students list
+        await loadStudents();
+      } catch (err) {
+        console.error('Error enrolling student:', err);
+        showNotification('Error', 'An unexpected error occurred.', 'error');
+      }
+    }
+
+    function closeAddStudentModal() {
+      document.getElementById('add-student-modal')?.classList.add('hidden');
+    }
+
+    function formatDate(dateStr: string): string {
+      return new Date(dateStr).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    }
+
+    function getCohortStatusColor(status: string): string {
+      const colors: Record<string, string> = {
+        'upcoming': 'bg-blue-500/10 text-blue-500',
+        'active': 'bg-green-500/10 text-green-500',
+        'completed': 'bg-gray-500/10 text-gray-500',
+        'archived': 'bg-orange-500/10 text-orange-500'
+      };
+      return colors[status] || 'bg-gray-500/10 text-gray-500';
+    }
+
+    function getStatusBadge(status: string): { text: string, color: string } {
+      const badges: Record<string, { text: string, color: string }> = {
+        'active': { text: 'Active', color: 'bg-green-500/10 text-green-600' },
+        'completed': { text: 'Completed', color: 'bg-blue-500/10 text-blue-600' },
+        'dropped': { text: 'Dropped', color: 'bg-red-500/10 text-red-600' },
+        'paused': { text: 'Paused', color: 'bg-orange-500/10 text-orange-600' }
+      };
+      return badges[status] || { text: status, color: 'bg-gray-500/10 text-gray-600' };
+    }
+
+    // --- Email Compose Modal ---
+
+    function openEmailModal(recipients: { user_id: string; name: string; email: string }[]) {
+      emailRecipients = recipients;
+
+      // Reset state
+      const modal = document.getElementById('email-compose-modal')!;
+      const successBanner = document.getElementById('email-success-banner')!;
+      const errorBanner = document.getElementById('email-error-banner')!;
+      const subjectInput = document.getElementById('email-subject') as HTMLInputElement;
+      const bodyInput = document.getElementById('email-body') as HTMLTextAreaElement;
+      const sendBtn = document.getElementById('send-email-btn') as HTMLButtonElement;
+      const summary = document.getElementById('email-recipients-summary')!;
+      const charCount = document.getElementById('email-char-count')!;
+
+      successBanner.classList.add('hidden');
+      errorBanner.classList.add('hidden');
+      subjectInput.value = 'Checking in on your course progress';
+      subjectInput.disabled = false;
+      sendBtn.disabled = false;
+      sendBtn.textContent = `Send to ${recipients.length} student${recipients.length !== 1 ? 's' : ''}`;
+
+      const defaultBody = `Hi there,\n\nI noticed you haven't been active in the course recently. Is everything okay? Let me know if there's anything I can do to help you get back on track.\n\nBest regards,\n${teacherName}`;
+      bodyInput.value = defaultBody;
+      bodyInput.disabled = false;
+      charCount.textContent = defaultBody.length.toString();
+
+      if (recipients.length <= 3) {
+        summary.textContent = recipients.map(r => `${r.name} (${r.email})`).join(', ');
+      } else {
+        summary.textContent = `${recipients[0].name} and ${recipients.length - 1} other${recipients.length - 1 !== 1 ? 's' : ''}`;
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeEmailModal() {
+      document.getElementById('email-compose-modal')?.classList.add('hidden');
+    }
+
+    async function sendEmail() {
+      const subjectInput = document.getElementById('email-subject') as HTMLInputElement;
+      const bodyInput = document.getElementById('email-body') as HTMLTextAreaElement;
+      const sendBtn = document.getElementById('send-email-btn') as HTMLButtonElement;
+      const errorBanner = document.getElementById('email-error-banner')!;
+      const successBanner = document.getElementById('email-success-banner')!;
+
+      const subject = subjectInput.value.trim();
+      const body = bodyInput.value.trim();
+
+      if (!subject) {
+        errorBanner.textContent = 'Subject is required';
+        errorBanner.classList.remove('hidden');
+        return;
+      }
+      if (!body) {
+        errorBanner.textContent = 'Message body is required';
+        errorBanner.classList.remove('hidden');
+        return;
+      }
+
+      errorBanner.classList.add('hidden');
+      sendBtn.disabled = true;
+      sendBtn.innerHTML = '<span class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span>Sending...';
+      subjectInput.disabled = true;
+      bodyInput.disabled = true;
+
+      try {
+        const response = await fetch('/api/teacher/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            cohort_id: cohortId,
+            subject,
+            body,
+            recipient_user_ids: emailRecipients.map(r => r.user_id),
+          }),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          errorBanner.textContent = result.error || 'Failed to send emails';
+          errorBanner.classList.remove('hidden');
+          sendBtn.disabled = false;
+          sendBtn.textContent = `Send to ${emailRecipients.length} student${emailRecipients.length !== 1 ? 's' : ''}`;
+          subjectInput.disabled = false;
+          bodyInput.disabled = false;
+          return;
+        }
+
+        successBanner.textContent = `Successfully sent to ${result.sent_count} student${result.sent_count !== 1 ? 's' : ''}.`;
+        successBanner.classList.remove('hidden');
+        sendBtn.textContent = 'Sent';
+
+        setTimeout(() => closeEmailModal(), 2000);
+      } catch {
+        errorBanner.textContent = 'Network error. Please try again.';
+        errorBanner.classList.remove('hidden');
+        sendBtn.disabled = false;
+        sendBtn.textContent = `Send to ${emailRecipients.length} student${emailRecipients.length !== 1 ? 's' : ''}`;
+        subjectInput.disabled = false;
+        bodyInput.disabled = false;
+      }
+    }
+
+    // Email modal event listeners
+    document.getElementById('close-email-modal')?.addEventListener('click', closeEmailModal);
+    document.getElementById('cancel-email-btn')?.addEventListener('click', closeEmailModal);
+    document.getElementById('send-email-btn')?.addEventListener('click', sendEmail);
+    document.getElementById('email-body')?.addEventListener('input', () => {
+      const body = (document.getElementById('email-body') as HTMLTextAreaElement).value;
+      document.getElementById('email-char-count')!.textContent = body.length.toString();
+    });
+    // Close on overlay click
+    document.getElementById('email-compose-modal')?.addEventListener('click', (e) => {
+      if (e.target === document.getElementById('email-compose-modal')) {
+        closeEmailModal();
+      }
+    });
+
+    // Initialize
+    init();
+  </script>
+</TeacherLayout>

@@ -1,0 +1,32 @@
+#!/bin/sh
+# Pre-commit hook for schema-code synchronization validation
+#
+# This hook runs validation checks when schema or type files are staged.
+# Install husky to enable: npm install --save-dev husky && npx husky install
+
+# Check if schema or types changed
+if git diff --cached --name-only | grep -qE '(schema\.sql|src/types/)'; then
+  echo "Schema or types changed, running validation..."
+
+  # Run type structure check
+  npm run db:types:check
+  if [ $? -ne 0 ]; then
+    echo "Type validation failed. Please fix issues before committing."
+    exit 1
+  fi
+
+  echo "Type validation passed."
+fi
+
+# Check if API endpoints or components changed (optional, more thorough)
+if git diff --cached --name-only | grep -qE '(src/pages/api/|src/components/|src/lib/)'; then
+  echo "Code files changed, checking field name conventions..."
+
+  # Run field name check (non-blocking for now, can be made blocking later)
+  npm run db:field-names:check 2>/dev/null || true
+
+  # Run case convention check (non-blocking for now)
+  npm run db:case:check 2>/dev/null || true
+fi
+
+exit 0

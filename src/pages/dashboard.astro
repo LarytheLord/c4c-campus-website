@@ -1,0 +1,585 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import AIKeyWidget from '../components/student/AIKeyWidget.tsx';
+---
+
+<BaseLayout title="Student Dashboard - C4C Campus" hideHeader={true} hideFooter={true}>
+  <div class="min-h-screen bg-background">
+    <!-- Dashboard Header -->
+    <header class="sticky top-0 z-50 bg-white/95 backdrop-blur-sm shadow-sm">
+      <div class="container mx-auto px-4 py-4">
+        <div class="flex items-center justify-between gap-4">
+          <div class="flex items-center gap-4 flex-1">
+            <a href="/dashboard" class="flex-shrink-0">
+              <img src="/logo.jpeg" alt="C4C Campus" class="h-10 w-10 rounded-lg" />
+            </a>
+            <div>
+              <h1 class="text-xl sm:text-2xl font-bold text-text">Student Dashboard</h1>
+              <p class="text-text-muted text-sm" id="welcome-text">Welcome back!</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <!-- Navigation Links -->
+            <a href="/courses" class="hidden sm:block btn btn-ghost btn-sm">Courses</a>
+
+            <!-- Language Selector -->
+            <select id="language-selector" class="notranslate hidden sm:block border border-border rounded-lg px-3 py-2 text-sm bg-background" translate="no">
+              <option value="">Language</option>
+              <option value="hi">हिन्दी</option>
+              <option value="ta">தமிழ்</option>
+              <option value="te">తెలుగు</option>
+              <option value="kn">ಕನ್ನಡ</option>
+              <option value="bn">বাংলা</option>
+              <option value="mr">मराठी</option>
+              <option value="gu">ગુજરાતી</option>
+              <option value="ml">മലయാളം</option>
+              <option value="pa">ਪੰਜਾਬੀ</option>
+              <option value="es">Español</option>
+              <option value="fr">Français</option>
+              <option value="de">Deutsch</option>
+              <option value="pt">Português</option>
+              <option value="zh-CN">中文</option>
+              <option value="ja">日本語</option>
+              <option value="ko">한국어</option>
+              <option value="ar">العربية</option>
+            </select>
+            <div id="google_translate_element" style="display: none;"></div>
+            <button id="logout-btn" class="btn btn-ghost text-sm">
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="h-0.5 bg-gradient-to-r from-primary/50 via-primary to-primary/50"></div>
+    </header>
+
+    <!-- Loading State -->
+    <div id="loading-state" class="container mx-auto px-4 py-12">
+      <div class="text-center">
+        <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+        <p class="mt-4 text-text-muted">Loading your dashboard...</p>
+      </div>
+    </div>
+
+    <!-- Dashboard Content (Hidden until loaded) -->
+    <div id="dashboard-content" class="hidden">
+      <div class="container mx-auto px-4 py-8">
+        <!-- Main Content -->
+        <div>
+          <!-- Welcome Message -->
+          <div class="mb-6">
+            <h2 class="text-2xl font-bold mb-2">Welcome to C4C Campus!</h2>
+            <p class="text-text-muted">Your learning hub for courses, progress tracking, and workflow automation.</p>
+          </div>
+
+          <!-- AI Credits -->
+          <div class="mb-6">
+            <AIKeyWidget client:only="react" />
+          </div>
+
+          <!-- Quick Stats -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="card">
+              <div class="flex items-center gap-3">
+                <div class="p-3 bg-gray-100 rounded-lg">
+                  <span class="text-2xl">📚</span>
+                </div>
+                <div>
+                  <p class="text-sm text-text-muted">Enrolled Courses</p>
+                  <p class="text-2xl font-bold" id="stat-enrolled">-</p>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="flex items-center gap-3">
+                <div class="p-3 bg-gray-100 rounded-lg">
+                  <span class="text-2xl">✅</span>
+                </div>
+                <div>
+                  <p class="text-sm text-text-muted">Completed</p>
+                  <p class="text-2xl font-bold" id="stat-completed">-</p>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="flex items-center gap-3">
+                <div class="p-3 bg-gray-100 rounded-lg">
+                  <span class="text-2xl">⏱️</span>
+                </div>
+                <div>
+                  <p class="text-sm text-text-muted">Total Hours</p>
+                  <p class="text-2xl font-bold" id="stat-hours">-</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- My Courses Section -->
+          <div class="mb-6">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-xl font-bold">My Courses</h2>
+              <a href="/courses" class="btn btn-ghost btn-sm">View All →</a>
+            </div>
+            <div id="courses-loading" class="text-center py-8">
+              <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
+              <p class="mt-2 text-text-muted text-sm">Loading courses...</p>
+            </div>
+            <div id="courses-list" class="hidden space-y-3">
+              <!-- Courses will be inserted here -->
+            </div>
+            <div id="courses-empty" class="hidden text-center py-8 text-text-muted">
+              <p>No courses enrolled yet. Browse available courses to get started!</p>
+              <a href="/courses" class="btn btn-primary mt-4">Browse Courses</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Not Logged In State -->
+    <div id="not-logged-in" class="hidden container mx-auto px-4 py-12">
+      <div class="max-w-md mx-auto text-center">
+        <div class="card">
+          <h2 class="text-2xl font-bold mb-4">Please Sign In</h2>
+          <p class="text-text-muted mb-6">You need to be logged in to access the student dashboard.</p>
+          <a href="/login" class="btn btn-primary">
+            Go to Login
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    import { supabase } from '../lib/supabase';
+    import { escapeHTML } from '../lib/escape-html';
+
+    let currentUser: any = null;
+
+    // Check authentication on page load
+    async function checkAuth() {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        // Not logged in
+        document.getElementById('loading-state')?.classList.add('hidden');
+        document.getElementById('not-logged-in')?.classList.remove('hidden');
+        return;
+      }
+
+      currentUser = session.user;
+
+      // Fetch user's application data
+      const { data: application } = await supabase
+        .from('applications')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .single();
+
+      if (application) {
+        // Check if user has student role - redirect teachers/admins to their dashboards
+        if (application.role === 'admin') {
+          window.location.href = '/admin/dashboard';
+          return;
+        } else if (application.role === 'teacher') {
+          window.location.href = '/teacher/courses';
+          return;
+        }
+
+        // Update UI with user data
+        const welcomeText = document.getElementById('welcome-text');
+        if (welcomeText) {
+          welcomeText.textContent = `Welcome back, ${application.name.split(' ')[0]}!`;
+        }
+      }
+
+      // Show dashboard
+      document.getElementById('loading-state')?.classList.add('hidden');
+      document.getElementById('dashboard-content')?.classList.remove('hidden');
+
+      // Load course data
+      loadEnrollments();
+    }
+
+    // Load user's course enrollments with real progress data
+    async function loadEnrollments() {
+      const coursesLoading = document.getElementById('courses-loading');
+      const coursesList = document.getElementById('courses-list');
+      const coursesEmpty = document.getElementById('courses-empty');
+
+      try {
+        // Fetch user's enrollments with course data
+        const { data: enrollments, error } = await supabase
+          .from('enrollments')
+          .select(`
+            *,
+            courses:course_id (
+              id,
+              title,
+              slug,
+              description,
+              track,
+              default_duration_weeks,
+              thumbnail_url
+            )
+          `)
+          .eq('user_id', currentUser.id)
+          .eq('status', 'active');
+
+        if (error) throw error;
+
+        coursesLoading?.classList.add('hidden');
+
+        if (!enrollments || enrollments.length === 0) {
+          coursesEmpty?.classList.remove('hidden');
+          document.getElementById('stat-enrolled')!.textContent = '0';
+          document.getElementById('stat-completed')!.textContent = '0';
+          document.getElementById('stat-hours')!.textContent = '0';
+          return;
+        }
+
+        // Fetch actual progress data for each course
+        const courseIds = enrollments.map((e: any) => e.courses.id);
+
+        // Get modules for these courses
+        const { data: modules } = await supabase
+          .from('modules')
+          .select('id, course_id')
+          .in('course_id', courseIds);
+
+        const moduleIds = modules?.map(m => m.id) || [];
+        const modulesByCourse: Record<number, number[]> = {};
+        modules?.forEach((m: any) => {
+          if (!modulesByCourse[m.course_id]) modulesByCourse[m.course_id] = [];
+          modulesByCourse[m.course_id].push(m.id);
+        });
+
+        // Get lessons for these modules
+        const { data: lessons } = moduleIds.length > 0
+          ? await supabase.from('lessons').select('id, module_id').in('module_id', moduleIds)
+          : { data: [] };
+
+        const lessonsByModule: Record<number, number[]> = {};
+        lessons?.forEach((l: any) => {
+          if (!lessonsByModule[l.module_id]) lessonsByModule[l.module_id] = [];
+          lessonsByModule[l.module_id].push(l.id);
+        });
+
+        // Calculate total lessons per course
+        const totalLessonsByCourse: Record<number, number> = {};
+        courseIds.forEach((courseId: number) => {
+          const courseModules = modulesByCourse[courseId] || [];
+          let total = 0;
+          courseModules.forEach(moduleId => {
+            total += (lessonsByModule[moduleId] || []).length;
+          });
+          totalLessonsByCourse[courseId] = total;
+        });
+
+        // Get lesson progress for this user
+        const allLessonIds = lessons?.map(l => l.id) || [];
+        const { data: progressData } = allLessonIds.length > 0
+          ? await supabase
+              .from('lesson_progress')
+              .select('lesson_id, completed, time_spent_seconds')
+              .eq('user_id', currentUser.id)
+              .in('lesson_id', allLessonIds)
+          : { data: [] };
+
+        // Map progress by lesson_id
+        const progressByLesson: Record<number, any> = {};
+        progressData?.forEach((p: any) => {
+          progressByLesson[p.lesson_id] = p;
+        });
+
+        // Calculate progress per course
+        type CourseProgress = {
+          completedLessons: number;
+          totalLessons: number;
+          percentage: number;
+          timeSpentSeconds: number;
+        };
+        const progressByCourse: Record<number, CourseProgress> = {};
+
+        courseIds.forEach((courseId: number) => {
+          const courseModules = modulesByCourse[courseId] || [];
+          let completedLessons = 0;
+          let timeSpentSeconds = 0;
+          let totalLessons = totalLessonsByCourse[courseId] || 0;
+
+          courseModules.forEach(moduleId => {
+            const moduleLessons = lessonsByModule[moduleId] || [];
+            moduleLessons.forEach(lessonId => {
+              const progress = progressByLesson[lessonId];
+              if (progress?.completed) completedLessons++;
+              if (progress?.time_spent_seconds) timeSpentSeconds += progress.time_spent_seconds;
+            });
+          });
+
+          progressByCourse[courseId] = {
+            completedLessons,
+            totalLessons,
+            percentage: totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0,
+            timeSpentSeconds,
+          };
+        });
+
+        // Helper to format track names (e.g., "animal_advocacy" -> "Animal Advocacy")
+        function formatTrackName(track: string): string {
+          return track
+            .split('_')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+        }
+
+        // Display courses with real progress
+        coursesList!.innerHTML = enrollments.map((enrollment: any) => {
+          const course = enrollment.courses;
+          const isCompleted = enrollment.completed_at !== null;
+          const progress = progressByCourse[course.id] || { completedLessons: 0, totalLessons: 0, percentage: 0, timeSpentSeconds: 0 };
+          const timeSpentHours = Math.round((progress.timeSpentSeconds / 3600) * 10) / 10;
+          const formattedTrack = course.track ? formatTrackName(course.track) : '';
+
+          return `
+            <a href="/courses/${escapeHTML(course.slug)}" class="card card-interactive block p-4">
+              <div class="flex items-start gap-4">
+                ${course.thumbnail_url ? `<img src="${escapeHTML(course.thumbnail_url)}" alt="${escapeHTML(course.title)}" class="w-20 h-20 rounded-lg object-cover flex-shrink-0" />` : ''}
+                <div class="flex-1">
+                  <h4 class="font-semibold text-lg">${escapeHTML(course.title)}</h4>
+                  <p class="text-sm text-text-muted mt-1">${escapeHTML(course.description || '')}</p>
+
+                  <!-- Progress bar -->
+                  <div class="mt-3">
+                    <div class="flex items-center justify-between text-xs text-text-muted mb-1">
+                      <span>${progress.completedLessons}/${progress.totalLessons} lessons</span>
+                      <span>${progress.percentage}% complete</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                      <div class="h-2 rounded-full transition-all" style="width: ${progress.percentage}%; background: hsl(var(--primary))"></div>
+                    </div>
+                  </div>
+
+                  <div class="flex items-center gap-3 mt-3 text-sm">
+                    ${formattedTrack ? `<span class="text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">${escapeHTML(formattedTrack)}</span>` : ''}
+                    <span class="text-text-muted text-xs">⏱️ ${timeSpentHours}h spent</span>
+                    ${isCompleted ? '<span class="text-xs font-medium px-2.5 py-1 rounded-full bg-green-50 text-green-600">✓ Completed</span>' : '<span class="text-xs font-medium px-2.5 py-1 rounded-full bg-blue-50 text-blue-600">In Progress</span>'}
+                  </div>
+                </div>
+              </div>
+            </a>
+          `;
+        }).join('');
+
+        coursesList?.classList.remove('hidden');
+
+        // Update stats with real progress data
+        const completedCount = enrollments.filter((e: any) => e.completed_at !== null).length;
+
+        // Calculate total completed lessons and time from real progress
+        let totalCompletedLessons = 0;
+        let totalTimeSpentSeconds = 0;
+        Object.values(progressByCourse).forEach((p: CourseProgress) => {
+          totalCompletedLessons += p.completedLessons;
+          totalTimeSpentSeconds += p.timeSpentSeconds;
+        });
+
+        const totalHours = Math.round((totalTimeSpentSeconds / 3600) * 10) / 10;
+
+        document.getElementById('stat-enrolled')!.textContent = enrollments.length.toString();
+        document.getElementById('stat-completed')!.textContent = completedCount.toString();
+        document.getElementById('stat-hours')!.textContent = totalHours.toString();
+
+      } catch (error) {
+        console.error('Error loading enrollments:', error);
+        coursesLoading?.classList.add('hidden');
+        coursesEmpty?.classList.remove('hidden');
+        document.getElementById('stat-enrolled')!.textContent = '0';
+        document.getElementById('stat-completed')!.textContent = '0';
+        document.getElementById('stat-hours')!.textContent = '0';
+      }
+    }
+
+    // Logout handler
+    document.getElementById('logout-btn')?.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = '/login';
+    });
+
+    // Google Translate Integration
+    const languageSelector = document.getElementById('language-selector');
+    if (languageSelector) {
+      languageSelector.addEventListener('change', function() {
+        const lang = (this as HTMLSelectElement).value;
+        if (lang) {
+          // Wait for Google Translate to initialize
+          setTimeout(function() {
+            const select = document.querySelector('.goog-te-combo') as HTMLSelectElement;
+            if (select) {
+              select.value = lang;
+              select.dispatchEvent(new Event('change'));
+            }
+          }, 500);
+        }
+      });
+    }
+
+    // Initialize
+    checkAuth();
+  </script>
+
+  <!-- Google Translate Script -->
+  <script is:inline type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+  <script is:inline type="text/javascript">
+    function googleTranslateElementInit() {
+      new google.translate.TranslateElement({
+        pageLanguage: 'en',
+        includedLanguages: 'hi,ta,te,kn,bn,mr,gu,ml,pa,or,as,ur,es,fr,de,pt,zh-CN,ja,ko,ar',
+        autoDisplay: false
+      }, 'google_translate_element');
+    }
+
+    // Function to change translation language
+    function changeLanguage(lang) {
+      console.log('[C4C-Translate] changeLanguage called with:', lang);
+      sessionStorage.setItem('preferredLanguage', lang);
+
+      if (lang === 'en') {
+        console.log('[C4C-Translate] Resetting to English...');
+        resetToEnglish();
+        return true;
+      }
+
+      // For other languages, trigger Google Translate
+      const select = document.querySelector('.goog-te-combo');
+      if (select) {
+        console.log('[C4C-Translate] Google Translate combo found, setting to:', lang);
+        select.value = lang;
+        select.dispatchEvent(new Event('change'));
+        return true;
+      }
+
+      // If the select element isn't ready, try again after a delay
+      console.log('[C4C-Translate] Google Translate combo NOT found, will retry in 1s');
+      setTimeout(() => {
+        const selectRetry = document.querySelector('.goog-te-combo');
+        if (selectRetry) {
+          console.log('[C4C-Translate] Retry: combo found, setting to:', lang);
+          selectRetry.value = lang;
+          selectRetry.dispatchEvent(new Event('change'));
+        } else {
+          console.log('[C4C-Translate] Retry: combo still not found');
+        }
+      }, 1000);
+
+      return false;
+    }
+
+    function resetToEnglish() {
+      console.log('[C4C-Translate] resetToEnglish called');
+      console.log('[C4C-Translate] Current URL:', window.location.href);
+
+      clearGoogleTranslateCookies();
+      cleanupGoogleTranslate();
+
+      // Remove any Google Translate modifications to the body
+      document.body.className = document.body.className
+        .replace(/\bskiptranslate\b/g, '')
+        .replace(/\btranslated-\w+\b/g, '')
+        .replace(/\bgt-\w+\b/g, '')
+        .trim();
+
+      // Reset the Google Translate iframe container
+      const translateContainer = document.getElementById('google_translate_element');
+      if (translateContainer) {
+        translateContainer.innerHTML = '';
+      }
+
+      // Force a reload with clean URL (origin + pathname strips any existing query params)
+      const newUrl = window.location.origin + window.location.pathname + '?t=' + new Date().getTime();
+      console.log('[C4C-Translate] Reloading to:', newUrl);
+      window.location.href = newUrl;
+    }
+
+    function clearGoogleTranslateCookies() {
+      const cookies = document.cookie.split(';');
+      const googCookies = cookies.filter(c => {
+        const name = c.indexOf('=') > -1 ? c.substr(0, c.indexOf('=')).trim() : c.trim();
+        return name.startsWith('goog');
+      });
+      console.log('[C4C-Translate] Clearing Google cookies:', googCookies.length, 'found');
+      cookies.forEach(cookie => {
+        const eqPos = cookie.indexOf('=');
+        const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+
+        if (name.startsWith('goog')) {
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`;
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${window.location.hostname};`;
+        }
+      });
+    }
+
+    function cleanupGoogleTranslate() {
+      // Remove Google Translate iframes
+      const iframes = document.querySelectorAll('iframe[src*="translate.googleapis"]');
+      console.log('[C4C-Translate] Removing', iframes.length, 'Google Translate iframes');
+      iframes.forEach(iframe => {
+        iframe.parentNode?.removeChild(iframe);
+      });
+
+      // Remove Google Translate elements
+      const selectorsToRemove = [
+        '[class*="goog"]',
+        '[class*="skiptranslate"]',
+        '[id*=":0"]',
+        '[class*="gt-"]'
+      ];
+
+      selectorsToRemove.forEach(selector => {
+        const elements = document.querySelectorAll(selector);
+        console.log('[C4C-Translate] Cleanup selector', selector, '— matched', elements.length, 'elements');
+        elements.forEach(el => el.remove());
+      });
+    }
+
+    // On page load, check if there's a preferred language
+    document.addEventListener('DOMContentLoaded', function() {
+      const preferredLang = sessionStorage.getItem('preferredLanguage');
+      console.log('[C4C-Translate] DOMContentLoaded — preferredLanguage:', preferredLang);
+
+      if (preferredLang && preferredLang !== 'en') {
+        console.log('[C4C-Translate] Will reapply language', preferredLang, 'in 1.5s');
+        setTimeout(() => {
+          changeLanguage(preferredLang);
+        }, 1500);
+      } else if (preferredLang === 'en') {
+        console.log('[C4C-Translate] English preferred, page already in English — skipping cleanup to preserve widget');
+      }
+
+      const languageSelector = document.getElementById('language-selector');
+      if (languageSelector) {
+        languageSelector.addEventListener('change', function() {
+          const lang = this.value;
+          console.log('[C4C-Translate] Language selector changed to:', lang);
+          if (lang) {
+            if (!changeLanguage(lang)) {
+              let attempts = 0;
+              const maxAttempts = 10;
+              const tryChange = function() {
+                attempts++;
+                console.log('[C4C-Translate] Retry attempt', attempts, 'for language:', lang);
+                if (changeLanguage(lang)) {
+                  return;
+                }
+                if (attempts < maxAttempts) {
+                  setTimeout(tryChange, 300);
+                }
+              };
+              setTimeout(tryChange, 300);
+            }
+          }
+        });
+      }
+    });
+  </script>
+</BaseLayout>
