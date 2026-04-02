@@ -8,7 +8,7 @@ export const prerender = false;
 <BaseLayout title="Course Details - C4C Campus" hideHeader={true} hideFooter={true}>
   <div class="min-h-screen bg-background">
     <!-- Internal Header -->
-    <header class="sticky top-0 z-50 bg-white/95 backdrop-blur-sm shadow-sm overflow-hidden">
+    <header class="sticky top-0 z-50 bg-surface backdrop-blur-sm shadow-sm overflow-hidden">
       <div class="container mx-auto px-4 py-4">
         <div class="flex items-center justify-between gap-2 sm:gap-4">
           <div class="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
@@ -255,7 +255,10 @@ export const prerender = false;
     const slug = slugInput.value.trim();
     if (!slug) {
       slugError.classList.add('hidden');
-      if (saveBtn) saveBtn.disabled = false;
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      }
       return true;
     }
 
@@ -1154,7 +1157,7 @@ export const prerender = false;
     // Validate slug uniqueness before saving
     const isSlugValid = await validateLessonSlug();
     if (!isSlugValid) {
-      showToast('This URL already exists for another lesson, please change the URL.', 'error');
+      // validateLessonSlug already shows an inline error message; no toast needed here
       return;
     }
 

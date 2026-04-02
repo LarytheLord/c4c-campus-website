@@ -149,10 +149,15 @@ export const GET: APIRoute = async ({ request }) => {
       existingNotifKeys.add(notifKey);
 
       // Send emails — check profiles first, then fall back to applications
-      const { data: profiles } = await supabaseAdmin
+      const { data: profiles, error: profilesError } = await supabaseAdmin
         .from('profiles')
         .select('id, email, full_name')
         .in('id', userIds);
+
+      if (profilesError) {
+        console.error('[cron] Error fetching profiles:', profilesError);
+        continue;
+      }
 
       const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
 
@@ -160,10 +165,16 @@ export const GET: APIRoute = async ({ request }) => {
       const missingEmailUserIds = userIds.filter((uid: string) => !profileMap.get(uid)?.email);
       let appMap = new Map<string, any>();
       if (missingEmailUserIds.length > 0) {
-        const { data: apps } = await supabaseAdmin
+        const { data: apps, error: appsError } = await supabaseAdmin
           .from('applications')
           .select('user_id, name, email')
           .in('user_id', missingEmailUserIds);
+
+        if (appsError) {
+          console.error('[cron] Error fetching applications:', appsError);
+          continue;
+        }
+
         appMap = new Map((apps || []).map((a: any) => [a.user_id, a]));
       }
 
@@ -181,10 +192,10 @@ export const GET: APIRoute = async ({ request }) => {
             moduleName,
             courseSlug,
           }).catch((err) => {
-            console.error(`[cron] Failed to send email to ${email}:`, err);
+            console.error(`[cron] Failed to send email notification for course "${courseName}", module "${moduleName}":`, err);
           });
         } else {
-          console.warn(`[cron] No email found for user ${userId}, skipping email notification`);
+          console.warn(`[cron] No email found for a student in course "${courseName}", module "${moduleName}", skipping email notification`);
         }
       }
 

@@ -83,20 +83,31 @@ async function notifyCohortStudents(
     }
 
     // Fetch student emails — check profiles first, fall back to applications
-    const { data: profiles } = await supabaseAdmin
+    const { data: profiles, error: profilesError } = await supabaseAdmin
       .from('profiles')
       .select('id, email, full_name')
       .in('id', userIds);
+
+    if (profilesError) {
+      console.error('[schedule] Error fetching profiles:', profilesError);
+      return;
+    }
 
     const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
 
     const missingEmailUserIds = userIds.filter((uid: string) => !profileMap.get(uid)?.email);
     let appMap = new Map<string, any>();
     if (missingEmailUserIds.length > 0) {
-      const { data: applications } = await supabaseAdmin
+      const { data: applications, error: applicationsError } = await supabaseAdmin
         .from('applications')
         .select('user_id, name, email')
         .in('user_id', missingEmailUserIds);
+
+      if (applicationsError) {
+        console.error('[schedule] Error fetching applications:', applicationsError);
+        return;
+      }
+
       appMap = new Map((applications || []).map((a: any) => [a.user_id, a]));
     }
 
@@ -115,10 +126,10 @@ async function notifyCohortStudents(
           moduleName,
           courseSlug,
         }).catch((err: any) => {
-          console.error(`[schedule] Failed to send email to ${email}:`, err);
+          console.error('[schedule] Failed to send email notification:', err);
         });
       } else {
-        console.warn(`[schedule] No email found for user ${userId}, skipping`);
+        console.warn('[schedule] No email found for a student, skipping notification');
       }
     }
 
