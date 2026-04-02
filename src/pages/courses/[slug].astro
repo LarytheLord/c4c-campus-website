@@ -270,7 +270,7 @@ export const prerender = false;
       query = query.neq('id', editingLesson.id);
     }
 
-    const { data } = await query.limit(1);
+    const { data, error: queryError } = await query.limit(1);
 
     // Ignore stale async responses that return after the input has changed.
     const latestSlugInput = document.getElementById('lesson-slug') as HTMLInputElement | null;
@@ -279,7 +279,19 @@ export const prerender = false;
       return true;
     }
 
+    // Fail closed on network/query error — block save until validation succeeds
+    if (queryError) {
+      slugError.textContent = 'Unable to verify slug uniqueness. Please try again.';
+      slugError.classList.remove('hidden');
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      }
+      return false;
+    }
+
     if (data && data.length > 0) {
+      slugError.textContent = 'This URL already exists for another lesson, please change the URL.';
       slugError.classList.remove('hidden');
       if (saveBtn) {
         saveBtn.disabled = true;
